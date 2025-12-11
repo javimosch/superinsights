@@ -1,0 +1,21 @@
+Tech stack: 
+
+- Tailwind cdn
+- daisyuicdn
+- vue3cdn (no vue deps)
+- nodejs
+- ejs
+- mongo/mongoose
+
+Coding Guidelines:
+
+- modular approach
+- files < 500 LOC
+- controllers for backend routes for easy testing
+- mock support for easy unit tests
+
+Documentation Guidelines:
+
+- Each feature has a single .md file under docs/features/
+- Each plan has a single .md file under docs/plans/
+- Each sprint has a single .md file under docs/sprints/

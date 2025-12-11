@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+
+    <!-- Tailwind & DaisyUI via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configure Tailwind to use DaisyUI
+      // DaisyUI itself is loaded just after this block
+      window.tailwind = window.tailwind || {};
+      tailwind.config = {
+        plugins: [window.daisyui],
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.js"></script>
+
+    <!-- Vue 3 via CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4">
+        <a class="text-xl font-bold">SuperInsights</a>
+      </div>
+    </div>
+
+    <main id="app" class="container mx-auto p-4">
+      <div class="hero min-h-[60vh]">
+        <div class="hero-content flex-col lg:flex-row-reverse gap-10">
+          <div class="card bg-base-100 shadow-xl w-full max-w-md">
+            <div class="card-body">
+              <h1 class="card-title text-2xl"><%= message %></h1>
+              <p class="mt-2 text-sm text-base-content/70">
+                This page is rendered with EJS, styled with Tailwind + DaisyUI, and
+                enhanced with Vue 3 via CDN.
+              </p>
+
+              <div class="form-control mt-4">
+                <label class="label">
+                  <span class="label-text">Try the Vue counter</span>
+                </label>
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  @click="increment"
+                >
+                  Counter: {{ count }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="max-w-xl space-y-3">
+            <h2 class="text-3xl font-bold">SuperInsights Starter Stack</h2>
+            <ul class="list-disc list-inside text-base-content/80">
+              <li>Express + EJS templates</li>
+              <li>TailwindCSS + DaisyUI via CDN</li>
+              <li>Vue 3 (no build tooling)</li>
+              <li>MongoDB + Mongoose (connection pre-wired)</li>
+              <li>Modular controllers/routes/models structure</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const { createApp, ref } = Vue;
+
+      createApp({
+        setup() {
+          const count = ref(0);
+          const increment = () => {
+            count.value += 1;
+          };
+
+          return { count, increment };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>
