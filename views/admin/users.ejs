@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+
+    <main class="container mx-auto p-4 space-y-8">
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h1 class="card-title text-2xl mb-2">Invite user</h1>
+          <% if (errors && errors.length) { %>
+          <div class="alert alert-error mb-4">
+            <ul class="list-disc list-inside text-sm">
+              <% errors.forEach(function (err) { %>
+              <li><%= err %></li>
+              <% }) %>
+            </ul>
+          </div>
+          <% } %>
+          <% if (invitedUserEmail) { %>
+          <div class="alert alert-success mb-4 text-sm">
+            Invited
+            <span class="font-semibold"><%= invitedUserEmail %></span>.
+            This is an internal-only admin feature; temporary credentials are
+            generated and stored only as hashes and are not displayed here.
+            Share access details securely or wire this up to an email-based
+            set-password flow.
+          </div>
+          <% } %>
+          <form
+            action="/admin/users/invite"
+            method="POST"
+            class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          >
+            <div class="form-control">
+              <label class="label" for="email">
+                <span class="label-text">Email</span>
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                class="input input-bordered w-full"
+                value="<%= values && values.email ? values.email : '' %>"
+              />
+            </div>
+            <div class="form-control">
+              <label class="label" for="role">
+                <span class="label-text">Role</span>
+              </label>
+              <select
+                id="role"
+                name="role"
+                class="select select-bordered w-full"
+              >
+                <option
+                  value="viewer"
+                  <%= (!values || values.role === 'viewer') ? 'selected' : '' %>
+                >
+                  Viewer
+                </option>
+                <option
+                  value="admin"
+                  <%= (values && values.role === 'admin') ? 'selected' : '' %>
+                >
+                  Admin
+                </option>
+              </select>
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">
+                Send invite
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Users</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (users && users.length) { %>
+                <% users.forEach(function (user) { %>
+                <tr>
+                  <td><%= user.email %></td>
+                  <td class="capitalize"><%= user.role %></td>
+                  <td><%= user.createdAt.toISOString() %></td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="3">No users yet.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

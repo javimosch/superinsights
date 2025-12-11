@@ -22,8 +22,28 @@
   </head>
   <body class="min-h-screen bg-base-200">
     <div class="navbar bg-base-100 shadow">
-      <div class="flex-1 px-4">
-        <a class="text-xl font-bold">SuperInsights</a>
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
+        <% } %>
       </div>
     </div>
 

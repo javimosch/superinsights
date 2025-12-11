@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
+        <% } %>
+      </div>
+    </div>
+
+    <main id="app" class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
+          <div>
+            <h1 class="text-2xl font-bold">{{ project.name }}</h1>
+            <p class="text-sm text-base-content/70">
+              Environment: <span class="capitalize">{{ project.environment }}</span>
+              • Role: <span class="capitalize">{{ currentProjectRole }}</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <a href="/projects" class="btn btn-ghost">Back to projects</a>
+        </div>
+      </div>
+
+      <% if (errors && errors.length) { %>
+      <div class="alert alert-error">
+        <ul class="list-disc list-inside text-sm">
+          <% errors.forEach(function (err) { %>
+          <li><%= err %></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% if (successMessage) { %>
+      <div class="alert alert-success">
+        <span class="text-sm"><%= successMessage %></span>
+      </div>
+      <% } %>
+
+      <!-- Section 1: Project Details -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Project details</h2>
+          <form
+            action="/projects/<%= project._id %>/update"
+            method="POST"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
+          >
+            <div class="form-control">
+              <label class="label" for="name">
+                <span class="label-text">Name</span>
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                class="input input-bordered w-full"
+                value="<%= values && values.name ? values.name : project.name %>"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="icon">
+                <span class="label-text">Icon</span>
+              </label>
+              <input
+                id="icon"
+                name="icon"
+                type="text"
+                maxlength="8"
+                class="input input-bordered w-full"
+                value="<%= values && values.icon ? values.icon : project.icon %>"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="environment">
+                <span class="label-text">Environment</span>
+              </label>
+              <select
+                id="environment"
+                name="environment"
+                class="select select-bordered w-full"
+              >
+                <option
+                  value="production"
+                  <%= (values && values.environment === 'production') || (!values && project.environment === 'production') ? 'selected' : '' %>
+                >
+                  Production
+                </option>
+                <option
+                  value="staging"
+                  <%= (values && values.environment === 'staging') || (!values && project.environment === 'staging') ? 'selected' : '' %>
+                >
+                  Staging
+                </option>
+                <option
+                  value="development"
+                  <%= (values && values.environment === 'development') || (!values && project.environment === 'development') ? 'selected' : '' %>
+                >
+                  Development
+                </option>
+              </select>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="dataRetentionDays">
+                <span class="label-text">Data retention (days)</span>
+              </label>
+              <input
+                id="dataRetentionDays"
+                name="dataRetentionDays"
+                type="number"
+                min="1"
+                max="365"
+                class="input input-bordered w-full"
+                value="<%= values && values.dataRetentionDays ? values.dataRetentionDays : project.dataRetentionDays %>"
+              />
+              <label class="label">
+                <span class="label-text-alt text-base-content/60">
+                  How long ingested data is kept before being permanently removed.
+                </span>
+              </label>
+            </div>
+
+            <div class="form-control md:col-span-2 flex flex-row gap-2 justify-end mt-2">
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Section 2: API Keys -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">API keys</h2>
+            <span class="badge badge-outline">Server-side & client usage</span>
+          </div>
+
+          <div class="alert alert-warning text-sm">
+            <span>
+              Never expose your secret key in public clients. Use the public key in
+              browser contexts and keep the secret key on your server only.
+            </span>
+          </div>
+
+          <div class="space-y-4">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Public API key</span>
+              </label>
+              <div class="join w-full">
+                <input
+                  type="text"
+                  readonly
+                  class="input input-bordered join-item w-full"
+                  :value="project.publicApiKey"
+                />
+                <button
+                  type="button"
+                  class="btn join-item"
+                  @click="copyToClipboard(project.publicApiKey, 'Public key copied')"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Secret API key</span>
+              </label>
+              <div class="join w-full">
+                <input
+                  :type="showSecret ? 'text' : 'password'"
+                  readonly
+                  class="input input-bordered join-item w-full"
+                  :value="project.secretApiKey"
+                />
+                <button
+                  type="button"
+                  class="btn join-item"
+                  @click="toggleSecret()"
+                >
+                  {{ showSecret ? 'Hide' : 'Show' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn join-item"
+                  @click="copyToClipboard(project.secretApiKey, 'Secret key copied')"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="canRegenerateKeys" class="mt-4">
+            <button
+              type="button"
+              class="btn btn-outline btn-error"
+              @click="openRegenerateModal()"
+            >
+              Regenerate keys
+            </button>
+          </div>
+
+          <!-- Regenerate confirmation modal -->
+          <dialog ref="regenerateModal" class="modal">
+            <div class="modal-box">
+              <h3 class="font-bold text-lg mb-2">Regenerate API keys?</h3>
+              <p class="text-sm text-base-content/70 mb-4">
+                This will invalidate the current keys immediately. Make sure you
+                update any servers or clients using these keys.
+              </p>
+              <div class="modal-action">
+                <form method="dialog" class="flex gap-2">
+                  <button type="button" class="btn" @click="closeRegenerateModal()">
+                    Cancel
+                  </button>
+                </form>
+                <form
+                  action="/projects/<%= project._id %>/regenerate-keys"
+                  method="POST"
+                >
+                  <button type="submit" class="btn btn-error">
+                    Yes, regenerate
+                  </button>
+                </form>
+              </div>
+            </div>
+          </dialog>
+        </div>
+      </section>
+
+      <!-- Section 3: Team Members -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Team members</h2>
+            <span class="badge badge-outline">Your role: <span class="ml-1 capitalize"><%= currentProjectRole %></span></span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Added</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (users && users.length) { %>
+                <% users.forEach(function (entry) { %>
+                <tr>
+                  <td><%= entry.userId && entry.userId.email ? entry.userId.email : '' %></td>
+                  <td class="capitalize"><%= entry.role %></td>
+                  <td>
+                    <% if (entry.addedAt) { %>
+                    <%= entry.addedAt.toISOString() %>
+                    <% } %>
+                  </td>
+                  <td class="text-right">
+                    <% const isOwner = entry.role === 'owner'; %>
+                    <% const isLastOwner = users.filter(function (u) { return u.role === 'owner'; }).length === 1 && isOwner; %>
+                    <% if (currentProjectRole === 'owner' && !isLastOwner) { %>
+                    <form
+                      action="/projects/<%= project._id %>/users/remove"
+                      method="POST"
+                      class="inline"
+                    >
+                      <input type="hidden" name="userId" value="<%= entry.userId ? entry.userId._id : '' %>" />
+                      <button
+                        type="submit"
+                        class="btn btn-ghost btn-xs text-error"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="4">No team members yet.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+
+          <% if (['owner', 'admin'].includes(currentProjectRole)) { %>
+          <div class="divider"></div>
+          <form
+            action="/projects/<%= project._id %>/users/add"
+            method="POST"
+            class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          >
+            <div class="form-control">
+              <label class="label" for="inviteEmail">
+                <span class="label-text">User email</span>
+              </label>
+              <input
+                id="inviteEmail"
+                name="email"
+                type="email"
+                required
+                class="input input-bordered w-full"
+              />
+            </div>
+            <div class="form-control">
+              <label class="label" for="inviteRole">
+                <span class="label-text">Role</span>
+              </label>
+              <select
+                id="inviteRole"
+                name="role"
+                class="select select-bordered w-full"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">
+                Add user
+              </button>
+            </div>
+          </form>
+          <% } %>
+        </div>
+      </section>
+
+      <!-- Section 4: Danger Zone -->
+      <section class="card bg-base-100 shadow border border-error/40">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl text-error">Danger zone</h2>
+          <p class="text-sm text-base-content/70">
+            Soft-deleting this project will hide it from all users and stop new
+            data from being ingested. Data may be recoverable for up to 7 days,
+            after which it can be permanently removed by a scheduled job.
+          </p>
+
+          <div class="alert alert-warning text-xs">
+            <span>
+              This action affects all data tied to this project, including
+              events, page views, and metrics. Ensure you have exported or backed
+              up anything critical.
+            </span>
+          </div>
+
+          <div v-if="canDelete" class="mt-2">
+            <button
+              type="button"
+              class="btn btn-outline btn-error"
+              @click="openDeleteModal()"
+            >
+              Soft delete project
+            </button>
+          </div>
+
+          <!-- Delete confirmation modal -->
+          <dialog ref="deleteModal" class="modal">
+            <div class="modal-box">
+              <h3 class="font-bold text-lg mb-2">Soft delete project?</h3>
+              <p class="text-sm text-base-content/70 mb-4">
+                This will mark the project as deleted. It will disappear from
+                lists and stop accepting new data. You may be able to recover it
+                within 7 days.
+              </p>
+              <div class="modal-action">
+                <form method="dialog" class="flex gap-2">
+                  <button type="button" class="btn" @click="closeDeleteModal()">
+                    Cancel
+                  </button>
+                </form>
+                <form
+                  action="/projects/<%= project._id %>/delete"
+                  method="POST"
+                >
+                  <button type="submit" class="btn btn-error">
+                    Yes, delete project
+                  </button>
+                </form>
+              </div>
+            </div>
+          </dialog>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const { createApp, ref } = Vue;
+
+      createApp({
+        setup() {
+          const project = ref(<%- JSON.stringify(project) %>);
+          const currentProjectRole = '<%= currentProjectRole %>';
+
+          const showSecret = ref(false);
+          const regenerateModal = ref(null);
+          const deleteModal = ref(null);
+
+          const canRegenerateKeys = ['owner'].includes(currentProjectRole);
+          const canDelete = ['owner'].includes(currentProjectRole);
+
+          function copyToClipboard(value, message) {
+            if (!value) return;
+            navigator.clipboard
+              .writeText(value)
+              .then(() => {
+                console.log(message || 'Copied');
+              })
+              .catch(() => {
+                console.log('Copy failed');
+              });
+          }
+
+          function toggleSecret() {
+            showSecret.value = !showSecret.value;
+          }
+
+          function openRegenerateModal() {
+            if (regenerateModal.value) {
+              regenerateModal.value.showModal();
+            }
+          }
+
+          function closeRegenerateModal() {
+            if (regenerateModal.value) {
+              regenerateModal.value.close();
+            }
+          }
+
+          function openDeleteModal() {
+            if (deleteModal.value) {
+              deleteModal.value.showModal();
+            }
+          }
+
+          function closeDeleteModal() {
+            if (deleteModal.value) {
+              deleteModal.value.close();
+            }
+          }
+
+          return {
+            project,
+            currentProjectRole,
+            showSecret,
+            regenerateModal,
+            deleteModal,
+            canRegenerateKeys,
+            canDelete,
+            copyToClipboard,
+            toggleSecret,
+            openRegenerateModal,
+            closeRegenerateModal,
+            openDeleteModal,
+            closeDeleteModal,
+          };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

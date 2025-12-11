@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
+        <% } %>
+      </div>
+    </div>
+
+    <main class="container mx-auto p-4 flex justify-center">
+      <div class="card bg-base-100 shadow-xl w-full max-w-xl">
+        <div class="card-body">
+          <h1 class="card-title text-2xl mb-2">Create a new project</h1>
+          <% if (errors && errors.length) { %>
+          <div class="alert alert-error mb-4">
+            <ul class="list-disc list-inside text-sm">
+              <% errors.forEach(function (err) { %>
+              <li><%= err %></li>
+              <% }) %>
+            </ul>
+          </div>
+          <% } %>
+
+          <form action="/projects" method="POST" class="space-y-4">
+            <div class="form-control">
+              <label class="label" for="name">
+                <span class="label-text">Name</span>
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                class="input input-bordered w-full"
+                value="<%= values && values.name ? values.name : '' %>"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="icon">
+                <span class="label-text">Icon (emoji or short label)</span>
+              </label>
+              <input
+                id="icon"
+                name="icon"
+                type="text"
+                maxlength="8"
+                class="input input-bordered w-full"
+                value="<%= values && values.icon ? values.icon : '📊' %>"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="environment">
+                <span class="label-text">Environment</span>
+              </label>
+              <select
+                id="environment"
+                name="environment"
+                class="select select-bordered w-full"
+              >
+                <option
+                  value="production"
+                  <%= (!values || values.environment === 'production') ? 'selected' : '' %>
+                >
+                  Production
+                </option>
+                <option
+                  value="staging"
+                  <%= (values && values.environment === 'staging') ? 'selected' : '' %>
+                >
+                  Staging
+                </option>
+                <option
+                  value="development"
+                  <%= (values && values.environment === 'development') ? 'selected' : '' %>
+                >
+                  Development
+                </option>
+              </select>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="dataRetentionDays">
+                <span class="label-text">Data retention (days)</span>
+              </label>
+              <input
+                id="dataRetentionDays"
+                name="dataRetentionDays"
+                type="number"
+                min="1"
+                max="365"
+                class="input input-bordered w-full"
+                value="<%= values && values.dataRetentionDays ? values.dataRetentionDays : 90 %>"
+              />
+              <label class="label">
+                <span class="label-text-alt text-base-content/60">
+                  How long ingested data is kept before being permanently removed.
+                </span>
+              </label>
+            </div>
+
+            <div class="form-control mt-4 flex flex-row gap-2 justify-end">
+              <a href="/projects" class="btn btn-ghost">Cancel</a>
+              <button type="submit" class="btn btn-primary">Create Project</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
