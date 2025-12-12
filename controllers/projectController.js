@@ -37,6 +37,7 @@ exports.getNewProject = (req, res) => {
       environment: 'production',
       dataRetentionDays: 90,
     },
+    environments: Project.ENVIRONMENTS,
   });
 };
 
@@ -54,7 +55,7 @@ exports.postCreateProject = async (req, res, next) => {
       errors.push('Name is required');
     }
 
-    if (!['production', 'staging', 'development'].includes(environment)) {
+    if (!Project.ENVIRONMENTS.includes(environment)) {
       errors.push('Environment is invalid');
     }
 
@@ -76,6 +77,7 @@ exports.postCreateProject = async (req, res, next) => {
         title: 'New Project - SuperInsights',
         errors,
         values,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -102,72 +104,31 @@ exports.postCreateProject = async (req, res, next) => {
   }
 };
 
-exports.getProjectSettings = async (req, res, next) => {
-  try {
-    const project = await Project.findById(req.params.id).populate('users.userId').exec();
+exports.getProjectSettings = (req, res) => {
+  const project = req.project;
+  const role = req.userProjectRole;
 
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
-    const userId = req.session.user.id;
-
-    if (!project.hasUserAccess(userId)) {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'You do not have access to this project.',
-      });
-    }
-
-    const role = project.getUserRole(userId);
-
-    if (!['owner', 'admin'].includes(role)) {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'You do not have permission to access project settings.',
-      });
-    }
-
-    res.render('projects/settings', {
-      title: `${project.name} Settings - SuperInsights`,
-      project,
-      users: project.users,
-      currentProjectRole: role,
-      errors: [],
-      values: {
-        name: project.name,
-        icon: project.icon,
-        environment: project.environment,
-        dataRetentionDays: project.dataRetentionDays,
-      },
-      successMessage: null,
-    });
-  } catch (err) {
-    next(err);
-  }
+  res.render('projects/settings', {
+    title: `${project.name} Settings - SuperInsights`,
+    project,
+    users: project.users,
+    currentProjectRole: role,
+    errors: [],
+    values: {
+      name: project.name,
+      icon: project.icon,
+      environment: project.environment,
+      dataRetentionDays: project.dataRetentionDays,
+    },
+    successMessage: null,
+    environments: Project.ENVIRONMENTS,
+  });
 };
 
 exports.postUpdateProject = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.id).populate('users.userId').exec();
-
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
-    const userId = req.session.user.id;
-    const role = project.getUserRole(userId);
-
-    if (!['owner', 'admin'].includes(role)) {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'You do not have permission to update this project.',
-      });
-    }
+    const project = req.project;
+    const role = req.userProjectRole;
 
     const name = normalizeName(req.body.name);
     const icon = req.body.icon || '📊';
@@ -181,7 +142,7 @@ exports.postUpdateProject = async (req, res, next) => {
       errors.push('Name is required');
     }
 
-    if (!['production', 'staging', 'development'].includes(environment)) {
+    if (!Project.ENVIRONMENTS.includes(environment)) {
       errors.push('Environment is invalid');
     }
 
@@ -207,6 +168,7 @@ exports.postUpdateProject = async (req, res, next) => {
         errors,
         values,
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -225,6 +187,7 @@ exports.postUpdateProject = async (req, res, next) => {
       errors: [],
       values,
       successMessage: 'Project updated successfully.',
+      environments: Project.ENVIRONMENTS,
     });
   } catch (err) {
     next(err);
@@ -233,23 +196,8 @@ exports.postUpdateProject = async (req, res, next) => {
 
 exports.postRegenerateKeys = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.id).populate('users.userId').exec();
-
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
-    const userId = req.session.user.id;
-    const role = project.getUserRole(userId);
-
-    if (role !== 'owner') {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'Only the project owner can regenerate API keys.',
-      });
-    }
+    const project = req.project;
+    const role = req.userProjectRole;
 
     project.regenerateKeys();
     await project.save();
@@ -267,6 +215,7 @@ exports.postRegenerateKeys = async (req, res, next) => {
         dataRetentionDays: project.dataRetentionDays,
       },
       successMessage: 'API keys regenerated successfully.',
+      environments: Project.ENVIRONMENTS,
     });
   } catch (err) {
     next(err);
@@ -275,26 +224,12 @@ exports.postRegenerateKeys = async (req, res, next) => {
 
 exports.postAddUser = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.id).populate('users.userId').exec();
-
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
+    const project = req.project;
     const currentUserId = req.session.user.id;
-    const currentRole = project.getUserRole(currentUserId);
-
-    if (!['owner', 'admin'].includes(currentRole)) {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'You do not have permission to manage project members.',
-      });
-    }
+    const currentRole = req.userProjectRole;
 
     const email = (req.body.email || '').toLowerCase().trim();
-    const role = req.body.role || 'viewer';
+    const roleToAssign = req.body.role || 'viewer';
 
     const errors = [];
 
@@ -302,8 +237,12 @@ exports.postAddUser = async (req, res, next) => {
       errors.push('Email is required');
     }
 
-    if (!['owner', 'admin', 'viewer'].includes(role)) {
+    if (!['owner', 'admin', 'viewer'].includes(roleToAssign)) {
       errors.push('Invalid role');
+    }
+
+    if (roleToAssign === 'owner' && currentRole !== 'owner') {
+      errors.push('Only an existing owner can assign the owner role.');
     }
 
     const values = {
@@ -322,6 +261,7 @@ exports.postAddUser = async (req, res, next) => {
         errors,
         values,
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -336,6 +276,7 @@ exports.postAddUser = async (req, res, next) => {
         errors: ['No user found with that email'],
         values,
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -352,26 +293,34 @@ exports.postAddUser = async (req, res, next) => {
         errors: ['User is already a member of this project'],
         values,
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
     project.users.push({
       userId: user._id,
-      role,
+      role: roleToAssign,
       addedAt: new Date(),
     });
 
     await project.save();
     await project.populate('users.userId');
 
+    const updatedRole = project.getUserRole(currentUserId);
+
+    if (!updatedRole) {
+      return res.redirect('/projects');
+    }
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
       users: project.users,
-      currentProjectRole: currentRole,
+      currentProjectRole: updatedRole,
       errors: [],
       values,
       successMessage: 'User added to project.',
+      environments: Project.ENVIRONMENTS,
     });
   } catch (err) {
     next(err);
@@ -380,23 +329,9 @@ exports.postAddUser = async (req, res, next) => {
 
 exports.postRemoveUser = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.id).populate('users.userId').exec();
-
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
+    const project = req.project;
     const currentUserId = req.session.user.id;
-    const currentRole = project.getUserRole(currentUserId);
-
-    if (currentRole !== 'owner') {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'Only the project owner can remove users.',
-      });
-    }
+    const currentRole = req.userProjectRole;
 
     const removeUserId = req.body.userId;
 
@@ -414,6 +349,7 @@ exports.postRemoveUser = async (req, res, next) => {
           dataRetentionDays: project.dataRetentionDays,
         },
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -436,6 +372,7 @@ exports.postRemoveUser = async (req, res, next) => {
           dataRetentionDays: project.dataRetentionDays,
         },
         successMessage: null,
+        environments: Project.ENVIRONMENTS,
       });
     }
 
@@ -446,11 +383,17 @@ exports.postRemoveUser = async (req, res, next) => {
     await project.save();
     await project.populate('users.userId');
 
+    const updatedRole = project.getUserRole(currentUserId);
+
+    if (!updatedRole) {
+      return res.redirect('/projects');
+    }
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
       users: project.users,
-      currentProjectRole: currentRole,
+      currentProjectRole: updatedRole,
       errors: [],
       values: {
         name: project.name,
@@ -459,6 +402,7 @@ exports.postRemoveUser = async (req, res, next) => {
         dataRetentionDays: project.dataRetentionDays,
       },
       successMessage: 'User removed from project.',
+      environments: Project.ENVIRONMENTS,
     });
   } catch (err) {
     next(err);
@@ -467,23 +411,7 @@ exports.postRemoveUser = async (req, res, next) => {
 
 exports.postSoftDelete = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.id).exec();
-
-    if (!project || project.deletedAt) {
-      return res.status(404).render('404', {
-        title: 'Not Found - SuperInsights',
-      });
-    }
-
-    const currentUserId = req.session.user.id;
-    const currentRole = project.getUserRole(currentUserId);
-
-    if (currentRole !== 'owner') {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'Only the project owner can delete this project.',
-      });
-    }
+    const project = req.project;
 
     await Project.softDelete(project._id);
 

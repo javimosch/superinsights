@@ -85,24 +85,14 @@
                 name="environment"
                 class="select select-bordered w-full"
               >
+                <% (environments || []).forEach(function (env) { %>
                 <option
-                  value="production"
-                  <%= (!values || values.environment === 'production') ? 'selected' : '' %>
+                  value="<%= env %>"
+                  <%= (!values && env === 'production') || (values && values.environment === env) ? 'selected' : '' %>
                 >
-                  Production
+                  <%= env.charAt(0).toUpperCase() + env.slice(1) %>
                 </option>
-                <option
-                  value="staging"
-                  <%= (values && values.environment === 'staging') ? 'selected' : '' %>
-                >
-                  Staging
-                </option>
-                <option
-                  value="development"
-                  <%= (values && values.environment === 'development') ? 'selected' : '' %>
-                >
-                  Development
-                </option>
+                <% }) %>
               </select>
             </div>
 

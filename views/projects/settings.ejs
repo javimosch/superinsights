@@ -113,24 +113,14 @@
                 name="environment"
                 class="select select-bordered w-full"
               >
+                <% (environments || []).forEach(function (env) { %>
                 <option
-                  value="production"
-                  <%= (values && values.environment === 'production') || (!values && project.environment === 'production') ? 'selected' : '' %>
+                  value="<%= env %>"
+                  <%= (values && values.environment === env) || (!values && project.environment === env) ? 'selected' : '' %>
                 >
-                  Production
+                  <%= env.charAt(0).toUpperCase() + env.slice(1) %>
                 </option>
-                <option
-                  value="staging"
-                  <%= (values && values.environment === 'staging') || (!values && project.environment === 'staging') ? 'selected' : '' %>
-                >
-                  Staging
-                </option>
-                <option
-                  value="development"
-                  <%= (values && values.environment === 'development') || (!values && project.environment === 'development') ? 'selected' : '' %>
-                >
-                  Development
-                </option>
+                <% }) %>
               </select>
             </div>
 
@@ -373,8 +363,9 @@
           <h2 class="card-title text-xl text-error">Danger zone</h2>
           <p class="text-sm text-base-content/70">
             Soft-deleting this project will hide it from all users and stop new
-            data from being ingested. Data may be recoverable for up to 7 days,
-            after which it can be permanently removed by a scheduled job.
+            data from being ingested. The project and its data will remain
+            marked as deleted until you implement a separate cleanup or
+            recovery mechanism.
           </p>
 
           <div class="alert alert-warning text-xs">
@@ -401,8 +392,8 @@
               <h3 class="font-bold text-lg mb-2">Soft delete project?</h3>
               <p class="text-sm text-base-content/70 mb-4">
                 This will mark the project as deleted. It will disappear from
-                lists and stop accepting new data. You may be able to recover it
-                within 7 days.
+                lists and stop accepting new data. There is no automated
+                recovery flow yet, so only perform this if you are sure.
               </p>
               <div class="modal-action">
                 <form method="dialog" class="flex gap-2">
