@@ -7,6 +7,7 @@ const indexRouter = require('./routes/index');
 const authRouter = require('./routes/auth');
 const adminRouter = require('./routes/admin');
 const projectRouter = require('./routes/projects');
+const ingestionRouter = require('./routes/ingestion');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -51,6 +52,21 @@ app.use('/', indexRouter);
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
 app.use('/projects', projectRouter);
+
+// Ingestion API (CORS-enabled for SDKs)
+app.use('/v1', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Authorization, X-API-Key, Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
+app.use('/v1', ingestionRouter);
 
 // 404 and error handlers
 app.use(notFound);
