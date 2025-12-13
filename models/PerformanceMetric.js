@@ -8,6 +8,11 @@ const PerformanceMetricSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    metricType: {
+      type: String,
+      default: 'web_vitals_aggregate',
+      index: true,
+    },
     lcp: {
       type: Number,
     },

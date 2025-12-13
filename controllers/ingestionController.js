@@ -226,6 +226,7 @@ async function postPerformanceMetrics(req, res, next) {
 
       return {
         projectId: req.project._id,
+        metricType: item.metricType || 'web_vitals_aggregate',
         lcp: item.lcp,
         cls: item.cls,
         fid: item.fid,
