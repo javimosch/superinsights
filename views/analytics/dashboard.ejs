@@ -90,8 +90,7 @@
                 <input
                   type="checkbox"
                   class="toggle toggle-primary"
-                  :checked="autoRefreshEnabled"
-                  @change="toggleAutoRefresh"
+                  v-model="autoRefreshEnabled"
                 />
                 <span class="text-sm text-base-content/70">
                   Auto-refresh:
@@ -301,7 +300,7 @@
     </main>
 
     <script>
-      const { createApp, computed, onBeforeUnmount, onMounted, ref } = Vue;
+      const { createApp, computed, onBeforeUnmount, onMounted, ref, watch } = Vue;
 
       createApp({
         setup() {
@@ -611,15 +610,18 @@
             countdownInterval = null;
           }
 
-          function toggleAutoRefresh() {
-            autoRefreshEnabled.value = !autoRefreshEnabled.value;
-            if (autoRefreshEnabled.value) {
-              refreshCountdown.value = 30;
-              startAutoRefresh();
-            } else {
-              stopAutoRefresh();
-            }
-          }
+          watch(
+            autoRefreshEnabled,
+            (enabled) => {
+              if (enabled) {
+                refreshCountdown.value = 30;
+                startAutoRefresh();
+              } else {
+                stopAutoRefresh();
+              }
+            },
+            { flush: 'post' }
+          );
 
           function applyFilters() {
             const params = new URLSearchParams();
@@ -660,7 +662,6 @@
             fetchDashboardData,
             startAutoRefresh,
             stopAutoRefresh,
-            toggleAutoRefresh,
             applyFilters,
           };
         },
