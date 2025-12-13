@@ -484,8 +484,8 @@ exports.getDashboard = async (req, res, next) => {
       events: payload.events,
       errors: payload.errors,
       performance: payload.performance,
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      currentUser: req.session.user || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);
