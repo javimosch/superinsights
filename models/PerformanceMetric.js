@@ -50,5 +50,7 @@ const PerformanceMetricSchema = new mongoose.Schema(
 );
 
 PerformanceMetricSchema.index({ projectId: 1, timestamp: 1 });
+PerformanceMetricSchema.index({ projectId: 1, deviceType: 1, timestamp: 1 });
+PerformanceMetricSchema.index({ projectId: 1, browser: 1, timestamp: 1 });
 
 module.exports = mongoose.model('PerformanceMetric', PerformanceMetricSchema);
