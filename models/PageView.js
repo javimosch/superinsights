@@ -64,5 +64,7 @@ const PageViewSchema = new mongoose.Schema(
 );
 
 PageViewSchema.index({ projectId: 1, timestamp: 1 });
+PageViewSchema.index({ projectId: 1, deviceType: 1, timestamp: 1 });
+PageViewSchema.index({ projectId: 1, url: 1 });
 
 module.exports = mongoose.model('PageView', PageViewSchema);

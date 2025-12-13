@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const projectController = require('../controllers/projectController');
+const pageViewsController = require('../controllers/pageViewsController');
 const { ensureAuthenticated } = require('../middleware/auth');
 const {
   ensureProjectAccess,
@@ -54,6 +55,12 @@ router.post(
   ensureProjectAccess,
   ensureProjectRole(['owner']),
   projectController.postSoftDelete
+);
+
+router.get(
+  '/:id/pageviews',
+  ensureProjectAccess,
+  pageViewsController.getPageViewsAnalytics
 );
 
 module.exports = router;
