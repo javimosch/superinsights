@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
+        <% } %>
+      </div>
+    </div>
+
+    <main id="app" class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl"><span>{{ project.icon || '📈' }}</span></div>
+          <div>
+            <div class="breadcrumbs text-sm">
+              <ul>
+                <li><a href="/projects">Projects</a></li>
+                <li>
+                  <a :href="`/projects/${project._id}/settings`">{{ project.name }}</a>
+                </li>
+                <li>Performance</li>
+              </ul>
+            </div>
+            <h1 class="text-2xl font-bold">Performance Metrics</h1>
+            <p class="text-sm text-base-content/70">
+              Environment: <span class="capitalize">{{ project.environment }}</span>
+              • Role: <span class="capitalize">{{ currentProjectRole }}</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <a href="/projects/<%= project._id %>/dashboard" class="btn btn-primary">
+            Dashboard
+          </a>
+          <a :href="`/projects/${project._id}/pageviews`" class="btn btn-ghost">View Page views</a>
+          <a :href="`/projects/${project._id}/events`" class="btn btn-ghost">View Events</a>
+          <a :href="`/projects/${project._id}/errors`" class="btn btn-ghost">View Errors</a>
+          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">Back to settings</a>
+        </div>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Filters</h2>
+
+          <form class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" @submit.prevent="applyFilters">
+            <div class="form-control">
+              <label class="label" for="timeframe">
+                <span class="label-text">Timeframe</span>
+              </label>
+              <select id="timeframe" v-model="timeframe" class="select select-bordered w-full">
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="deviceType">
+                <span class="label-text">Device</span>
+              </label>
+              <select id="deviceType" v-model="deviceType" class="select select-bordered w-full">
+                <option value="all">All</option>
+                <option value="desktop">Desktop</option>
+                <option value="mobile">Mobile</option>
+                <option value="tablet">Tablet</option>
+              </select>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="browser">
+                <span class="label-text">Browser</span>
+              </label>
+              <select id="browser" v-model="browser" class="select select-bordered w-full">
+                <option value="all">All</option>
+                <option value="Chrome">Chrome</option>
+                <option value="Firefox">Firefox</option>
+                <option value="Safari">Safari</option>
+                <option value="Edge">Edge</option>
+              </select>
+            </div>
+
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Apply</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="grid gap-4 md:grid-cols-3">
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">Total measurements</div>
+            <div class="stat-value text-primary"><%= totalMeasurements %></div>
+            <div class="stat-desc">In selected timeframe</div>
+          </div>
+        </div>
+
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">Performance score</div>
+            <div class="stat-value">
+              <span class="badge" :class="scoreBadgeClass">{{ performanceScore.score }}</span>
+            </div>
+            <div class="stat-desc">Based on 75th percentiles</div>
+          </div>
+        </div>
+
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">Data quality</div>
+            <div class="stat-value">{{ dataQualityPct }}%</div>
+            <div class="stat-desc">Measurements with LCP/CLS/FID/TTFB</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Percentile distribution</h2>
+            <div class="text-sm text-base-content/60">{{ timeframeLabel }}</div>
+          </div>
+
+          <div v-if="!hasAnyPercentiles" class="py-10 text-center text-base-content/70">
+            No performance measurements yet.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th class="text-right">50th</th>
+                  <th class="text-right">75th</th>
+                  <th class="text-right">95th</th>
+                  <th class="text-right">Status (p75)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in percentileRows" :key="row.metric">
+                  <td class="font-semibold">{{ row.label }}</td>
+                  <td class="text-right font-mono">{{ row.p50Formatted }}</td>
+                  <td class="text-right font-mono">{{ row.p75Formatted }}</td>
+                  <td class="text-right font-mono">{{ row.p95Formatted }}</td>
+                  <td class="text-right">
+                    <span class="badge" :class="`badge-${row.status.color}`">{{ row.statusLabel }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 md:grid-cols-2">
+        <div class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-xl">LCP trend</h2>
+              <div class="text-sm text-base-content/60">ms</div>
+            </div>
+            <div v-if="!metricsByDay.length" class="py-10 text-center text-base-content/70">
+              No data.
+            </div>
+            <div v-else class="w-full">
+              <canvas id="lcpChart" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-xl">CLS trend</h2>
+              <div class="text-sm text-base-content/60">score</div>
+            </div>
+            <div v-if="!metricsByDay.length" class="py-10 text-center text-base-content/70">
+              No data.
+            </div>
+            <div v-else class="w-full">
+              <canvas id="clsChart" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-xl">FID trend</h2>
+              <div class="text-sm text-base-content/60">ms</div>
+            </div>
+            <div v-if="!metricsByDay.length" class="py-10 text-center text-base-content/70">
+              No data.
+            </div>
+            <div v-else class="w-full">
+              <canvas id="fidChart" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-xl">TTFB trend</h2>
+              <div class="text-sm text-base-content/60">ms</div>
+            </div>
+            <div v-if="!metricsByDay.length" class="py-10 text-center text-base-content/70">
+              No data.
+            </div>
+            <div v-else class="w-full">
+              <canvas id="ttfbChart" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Metric thresholds reference</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Good</th>
+                  <th>Needs improvement</th>
+                  <th>Poor</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="font-semibold">LCP</td>
+                  <td><span class="badge badge-success">&lt; 2.5s</span></td>
+                  <td><span class="badge badge-warning">2.5s - 4s</span></td>
+                  <td><span class="badge badge-error">&gt; 4s</span></td>
+                  <td>Largest Contentful Paint</td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">CLS</td>
+                  <td><span class="badge badge-success">&lt; 0.1</span></td>
+                  <td><span class="badge badge-warning">0.1 - 0.25</span></td>
+                  <td><span class="badge badge-error">&gt; 0.25</span></td>
+                  <td>Cumulative Layout Shift</td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">FID</td>
+                  <td><span class="badge badge-success">&lt; 100ms</span></td>
+                  <td><span class="badge badge-warning">100ms - 300ms</span></td>
+                  <td><span class="badge badge-error">&gt; 300ms</span></td>
+                  <td>First Input Delay</td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">TTFB</td>
+                  <td><span class="badge badge-success">&lt; 800ms</span></td>
+                  <td><span class="badge badge-warning">800ms - 1800ms</span></td>
+                  <td><span class="badge badge-error">&gt; 1800ms</span></td>
+                  <td>Time to First Byte</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const { createApp, computed, onBeforeUnmount, onMounted, ref } = Vue;
+
+      createApp({
+        setup() {
+          const project = ref(<%- JSON.stringify(project) %>);
+          const currentProjectRole = '<%= currentProjectRole %>';
+
+          const timeframe = ref('<%= timeframe %>');
+          const deviceType = ref('<%= deviceType %>');
+          const browser = ref('<%= browser %>');
+
+          const percentiles = ref(<%- JSON.stringify(percentiles || {}) %>);
+          const metricsByDay = ref(<%- JSON.stringify(metricsByDay || []) %>);
+          const performanceScore = ref(<%- JSON.stringify(performanceScore || { score: 0 }) %>);
+
+          const totalMeasurements = Number(<%= totalMeasurements %>) || 0;
+          const completeMeasurements = Number(<%= completeMeasurements %>) || 0;
+
+          let lcpChartInstance = null;
+          let clsChartInstance = null;
+          let fidChartInstance = null;
+          let ttfbChartInstance = null;
+
+          const timeframeLabel = computed(() => {
+            if (timeframe.value === '24h') return 'Last 24 hours';
+            if (timeframe.value === '30d') return 'Last 30 days';
+            return 'Last 7 days';
+          });
+
+          const dataQualityPct = computed(() => {
+            if (!totalMeasurements) return 0;
+            return Math.round((completeMeasurements / totalMeasurements) * 100);
+          });
+
+          const scoreBadgeClass = computed(() => {
+            const score = Number(performanceScore.value?.score) || 0;
+            if (score > 75) return 'badge-success';
+            if (score >= 50) return 'badge-warning';
+            return 'badge-error';
+          });
+
+          const hasAnyPercentiles = computed(() => {
+            const p = percentiles.value || {};
+            const keys = [
+              'lcp_p50',
+              'lcp_p75',
+              'lcp_p95',
+              'cls_p50',
+              'cls_p75',
+              'cls_p95',
+              'fid_p50',
+              'fid_p75',
+              'fid_p95',
+              'ttfb_p50',
+              'ttfb_p75',
+              'ttfb_p95',
+            ];
+            return keys.some((k) => typeof p[k] === 'number' && Number.isFinite(p[k]));
+          });
+
+          function getMetricStatus(value, metric) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) {
+              return { status: 'poor', color: 'error' };
+            }
+
+            if (metric === 'lcp') {
+              if (value < 2500) return { status: 'good', color: 'success' };
+              if (value <= 4000) return { status: 'needs-improvement', color: 'warning' };
+              return { status: 'poor', color: 'error' };
+            }
+
+            if (metric === 'cls') {
+              if (value < 0.1) return { status: 'good', color: 'success' };
+              if (value <= 0.25) return { status: 'needs-improvement', color: 'warning' };
+              return { status: 'poor', color: 'error' };
+            }
+
+            if (metric === 'fid') {
+              if (value < 100) return { status: 'good', color: 'success' };
+              if (value <= 300) return { status: 'needs-improvement', color: 'warning' };
+              return { status: 'poor', color: 'error' };
+            }
+
+            if (metric === 'ttfb') {
+              if (value < 800) return { status: 'good', color: 'success' };
+              if (value <= 1800) return { status: 'needs-improvement', color: 'warning' };
+              return { status: 'poor', color: 'error' };
+            }
+
+            return { status: 'poor', color: 'error' };
+          }
+
+          function formatMs(value) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+            return `${Math.round(value)} ms`;
+          }
+
+          function formatCls(value) {
+            if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+            return value.toFixed(3);
+          }
+
+          const percentileRows = computed(() => {
+            const p = percentiles.value || {};
+
+            const lcpStatus = getMetricStatus(p.lcp_p75, 'lcp');
+            const clsStatus = getMetricStatus(p.cls_p75, 'cls');
+            const fidStatus = getMetricStatus(p.fid_p75, 'fid');
+            const ttfbStatus = getMetricStatus(p.ttfb_p75, 'ttfb');
+
+            function statusLabel(status) {
+              if (status === 'good') return 'Good';
+              if (status === 'needs-improvement') return 'Needs improvement';
+              return 'Poor';
+            }
+
+            return [
+              {
+                metric: 'lcp',
+                label: 'LCP',
+                p50Formatted: formatMs(p.lcp_p50),
+                p75Formatted: formatMs(p.lcp_p75),
+                p95Formatted: formatMs(p.lcp_p95),
+                status: lcpStatus,
+                statusLabel: statusLabel(lcpStatus.status),
+              },
+              {
+                metric: 'cls',
+                label: 'CLS',
+                p50Formatted: formatCls(p.cls_p50),
+                p75Formatted: formatCls(p.cls_p75),
+                p95Formatted: formatCls(p.cls_p95),
+                status: clsStatus,
+                statusLabel: statusLabel(clsStatus.status),
+              },
+              {
+                metric: 'fid',
+                label: 'FID',
+                p50Formatted: formatMs(p.fid_p50),
+                p75Formatted: formatMs(p.fid_p75),
+                p95Formatted: formatMs(p.fid_p95),
+                status: fidStatus,
+                statusLabel: statusLabel(fidStatus.status),
+              },
+              {
+                metric: 'ttfb',
+                label: 'TTFB',
+                p50Formatted: formatMs(p.ttfb_p50),
+                p75Formatted: formatMs(p.ttfb_p75),
+                p95Formatted: formatMs(p.ttfb_p95),
+                status: ttfbStatus,
+                statusLabel: statusLabel(ttfbStatus.status),
+              },
+            ];
+          });
+
+          function applyFilters() {
+            const params = new URLSearchParams();
+            if (timeframe.value) params.set('timeframe', timeframe.value);
+            if (deviceType.value && deviceType.value !== 'all') {
+              params.set('deviceType', deviceType.value);
+            }
+            if (browser.value && browser.value !== 'all') {
+              params.set('browser', browser.value);
+            }
+
+            const base = `/projects/${project.value._id}/performance`;
+            const query = params.toString();
+            window.location.href = query ? `${base}?${query}` : base;
+          }
+
+          function buildThresholdSeries(labels, value) {
+            return labels.map(() => value);
+          }
+
+          function renderLineChart({ elId, label, color, values, goodThreshold, poorThreshold, yBeginAtZero }) {
+            const el = document.getElementById(elId);
+            if (!el) return null;
+
+            const ctx = el.getContext('2d');
+            const labels = metricsByDay.value.map((p) => p.date);
+
+            const goodLine = buildThresholdSeries(labels, goodThreshold);
+            const poorLine = buildThresholdSeries(labels, poorThreshold);
+
+            return new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label,
+                    data: values,
+                    borderColor: color,
+                    backgroundColor: 'rgba(59, 130, 246, 0.10)',
+                    fill: true,
+                    tension: 0.25,
+                    pointRadius: 3,
+                  },
+                  {
+                    label: 'Good',
+                    data: goodLine,
+                    borderColor: '#22c55e',
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false,
+                  },
+                  {
+                    label: 'Poor',
+                    data: poorLine,
+                    borderColor: '#ef4444',
+                    borderDash: [6, 6],
+                    pointRadius: 0,
+                    fill: false,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { enabled: true },
+                },
+                scales: {
+                  x: {
+                    ticks: { maxRotation: 0 },
+                    grid: { display: false },
+                  },
+                  y: {
+                    beginAtZero: !!yBeginAtZero,
+                  },
+                },
+              },
+            });
+          }
+
+          function renderCharts() {
+            if (!metricsByDay.value.length) return;
+
+            const lcpValues = metricsByDay.value.map((p) => p.lcp);
+            const clsValues = metricsByDay.value.map((p) => p.cls);
+            const fidValues = metricsByDay.value.map((p) => p.fid);
+            const ttfbValues = metricsByDay.value.map((p) => p.ttfb);
+
+            if (lcpChartInstance) {
+              lcpChartInstance.destroy();
+              lcpChartInstance = null;
+            }
+            if (clsChartInstance) {
+              clsChartInstance.destroy();
+              clsChartInstance = null;
+            }
+            if (fidChartInstance) {
+              fidChartInstance.destroy();
+              fidChartInstance = null;
+            }
+            if (ttfbChartInstance) {
+              ttfbChartInstance.destroy();
+              ttfbChartInstance = null;
+            }
+
+            lcpChartInstance = renderLineChart({
+              elId: 'lcpChart',
+              label: 'LCP (avg)',
+              color: '#3b82f6',
+              values: lcpValues,
+              goodThreshold: 2500,
+              poorThreshold: 4000,
+              yBeginAtZero: true,
+            });
+
+            clsChartInstance = renderLineChart({
+              elId: 'clsChart',
+              label: 'CLS (avg)',
+              color: '#a855f7',
+              values: clsValues,
+              goodThreshold: 0.1,
+              poorThreshold: 0.25,
+              yBeginAtZero: true,
+            });
+
+            fidChartInstance = renderLineChart({
+              elId: 'fidChart',
+              label: 'FID (avg)',
+              color: '#f97316',
+              values: fidValues,
+              goodThreshold: 100,
+              poorThreshold: 300,
+              yBeginAtZero: true,
+            });
+
+            ttfbChartInstance = renderLineChart({
+              elId: 'ttfbChart',
+              label: 'TTFB (avg)',
+              color: '#14b8a6',
+              values: ttfbValues,
+              goodThreshold: 800,
+              poorThreshold: 1800,
+              yBeginAtZero: true,
+            });
+          }
+
+          onMounted(() => {
+            renderCharts();
+          });
+
+          onBeforeUnmount(() => {
+            if (lcpChartInstance) lcpChartInstance.destroy();
+            if (clsChartInstance) clsChartInstance.destroy();
+            if (fidChartInstance) fidChartInstance.destroy();
+            if (ttfbChartInstance) ttfbChartInstance.destroy();
+            lcpChartInstance = null;
+            clsChartInstance = null;
+            fidChartInstance = null;
+            ttfbChartInstance = null;
+          });
+
+          return {
+            project,
+            currentProjectRole,
+            timeframe,
+            deviceType,
+            browser,
+            percentiles,
+            metricsByDay,
+            performanceScore,
+            timeframeLabel,
+            dataQualityPct,
+            scoreBadgeClass,
+            hasAnyPercentiles,
+            percentileRows,
+            applyFilters,
+          };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

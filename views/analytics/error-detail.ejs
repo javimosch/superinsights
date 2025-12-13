@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
+        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
+        <% } %>
+      </div>
+    </div>
+
+    <main id="app" class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
+          <div>
+            <div class="breadcrumbs text-sm">
+              <ul>
+                <li><a href="/projects">Projects</a></li>
+                <li>
+                  <a :href="`/projects/${project._id}/settings`">{{ project.name }}</a>
+                </li>
+                <li><a :href="`/projects/${project._id}/errors`">Errors</a></li>
+                <li>
+                  <span class="font-mono">{{ fingerprint.slice(0, 8) }}</span>
+                </li>
+              </ul>
+            </div>
+            <h1 class="text-2xl font-bold">Error detail</h1>
+            <p class="text-sm text-base-content/70">
+              Environment: <span class="capitalize">{{ project.environment }}</span>
+              • Role: <span class="capitalize">{{ currentProjectRole }}</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <a :href="`/projects/${project._id}/errors`" class="btn btn-ghost">Back to errors</a>
+          <a :href="`/projects/${project._id}/pageviews`" class="btn btn-ghost">View Page views</a>
+          <a :href="`/projects/${project._id}/events`" class="btn btn-ghost">View Events</a>
+          <a :href="`/projects/${project._id}/errors`" class="btn btn-ghost">View Errors</a>
+          <a :href="`/projects/${project._id}/performance`" class="btn btn-ghost">View Performance</a>
+          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">Back to settings</a>
+        </div>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Timeframe</h2>
+
+          <form class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end" @submit.prevent="applyFilters">
+            <div class="form-control">
+              <label class="label" for="timeframe">
+                <span class="label-text">Timeframe</span>
+              </label>
+              <select id="timeframe" v-model="timeframe" class="select select-bordered w-full">
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </div>
+
+            <div class="form-control md:col-span-3">
+              <button type="submit" class="btn btn-primary w-full">Apply</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="grid gap-4 md:grid-cols-3">
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">Occurrences</div>
+            <div class="stat-value text-primary"><%= totalOccurrences %></div>
+            <div class="stat-desc">In selected timeframe</div>
+          </div>
+        </div>
+
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">First seen</div>
+            <div class="stat-value text-sm">{{ firstSeenLabel }}</div>
+            <div class="stat-desc">Oldest occurrence</div>
+          </div>
+        </div>
+
+        <div class="stats shadow bg-base-100">
+          <div class="stat">
+            <div class="stat-title">Last seen</div>
+            <div class="stat-value text-sm">{{ lastSeenLabel }}</div>
+            <div class="stat-desc">Most recent occurrence</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Occurrences over time</h2>
+            <div class="text-sm text-base-content/60">{{ timeframeLabel }}</div>
+          </div>
+
+          <div v-if="!errorsByDay.length" class="py-10 text-center text-base-content/70">
+            No occurrences yet.
+          </div>
+          <div v-else class="w-full">
+            <canvas id="occurrencesChart" height="90"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Error information</h2>
+
+          <div v-if="!errorDetails" class="py-6 text-center text-base-content/70">
+            No details available.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="table w-full text-sm">
+              <tbody>
+                <tr>
+                  <td class="font-semibold">Message</td>
+                  <td>{{ errorDetails.message }}</td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">Source</td>
+                  <td>
+                    <span v-if="errorDetails.sourceFile">{{ errorDetails.sourceFile }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                    <span v-if="errorDetails.lineNumber" class="text-base-content/70">
+                      :{{ errorDetails.lineNumber }}
+                    </span>
+                    <span v-if="errorDetails.columnNumber" class="text-base-content/70">
+                      :{{ errorDetails.columnNumber }}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">Fingerprint</td>
+                  <td class="font-mono break-all">{{ fingerprint }}</td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">Browser</td>
+                  <td>
+                    <span v-if="errorDetails.browser" class="badge badge-outline">{{ errorDetails.browser }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                    <span v-if="errorDetails.browserVersion" class="ml-2 text-base-content/70">
+                      {{ errorDetails.browserVersion }}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">OS</td>
+                  <td>
+                    <span v-if="errorDetails.os" class="badge badge-outline">{{ errorDetails.os }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                    <span v-if="errorDetails.osVersion" class="ml-2 text-base-content/70">
+                      {{ errorDetails.osVersion }}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="font-semibold">Device type</td>
+                  <td>
+                    <span v-if="errorDetails.deviceType" class="badge badge-outline">{{ errorDetails.deviceType }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Stack trace</h2>
+
+          <div v-if="!errorDetails || !errorDetails.stackTrace" class="py-6 text-center text-base-content/70">
+            No stack trace available
+          </div>
+
+          <div v-else>
+            <pre class="p-3 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ errorDetails.stackTrace }}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Custom context</h2>
+
+          <div v-if="!errorDetails || !errorDetails.context" class="py-6 text-center text-base-content/70">
+            No custom context
+          </div>
+
+          <div v-else>
+            <pre class="p-3 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ contextDisplay }}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Recent occurrences</h2>
+
+          <div v-if="!occurrences.length" class="py-6 text-center text-base-content/70">
+            No occurrences to show.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Browser</th>
+                  <th>Device</th>
+                  <th>Context preview</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in occurrences" :key="row._id">
+                  <td>{{ formatTimestamp(row.timestamp) }}</td>
+                  <td>
+                    <span v-if="row.browser" class="badge badge-outline">{{ row.browser }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                  </td>
+                  <td>
+                    <span v-if="row.deviceType" class="badge badge-outline">{{ row.deviceType }}</span>
+                    <span v-else class="text-base-content/60">—</span>
+                  </td>
+                  <td class="max-w-[520px]">
+                    <div class="truncate" :title="truncateContext(row.context)">
+                      {{ truncateContext(row.context) }}
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const { createApp, computed, onBeforeUnmount, onMounted, ref } = Vue;
+
+      createApp({
+        setup() {
+          const project = ref(<%- JSON.stringify(project) %>);
+          const currentProjectRole = '<%= currentProjectRole %>';
+
+          const fingerprint = ref('<%= fingerprint %>');
+          const timeframe = ref('<%= timeframe %>');
+
+          const occurrences = ref(<%- JSON.stringify(occurrences || []) %>);
+          const errorsByDay = ref(<%- JSON.stringify(errorsByDay || []) %>);
+          const errorDetails = ref(<%- JSON.stringify(errorDetails || null) %>);
+
+          let chartInstance = null;
+
+          const timeframeLabel = computed(() => {
+            if (timeframe.value === '24h') return 'Last 24 hours';
+            if (timeframe.value === '30d') return 'Last 30 days';
+            return 'Last 7 days';
+          });
+
+          const firstSeenLabel = computed(() => {
+            const raw = '<%= firstSeen ? firstSeen.toISOString() : "" %>';
+            if (!raw) return '—';
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) return '—';
+            return d.toLocaleString();
+          });
+
+          const lastSeenLabel = computed(() => {
+            const raw = '<%= lastSeen ? lastSeen.toISOString() : "" %>';
+            if (!raw) return '—';
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) return '—';
+            return d.toLocaleString();
+          });
+
+          const contextDisplay = computed(() => {
+            const ctx = errorDetails.value && errorDetails.value.context;
+            if (!ctx) return '';
+            try {
+              return JSON.stringify(ctx, null, 2);
+            } catch (e) {
+              return String(ctx);
+            }
+          });
+
+          function applyFilters() {
+            const params = new URLSearchParams();
+            if (timeframe.value) params.set('timeframe', timeframe.value);
+
+            const base = `/projects/${project.value._id}/errors/${fingerprint.value}`;
+            const query = params.toString();
+            window.location.href = query ? `${base}?${query}` : base;
+          }
+
+          function formatTimestamp(date) {
+            if (!date) return '';
+            const d = new Date(date);
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toLocaleString();
+          }
+
+          function truncateContext(ctx) {
+            if (!ctx) return '—';
+            let str = '';
+            try {
+              str = JSON.stringify(ctx);
+            } catch (e) {
+              str = String(ctx);
+            }
+            if (!str) return '—';
+            return str.length > 100 ? `${str.slice(0, 100)}...` : str;
+          }
+
+          function renderChart() {
+            if (!errorsByDay.value.length) return;
+
+            const el = document.getElementById('occurrencesChart');
+            if (!el) return;
+
+            const labels = errorsByDay.value.map((p) => p.date);
+            const data = errorsByDay.value.map((p) => p.count);
+
+            const ctx = el.getContext('2d');
+
+            if (chartInstance) {
+              chartInstance.destroy();
+              chartInstance = null;
+            }
+
+            chartInstance = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels,
+                datasets: [
+                  {
+                    label: 'Occurrences',
+                    data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    fill: true,
+                    tension: 0.25,
+                    pointRadius: 3,
+                  },
+                ],
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: { enabled: true },
+                },
+                scales: {
+                  x: {
+                    ticks: { maxRotation: 0 },
+                    grid: { display: false },
+                  },
+                  y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                  },
+                },
+              },
+            });
+          }
+
+          onMounted(() => {
+            renderChart();
+          });
+
+          onBeforeUnmount(() => {
+            if (chartInstance) {
+              chartInstance.destroy();
+              chartInstance = null;
+            }
+          });
+
+          return {
+            project,
+            currentProjectRole,
+            fingerprint,
+            timeframe,
+            occurrences,
+            errorsByDay,
+            errorDetails,
+            timeframeLabel,
+            firstSeenLabel,
+            lastSeenLabel,
+            contextDisplay,
+            applyFilters,
+            formatTimestamp,
+            truncateContext,
+          };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

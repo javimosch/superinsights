@@ -1,0 +1,344 @@
+const PerformanceMetric = require('../models/PerformanceMetric');
+
+function getDateRange(timeframe) {
+  const now = new Date();
+  const allowed = ['24h', '7d', '30d'];
+  const tf = allowed.includes(timeframe) ? timeframe : '7d';
+
+  let start;
+  if (tf === '24h') {
+    start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  } else if (tf === '30d') {
+    start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else {
+    start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  }
+
+  return { timeframe: tf, start, end: now };
+}
+
+function normalizeDeviceType(rawDeviceType) {
+  const allowed = ['desktop', 'mobile', 'tablet'];
+  if (!rawDeviceType || typeof rawDeviceType !== 'string') return 'all';
+  const trimmed = rawDeviceType.trim();
+  if (!trimmed || trimmed === 'all') return 'all';
+  return allowed.includes(trimmed) ? trimmed : 'all';
+}
+
+function normalizeBrowser(rawBrowser) {
+  const allowed = ['Chrome', 'Firefox', 'Safari', 'Edge'];
+  if (!rawBrowser || typeof rawBrowser !== 'string') return 'all';
+  const trimmed = rawBrowser.trim();
+  if (!trimmed || trimmed === 'all') return 'all';
+  return allowed.includes(trimmed) ? trimmed : 'all';
+}
+
+function buildMatch({ projectId, start, end, deviceType, browser }) {
+  const match = {
+    projectId,
+    timestamp: { $gte: start, $lte: end },
+  };
+
+  const normalizedDeviceType = normalizeDeviceType(deviceType);
+  if (normalizedDeviceType !== 'all') {
+    match.deviceType = normalizedDeviceType;
+  }
+
+  const normalizedBrowser = normalizeBrowser(browser);
+  if (normalizedBrowser !== 'all') {
+    match.browser = normalizedBrowser;
+  }
+
+  return match;
+}
+
+function percentileFromSortedValues(sortedValues, p) {
+  if (!Array.isArray(sortedValues) || !sortedValues.length) return null;
+  const clamped = Math.min(Math.max(p, 0), 1);
+  const idx = Math.floor(clamped * (sortedValues.length - 1));
+  const val = sortedValues[idx];
+  return typeof val === 'number' && Number.isFinite(val) ? val : null;
+}
+
+async function calculatePercentilesWithPercentileOperator({ projectId, start, end, deviceType, browser }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser });
+
+  const rows = await PerformanceMetric.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: null,
+        lcp: {
+          $percentile: {
+            input: {
+              $cond: [{ $and: [{ $ne: ['$lcp', null] }, { $ne: ['$lcp', undefined] }] }, '$lcp', '$$REMOVE'],
+            },
+            p: [0.5, 0.75, 0.95],
+            method: 'approximate',
+          },
+        },
+        cls: {
+          $percentile: {
+            input: {
+              $cond: [{ $and: [{ $ne: ['$cls', null] }, { $ne: ['$cls', undefined] }] }, '$cls', '$$REMOVE'],
+            },
+            p: [0.5, 0.75, 0.95],
+            method: 'approximate',
+          },
+        },
+        fid: {
+          $percentile: {
+            input: {
+              $cond: [{ $and: [{ $ne: ['$fid', null] }, { $ne: ['$fid', undefined] }] }, '$fid', '$$REMOVE'],
+            },
+            p: [0.5, 0.75, 0.95],
+            method: 'approximate',
+          },
+        },
+        ttfb: {
+          $percentile: {
+            input: {
+              $cond: [{ $and: [{ $ne: ['$ttfb', null] }, { $ne: ['$ttfb', undefined] }] }, '$ttfb', '$$REMOVE'],
+            },
+            p: [0.5, 0.75, 0.95],
+            method: 'approximate',
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        lcp_p50: { $arrayElemAt: ['$lcp', 0] },
+        lcp_p75: { $arrayElemAt: ['$lcp', 1] },
+        lcp_p95: { $arrayElemAt: ['$lcp', 2] },
+        cls_p50: { $arrayElemAt: ['$cls', 0] },
+        cls_p75: { $arrayElemAt: ['$cls', 1] },
+        cls_p95: { $arrayElemAt: ['$cls', 2] },
+        fid_p50: { $arrayElemAt: ['$fid', 0] },
+        fid_p75: { $arrayElemAt: ['$fid', 1] },
+        fid_p95: { $arrayElemAt: ['$fid', 2] },
+        ttfb_p50: { $arrayElemAt: ['$ttfb', 0] },
+        ttfb_p75: { $arrayElemAt: ['$ttfb', 1] },
+        ttfb_p95: { $arrayElemAt: ['$ttfb', 2] },
+      },
+    },
+  ]);
+
+  return rows && rows.length ? rows[0] : null;
+}
+
+async function calculatePercentilesFallback({ projectId, start, end, deviceType, browser }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser });
+
+  async function getSortedValues(metricField) {
+    const rows = await PerformanceMetric.aggregate([
+      {
+        $match: {
+          ...match,
+          [metricField]: { $ne: null, $exists: true },
+        },
+      },
+      { $sort: { [metricField]: 1 } },
+      { $project: { _id: 0, value: `$${metricField}` } },
+    ]);
+
+    return (rows || [])
+      .map((r) => r.value)
+      .filter((v) => typeof v === 'number' && Number.isFinite(v));
+  }
+
+  const [lcpValues, clsValues, fidValues, ttfbValues] = await Promise.all([
+    getSortedValues('lcp'),
+    getSortedValues('cls'),
+    getSortedValues('fid'),
+    getSortedValues('ttfb'),
+  ]);
+
+  return {
+    lcp_p50: percentileFromSortedValues(lcpValues, 0.5),
+    lcp_p75: percentileFromSortedValues(lcpValues, 0.75),
+    lcp_p95: percentileFromSortedValues(lcpValues, 0.95),
+    cls_p50: percentileFromSortedValues(clsValues, 0.5),
+    cls_p75: percentileFromSortedValues(clsValues, 0.75),
+    cls_p95: percentileFromSortedValues(clsValues, 0.95),
+    fid_p50: percentileFromSortedValues(fidValues, 0.5),
+    fid_p75: percentileFromSortedValues(fidValues, 0.75),
+    fid_p95: percentileFromSortedValues(fidValues, 0.95),
+    ttfb_p50: percentileFromSortedValues(ttfbValues, 0.5),
+    ttfb_p75: percentileFromSortedValues(ttfbValues, 0.75),
+    ttfb_p95: percentileFromSortedValues(ttfbValues, 0.95),
+  };
+}
+
+async function calculatePercentiles({ projectId, start, end, deviceType, browser }) {
+  try {
+    const result = await calculatePercentilesWithPercentileOperator({
+      projectId,
+      start,
+      end,
+      deviceType,
+      browser,
+    });
+    if (!result) return null;
+    return result;
+  } catch (err) {
+    console.error('[performance] $percentile aggregation failed, falling back', {
+      projectId: String(projectId),
+      start,
+      end,
+      deviceType: deviceType || 'all',
+      browser: browser || 'all',
+      error: err && err.message ? err.message : String(err),
+    });
+    return calculatePercentilesFallback({ projectId, start, end, deviceType, browser });
+  }
+}
+
+async function getMetricsByDay({ projectId, start, end, deviceType, browser }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser });
+
+  const rows = await PerformanceMetric.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: '%Y-%m-%d',
+            date: '$timestamp',
+          },
+        },
+        lcp: { $avg: '$lcp' },
+        cls: { $avg: '$cls' },
+        fid: { $avg: '$fid' },
+        ttfb: { $avg: '$ttfb' },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, date: '$_id', lcp: 1, cls: 1, fid: 1, ttfb: 1 } },
+  ]);
+
+  return rows || [];
+}
+
+async function getTotalMeasurements({ projectId, start, end, deviceType, browser }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser });
+  const total = await PerformanceMetric.countDocuments(match);
+  return total || 0;
+}
+
+async function getCompleteMeasurements({ projectId, start, end, deviceType, browser }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser });
+  const total = await PerformanceMetric.countDocuments({
+    ...match,
+    lcp: { $ne: null, $exists: true },
+    cls: { $ne: null, $exists: true },
+    fid: { $ne: null, $exists: true },
+    ttfb: { $ne: null, $exists: true },
+  });
+  return total || 0;
+}
+
+function lerpScore(value, goodMax, poorMin) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  if (value <= goodMax) return 100;
+  if (value >= poorMin) return 0;
+  const t = (value - goodMax) / (poorMin - goodMax);
+  return Math.max(0, Math.min(100, 100 - t * 100));
+}
+
+function calculatePerformanceScore(percentiles) {
+  if (!percentiles) {
+    return { score: 0, lcpScore: 0, clsScore: 0, fidScore: 0, ttfbScore: 0 };
+  }
+
+  const lcp = percentiles.lcp_p75;
+  const cls = percentiles.cls_p75;
+  const fid = percentiles.fid_p75;
+  const ttfb = percentiles.ttfb_p75;
+
+  const lcpScore = lerpScore(lcp, 2500, 4000);
+  const clsScore = lerpScore(cls, 0.1, 0.25);
+  const fidScore = lerpScore(fid, 100, 300);
+  const ttfbScore = lerpScore(ttfb, 800, 1800);
+
+  const score = Math.round((lcpScore + clsScore + fidScore + ttfbScore) / 4);
+
+  return {
+    score,
+    lcpScore: Math.round(lcpScore),
+    clsScore: Math.round(clsScore),
+    fidScore: Math.round(fidScore),
+    ttfbScore: Math.round(ttfbScore),
+  };
+}
+
+exports.getPerformanceAnalytics = async (req, res, next) => {
+  try {
+    if (!req.project || !req.project._id) {
+      return res.redirect('/projects');
+    }
+
+    const projectId = req.project._id;
+    if (!projectId) {
+      return next(new Error('Project not found'));
+    }
+
+    const rawTimeframe = req.query.timeframe || '7d';
+    const { timeframe, start, end } = getDateRange(rawTimeframe);
+
+    const deviceType = normalizeDeviceType(req.query.deviceType);
+    const browser = normalizeBrowser(req.query.browser);
+
+    const params = {
+      projectId,
+      start,
+      end,
+      deviceType: deviceType === 'all' ? undefined : deviceType,
+      browser: browser === 'all' ? undefined : browser,
+    };
+
+    const [percentilesRaw, metricsByDay, totalMeasurements, completeMeasurements] = await Promise.all([
+      calculatePercentiles(params),
+      getMetricsByDay(params),
+      getTotalMeasurements(params),
+      getCompleteMeasurements(params),
+    ]);
+
+    const percentiles =
+      percentilesRaw ||
+      {
+        lcp_p50: null,
+        lcp_p75: null,
+        lcp_p95: null,
+        cls_p50: null,
+        cls_p75: null,
+        cls_p95: null,
+        fid_p50: null,
+        fid_p75: null,
+        fid_p95: null,
+        ttfb_p50: null,
+        ttfb_p75: null,
+        ttfb_p95: null,
+      };
+
+    const performanceScore = calculatePerformanceScore(percentiles);
+
+    return res.render('analytics/performance', {
+      title: 'Performance Metrics',
+      project: req.project,
+      timeframe,
+      deviceType,
+      browser,
+      percentiles,
+      metricsByDay: metricsByDay || [],
+      totalMeasurements: totalMeasurements || 0,
+      completeMeasurements: completeMeasurements || 0,
+      performanceScore,
+      currentUser: req.user,
+      currentProjectRole: req.currentProjectRole,
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
