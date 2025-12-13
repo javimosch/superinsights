@@ -3,6 +3,10 @@ const router = express.Router();
 
 const projectController = require('../controllers/projectController');
 const pageViewsController = require('../controllers/pageViewsController');
+const eventsController = require('../controllers/eventsController');
+const errorsController = require('../controllers/errorsController');
+const performanceController = require('../controllers/performanceController');
+ const dashboardController = require('../controllers/dashboardController');
 const { ensureAuthenticated } = require('../middleware/auth');
 const {
   ensureProjectAccess,
@@ -58,9 +62,51 @@ router.post(
 );
 
 router.get(
+  '/:id/dashboard',
+  ensureProjectAccess,
+  dashboardController.getDashboard
+);
+
+router.get(
+  '/:id/dashboard/data',
+  ensureProjectAccess,
+  dashboardController.getDashboardData
+);
+
+router.get(
   '/:id/pageviews',
   ensureProjectAccess,
   pageViewsController.getPageViewsAnalytics
+);
+
+router.get(
+  '/:id/events',
+  ensureProjectAccess,
+  eventsController.getEventsAnalytics
+);
+
+router.get(
+  '/:id/events/:eventName',
+  ensureProjectAccess,
+  eventsController.getEventDetail
+);
+
+router.get(
+  '/:id/errors',
+  ensureProjectAccess,
+  errorsController.getErrorsAnalytics
+);
+
+router.get(
+  '/:id/errors/:fingerprint',
+  ensureProjectAccess,
+  errorsController.getErrorDetail
+);
+
+router.get(
+  '/:id/performance',
+  ensureProjectAccess,
+  performanceController.getPerformanceAnalytics
 );
 
 module.exports = router;
