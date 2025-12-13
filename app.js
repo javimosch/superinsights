@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const morgan = require('morgan');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 
 const indexRouter = require('./routes/index');
 const authRouter = require('./routes/auth');
@@ -14,7 +15,10 @@ const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-if (isProduction) {
+const trustProxyEnabled =
+  isProduction || String(process.env.TRUST_PROXY || '') === '1';
+
+if (trustProxyEnabled) {
   app.set('trust proxy', 1);
 }
 
@@ -34,10 +38,16 @@ app.use(
     secret: process.env.SESSION_SECRET || 'change-me-in-production',
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl:
+        process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/superinsights',
+      collectionName: 'sessions',
+      ttl: 60 * 60 * 24 * 14,
+    }),
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: isProduction,
+      secure: isProduction && trustProxyEnabled,
     },
   })
 );
@@ -45,6 +55,37 @@ app.use(
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   next();
+});
+
+app.use((req, res, next) => {
+  if (String(process.env.DEBUG_AUTH || '') !== '1') return next();
+
+  const originalRedirect = res.redirect.bind(res);
+  res.redirect = (url) => {
+    const user = req?.session?.user;
+    console.error('[debug_auth_redirect]', {
+      method: req.method,
+      url: req.originalUrl,
+      to: url,
+      userId: user?.id || null,
+      email: user?.email || null,
+      role: user?.role || null,
+    });
+    return originalRedirect(url);
+  };
+
+  const user = req?.session?.user;
+  console.error('[debug_auth_request]', {
+    method: req.method,
+    url: req.originalUrl,
+    hasCookie: Boolean(req.headers.cookie),
+    sidCookiePresent: Boolean(req.headers.cookie && req.headers.cookie.includes('sid=')),
+    userId: user?.id || null,
+    email: user?.email || null,
+    role: user?.role || null,
+  });
+
+  return next();
 });
 
 app.use((req, res, next) => {
