@@ -8,11 +8,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
+    "dev": "nodemon --verbose --ignore data index.js",
+    "promote-admin": "node scripts/promote-admin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "connect-mongo": "^5.1.0",
     "dotenv": "^16.4.0",
     "ejs": "^3.1.10",
     "express": "^4.19.0",
