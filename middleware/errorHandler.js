@@ -13,9 +13,24 @@ function notFound(req, res, next) {
 }
 
 function errorHandler(err, req, res, next) {
+  const status = res.statusCode >= 400 ? res.statusCode : 500;
+
+  res.locals = res.locals || {};
+  res.locals._requestErrorLogged = true;
+
+  const userId = req?.session?.user?.id;
+  const projectId = req?.project?._id;
+
+  console.error('[request_error]', {
+    method: req.method,
+    url: req.originalUrl,
+    status,
+    ip: req.ip,
+    userId: userId ? String(userId) : null,
+    projectId: projectId ? String(projectId) : null,
+  });
   console.error(err);
 
-  const status = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(status);
 
   if (req.accepts('html')) {

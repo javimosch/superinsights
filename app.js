@@ -47,6 +47,29 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    const status = res.statusCode;
+    if (status < 400 || status >= 500) return;
+
+    if (res.locals && res.locals._requestErrorLogged) return;
+
+    const userId = req?.session?.user?.id;
+    const projectId = req?.project?._id;
+
+    console.error('[request_4xx]', {
+      method: req.method,
+      url: req.originalUrl,
+      status,
+      ip: req.ip,
+      userId: userId ? String(userId) : null,
+      projectId: projectId ? String(projectId) : null,
+    });
+  });
+
+  next();
+});
+
 // Routes
 app.use('/', indexRouter);
 app.use('/auth', authRouter);
