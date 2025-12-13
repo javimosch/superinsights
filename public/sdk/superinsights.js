@@ -635,6 +635,7 @@
       var env = _getEnv();
 
       var data = {
+        errorType: errorData && errorData.errorType ? String(errorData.errorType) : '',
         message: message,
         stackTrace: stack,
         sourceFile: errorData.sourceFile || '',
@@ -660,6 +661,7 @@
 
     try {
       _captureError({
+        errorType: 'window_error',
         message: message ? String(message) : 'Unknown error',
         stackTrace: error && error.stack ? String(error.stack) : '',
         sourceFile: source ? String(source) : '',
@@ -690,6 +692,7 @@
       }
 
       _captureError({
+        errorType: 'unhandled_rejection',
         message: msg,
         stackTrace: stack,
         sourceFile: '',

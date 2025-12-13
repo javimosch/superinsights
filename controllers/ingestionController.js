@@ -165,6 +165,7 @@ async function postErrors(req, res, next) {
       const doc = new ErrorModel({
         projectId: req.project._id,
         message: item.message,
+        errorType: item.errorType,
         stackTrace: item.stackTrace,
         sourceFile: item.sourceFile,
         lineNumber: item.lineNumber,

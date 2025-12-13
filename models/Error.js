@@ -14,6 +14,10 @@ const ErrorSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    errorType: {
+      type: String,
+      index: true,
+    },
     stackTrace: {
       type: String,
     },
