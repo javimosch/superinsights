@@ -47,8 +47,18 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <a href="/projects/<%= project._id %>/pageviews" class="btn btn-outline">
-            View Analytics
+          <a href="/projects/<%= project._id %>/dashboard" class="btn btn-outline">
+            📊 Dashboard
+          </a>
+          <a href="/projects/<%= project._id %>/pageviews" class="btn btn-outline">Page Views</a>
+          <a href="/projects/<%= project._id %>/events" class="btn btn-outline">
+            📊 Events
+          </a>
+          <a href="/projects/<%= project._id %>/errors" class="btn btn-outline">
+            ⚠️ Errors
+          </a>
+          <a href="/projects/<%= project._id %>/performance" class="btn btn-outline">
+            ⚡ Performance
           </a>
           <a href="/projects" class="btn btn-ghost">Back to projects</a>
         </div>

@@ -57,9 +57,13 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">
-            Back to settings
+          <a href="/projects/<%= project._id %>/dashboard" class="btn btn-primary">
+            Dashboard
           </a>
+          <a href="/projects/<%= project._id %>/events" class="btn btn-ghost">View Events</a>
+          <a href="/projects/<%= project._id %>/errors" class="btn btn-ghost">View Errors</a>
+          <a href="/projects/<%= project._id %>/performance" class="btn btn-ghost">View Performance</a>
+          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">Back to settings</a>
         </div>
       </div>
 
