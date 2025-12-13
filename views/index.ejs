@@ -7,15 +7,10 @@
 
     <!-- Tailwind & DaisyUI via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      // Configure Tailwind to use DaisyUI
-      // DaisyUI itself is loaded just after this block
-      window.tailwind = window.tailwind || {};
-      tailwind.config = {
-        plugins: [window.daisyui],
-      };
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
 
     <!-- Vue 3 via CDN -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -28,6 +23,8 @@
         <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
         <% if (currentUser.role === 'admin') { %>
         <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <a href="/admin/audit" class="btn btn-ghost btn-sm">Audit</a>
+        <a href="/admin/logs" class="btn btn-ghost btn-sm">Logs</a>
         <% } %>
         <% } %>
       </div>

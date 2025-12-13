@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   </head>
   <body class="min-h-screen bg-base-200">
@@ -471,7 +475,18 @@
           const canRegenerateKeys = ['owner'].includes(currentProjectRole);
           const canDelete = ['owner'].includes(currentProjectRole);
 
-          const sdkSnippet = `<!-- SuperInsights SDK -->\n<script src="/sdk/superinsights.js"></script>\n<script>\n  SuperInsights.init("${project.value.publicApiKey}", {\n    // apiUrl: "https://your-domain.com",\n    batchSize: 20,\n    flushInterval: 5000,\n    debug: false,\n  });\n</script>`;
+          const sdkSnippet = [
+            '<!-- SuperInsights SDK -->',
+            '<script src="/sdk/superinsights.js"><\\/script>',
+            '<script>',
+            `  SuperInsights.init(${JSON.stringify(project.value.publicApiKey)}, {`,
+            '    // apiUrl: "https://your-domain.com",',
+            '    batchSize: 20,',
+            '    flushInterval: 5000,',
+            '    debug: false,',
+            '  });',
+            '<\\/script>',
+          ].join('\n');
 
           const trackEventExample = `// Custom event\nSuperInsights.trackEvent("signup_completed", {\n  plan: "pro",\n  method: "google",\n});`;
 
