@@ -1,5 +1,9 @@
 const Project = require('../models/Project');
 const User = require('../models/User');
+const { logAction } = require('../utils/aggregatedLogger');
+const { ACTION_CODES } = require('../utils/actionCodes');
+const { logAudit } = require('../utils/auditLogger');
+const { logRawAction } = require('../utils/rawLogger');
 
 function normalizeName(name) {
   return (name || '').trim();
@@ -98,6 +102,41 @@ exports.postCreateProject = async (req, res, next) => {
       ],
     });
 
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_CREATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_CREATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_CREATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     res.redirect(`/projects/${project._id.toString()}/settings`);
   } catch (err) {
     next(err);
@@ -179,6 +218,41 @@ exports.postUpdateProject = async (req, res, next) => {
 
     await project.save();
 
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_UPDATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_UPDATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_UPDATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
@@ -201,6 +275,41 @@ exports.postRegenerateKeys = async (req, res, next) => {
 
     project.regenerateKeys();
     await project.save();
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_REGENERATE_KEYS, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_REGENERATE_KEYS, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_REGENERATE_KEYS, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
 
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
@@ -306,6 +415,41 @@ exports.postAddUser = async (req, res, next) => {
     await project.save();
     await project.populate('users.userId');
 
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_USER_ADD, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_USER_ADD, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_USER_ADD, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     const updatedRole = project.getUserRole(currentUserId);
 
     if (!updatedRole) {
@@ -383,6 +527,41 @@ exports.postRemoveUser = async (req, res, next) => {
     await project.save();
     await project.populate('users.userId');
 
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_USER_REMOVE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_USER_REMOVE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_USER_REMOVE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     const updatedRole = project.getUserRole(currentUserId);
 
     if (!updatedRole) {
@@ -414,6 +593,41 @@ exports.postSoftDelete = async (req, res, next) => {
     const project = req.project;
 
     await Project.softDelete(project._id);
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_SOFT_DELETE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_SOFT_DELETE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_SOFT_DELETE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
 
     res.redirect('/projects');
   } catch (err) {
