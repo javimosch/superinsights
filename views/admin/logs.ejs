@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <div class="navbar bg-base-100 shadow">
+      <div class="flex-1 px-4 flex items-center gap-4">
+        <a href="/" class="text-xl font-bold">SuperInsights</a>
+        <% if (currentUser) { %>
+        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+        <% if (currentUser.role === 'admin') { %>
+        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <a href="/admin/audit" class="btn btn-ghost btn-sm">Audit</a>
+        <a href="/admin/logs" class="btn btn-ghost btn-sm">Logs</a>
+        <% } %>
+        <% } %>
+      </div>
+      <div class="flex-none gap-2 px-4">
+        <% if (currentUser) { %>
+        <span class="text-sm mr-2">
+          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
+          (<%= currentUser.role %>)
+        </span>
+        <form action="/auth/logout" method="POST">
+          <button type="submit" class="btn btn-sm">Logout</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Logs</h1>
+          <p class="text-sm text-base-content/70 mt-1">
+            Raw action/error events (excluding SDK ingestion). Retention capped at 10k events.
+          </p>
+        </div>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Filters</h2>
+
+          <form method="GET" action="/admin/logs" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+            <div class="form-control">
+              <label class="label"><span class="label-text">Kind</span></label>
+              <select name="kind" class="select select-bordered">
+                <option value="" <%= !filters.kind ? 'selected' : '' %>>All</option>
+                <option value="action" <%= filters.kind === 'action' ? 'selected' : '' %>>Action</option>
+                <option value="error" <%= filters.kind === 'error' ? 'selected' : '' %>>Error</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Action code</span></label>
+              <input name="actionCode" value="<%= filters.actionCode %>" class="input input-bordered" />
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Contains</span></label>
+              <input name="contains" value="<%= filters.contains %>" class="input input-bordered" placeholder="error text / path" />
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">User ID</span></label>
+              <input name="userId" value="<%= filters.userId %>" class="input input-bordered" />
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Email</span></label>
+              <input name="email" value="<%= filters.email %>" class="input input-bordered" />
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Project ID</span></label>
+              <input name="projectId" value="<%= filters.projectId %>" class="input input-bordered" />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text">From (ISO)</span></label>
+              <input name="from" value="<%= filters.from %>" class="input input-bordered" placeholder="2025-12-13T00:00:00Z" />
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">To (ISO)</span></label>
+              <input name="to" value="<%= filters.to %>" class="input input-bordered" placeholder="2025-12-13T23:59:59Z" />
+            </div>
+
+            <input type="hidden" name="limit" value="<%= limit %>" />
+
+            <div class="form-control md:col-span-6">
+              <button type="submit" class="btn btn-primary">Apply</button>
+              <a href="/admin/logs" class="btn btn-ghost ml-2">Reset</a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Results</h2>
+            <div class="text-sm text-base-content/60">
+              Total: <%= total %> • Page <%= page %> / <%= totalPages %>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Kind</th>
+                  <th>Type</th>
+                  <th>User</th>
+                  <th>Project</th>
+                  <th>Request</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (logs && logs.length) { %>
+                <% logs.forEach(function (row) { %>
+                <tr>
+                  <td class="whitespace-nowrap"><%= row.ts ? new Date(row.ts).toISOString() : '' %></td>
+                  <td class="capitalize"><%= row.kind %></td>
+                  <td class="max-w-[520px]">
+                    <% if (row.kind === 'action') { %>
+                      <div class="font-mono truncate" title="<%= row.actionCode || '' %>"><%= row.actionCode || '' %></div>
+                    <% } else { %>
+                      <div class="truncate" title="<%= row.errorMessage || '' %>"><%= row.errorMessage || '' %></div>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="text-xs font-mono"><%= row.userId || '' %></div>
+                    <div class="text-xs text-base-content/70"><%= row.email || '' %></div>
+                  </td>
+                  <td class="font-mono text-xs"><%= row.projectId || '' %></td>
+                  <td class="text-xs">
+                    <div class="font-mono"><%= row.method || '' %> <%= row.path || '' %></div>
+                    <div class="text-base-content/60">IP: <%= row.ip || '' %></div>
+                  </td>
+                  <td class="text-right"><%= row.status != null ? row.status : '' %></td>
+                </tr>
+                <% if (row.kind === 'error' && row.errorStack) { %>
+                <tr>
+                  <td colspan="7">
+                    <pre class="p-3 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code><%= row.errorStack %></code></pre>
+                  </td>
+                </tr>
+                <% } %>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="7">No logs found.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-base-content/60">Limit: <%= limit %></div>
+            <div class="flex gap-2">
+              <% const baseParams = new URLSearchParams({
+                kind: filters.kind || '',
+                actionCode: filters.actionCode || '',
+                contains: filters.contains || '',
+                userId: filters.userId || '',
+                email: filters.email || '',
+                projectId: filters.projectId || '',
+                from: filters.from || '',
+                to: filters.to || '',
+                limit: String(limit),
+              }); %>
+
+              <% if (page > 1) { %>
+                <% baseParams.set('page', String(page - 1)); %>
+                <a class="btn btn-sm" href="/admin/logs?<%= baseParams.toString() %>">Prev</a>
+              <% } %>
+
+              <% if (page < totalPages) { %>
+                <% baseParams.set('page', String(page + 1)); %>
+                <a class="btn btn-sm" href="/admin/logs?<%= baseParams.toString() %>">Next</a>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
