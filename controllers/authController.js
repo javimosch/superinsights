@@ -1,5 +1,9 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { logAction } = require('../utils/aggregatedLogger');
+const { ACTION_CODES } = require('../utils/actionCodes');
+const { logAudit } = require('../utils/auditLogger');
+const { logRawAction } = require('../utils/rawLogger');
 
 function normalizeEmail(email) {
   return (email || '').toLowerCase().trim();
@@ -58,6 +62,36 @@ exports.postRegister = async (req, res, next) => {
       role: user.role,
     };
 
+    try {
+      logAction(ACTION_CODES.AUTH_REGISTER_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.AUTH_REGISTER_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.AUTH_REGISTER_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     res.redirect('/');
   } catch (err) {
     next(err);
@@ -105,6 +139,36 @@ exports.postLogin = async (req, res, next) => {
       role: user.role,
     };
 
+    try {
+      logAction(ACTION_CODES.AUTH_LOGIN_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.AUTH_LOGIN_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.AUTH_LOGIN_SUCCESS, {
+        userId: req.session.user.id,
+        email: req.session.user.email,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
+
     res.redirect('/');
   } catch (err) {
     next(err);
@@ -113,8 +177,42 @@ exports.postLogin = async (req, res, next) => {
 
 exports.postLogout = (req, res, next) => {
   try {
+    const userId = req?.session?.user?.id;
+    const email = req?.session?.user?.email;
+
     req.session.destroy((err) => {
       if (err) return next(err);
+
+      try {
+        logAction(ACTION_CODES.AUTH_LOGOUT, {
+          userId: userId ? String(userId) : null,
+          email: email ? String(email) : null,
+          status: 302,
+          method: req.method,
+          path: req.originalUrl,
+        });
+
+        logAudit(ACTION_CODES.AUTH_LOGOUT, {
+          userId: userId ? String(userId) : null,
+          email: email ? String(email) : null,
+          status: 302,
+          method: req.method,
+          path: req.originalUrl,
+          ip: req.ip,
+        });
+
+        logRawAction(ACTION_CODES.AUTH_LOGOUT, {
+          userId: userId ? String(userId) : null,
+          email: email ? String(email) : null,
+          status: 302,
+          method: req.method,
+          path: req.originalUrl,
+          ip: req.ip,
+        });
+      } catch (e) {
+        // ignore
+      }
+
       res.redirect('/auth/login');
     });
   } catch (err) {
@@ -183,6 +281,39 @@ exports.postInviteUser = async (req, res, next) => {
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     const user = await User.create({ email, passwordHash, role });
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+
+      logAction(ACTION_CODES.ADMIN_INVITE_USER, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.ADMIN_INVITE_USER, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.ADMIN_INVITE_USER, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+      // ignore
+    }
 
     const users = await User.find().sort({ createdAt: -1 }).lean();
 

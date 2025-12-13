@@ -12,6 +12,9 @@ function notFound(req, res, next) {
   return res.type('txt').send('Not found');
 }
 
+const { logError } = require('../utils/aggregatedLogger');
+const { logRawError } = require('../utils/rawLogger');
+
 function errorHandler(err, req, res, next) {
   const status = res.statusCode >= 400 ? res.statusCode : 500;
 
@@ -19,7 +22,31 @@ function errorHandler(err, req, res, next) {
   res.locals._requestErrorLogged = true;
 
   const userId = req?.session?.user?.id;
+  const email = req?.session?.user?.email;
   const projectId = req?.project?._id;
+
+  try {
+    logError(err && err.message ? err.message : 'Unknown error', {
+      userId: userId ? String(userId) : null,
+      email: email ? String(email) : null,
+      projectId: projectId ? String(projectId) : null,
+      status,
+      method: req.method,
+      path: req.originalUrl,
+    });
+
+    logRawError(err, {
+      userId: userId ? String(userId) : null,
+      email: email ? String(email) : null,
+      projectId: projectId ? String(projectId) : null,
+      status,
+      method: req.method,
+      path: req.originalUrl,
+      ip: req.ip,
+    });
+  } catch (e) {
+    // ignore
+  }
 
   console.error('[request_error]', {
     method: req.method,
@@ -27,6 +54,7 @@ function errorHandler(err, req, res, next) {
     status,
     ip: req.ip,
     userId: userId ? String(userId) : null,
+    email: email ? String(email) : null,
     projectId: projectId ? String(projectId) : null,
   });
   console.error(err);
