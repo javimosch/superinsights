@@ -95,12 +95,20 @@
                   <div class="text-xs text-base-content/60">
                     Data retention: {{ project.dataRetentionDays || 90 }} days
                   </div>
-                  <a
-                    :href="`/projects/${project._id}/settings`"
-                    class="btn btn-sm btn-outline"
-                  >
-                    Settings
-                  </a>
+                  <div class="flex items-center gap-2">
+                    <a
+                      :href="`/projects/${project._id}/pageviews`"
+                      class="btn btn-sm btn-ghost"
+                    >
+                      Analytics
+                    </a>
+                    <a
+                      :href="`/projects/${project._id}/settings`"
+                      class="btn btn-sm btn-outline"
+                    >
+                      Settings
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>

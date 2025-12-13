@@ -47,6 +47,9 @@
           </div>
         </div>
         <div class="flex gap-2">
+          <a href="/projects/<%= project._id %>/pageviews" class="btn btn-outline">
+            View Analytics
+          </a>
           <a href="/projects" class="btn btn-ghost">Back to projects</a>
         </div>
       </div>
@@ -164,6 +167,33 @@
               Never expose your secret key in public clients. Use the public key in
               browser contexts and keep the secret key on your server only.
             </span>
+          </div>
+
+          <div class="bg-base-200 rounded-lg p-4">
+            <div class="flex items-center justify-between gap-4">
+              <h3 class="font-semibold">Browser SDK (SuperInsights)</h3>
+              <button
+                type="button"
+                class="btn btn-sm"
+                @click="copyToClipboard(sdkSnippet, 'SDK snippet copied')"
+              >
+                Copy snippet
+              </button>
+            </div>
+            <p class="text-sm text-base-content/70 mt-1">
+              Add this snippet to your site to enable automatic page views, error tracking, and performance metrics.
+            </p>
+            <pre class="mt-3 p-3 bg-base-100 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ sdkSnippet }}</code></pre>
+            <div class="mt-3">
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                @click="copyToClipboard(trackEventExample, 'trackEvent example copied')"
+              >
+                Copy trackEvent example
+              </button>
+              <pre class="mt-2 p-3 bg-base-100 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ trackEventExample }}</code></pre>
+            </div>
           </div>
 
           <div class="space-y-4">
@@ -431,6 +461,10 @@
           const canRegenerateKeys = ['owner'].includes(currentProjectRole);
           const canDelete = ['owner'].includes(currentProjectRole);
 
+          const sdkSnippet = `<!-- SuperInsights SDK -->\n<script src="/sdk/superinsights.js"></script>\n<script>\n  SuperInsights.init("${project.value.publicApiKey}", {\n    // apiUrl: "https://your-domain.com",\n    batchSize: 20,\n    flushInterval: 5000,\n    debug: false,\n  });\n</script>`;
+
+          const trackEventExample = `// Custom event\nSuperInsights.trackEvent("signup_completed", {\n  plan: "pro",\n  method: "google",\n});`;
+
           function copyToClipboard(value, message) {
             if (!value) return;
             navigator.clipboard
@@ -479,6 +513,8 @@
             deleteModal,
             canRegenerateKeys,
             canDelete,
+            sdkSnippet,
+            trackEventExample,
             copyToClipboard,
             toggleSecret,
             openRegenerateModal,
