@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
   </head>
   <body class="min-h-screen bg-base-200">
     <div class="navbar bg-base-100 shadow">
@@ -14,6 +18,8 @@
         <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
         <% if (currentUser.role === 'admin') { %>
         <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
+        <a href="/admin/audit" class="btn btn-ghost btn-sm">Audit</a>
+        <a href="/admin/logs" class="btn btn-ghost btn-sm">Logs</a>
         <% } %>
         <% } %>
       </div>
