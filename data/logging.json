@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-13T07:47:42.873Z",
+  "updatedAt": "2025-12-13T09:19:25.018Z",
   "actions": {
     "AUTH_REGISTER_SUCCESS": {
       "count": 1,
@@ -17,18 +17,33 @@
       "lastPath": "/auth/register"
     },
     "AUTH_LOGIN_SUCCESS": {
-      "count": 1,
+      "count": 14,
       "firstSeenAt": "2025-12-13T07:47:41.873Z",
-      "lastSeenAt": "2025-12-13T07:47:41.873Z",
+      "lastSeenAt": "2025-12-13T09:07:28.445Z",
+      "avgIntervalMs": 368197.8461538461,
+      "minIntervalMs": 4614,
+      "maxIntervalMs": 2352427,
+      "intervalsCount": 13,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastStatus": 302,
+      "lastMethod": "POST",
+      "lastPath": "/auth/login"
+    },
+    "PROJECT_CREATE": {
+      "count": 1,
+      "firstSeenAt": "2025-12-13T09:19:24.018Z",
+      "lastSeenAt": "2025-12-13T09:19:24.018Z",
       "avgIntervalMs": null,
       "minIntervalMs": null,
       "maxIntervalMs": null,
       "intervalsCount": 0,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
+      "lastProjectId": "693d2f9b6893a4d09eac6a97",
       "lastStatus": 302,
       "lastMethod": "POST",
-      "lastPath": "/auth/login"
+      "lastPath": "/projects"
     }
   },
   "errors": {}
