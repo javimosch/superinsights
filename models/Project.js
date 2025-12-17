@@ -90,15 +90,19 @@ ProjectSchema.statics.softDelete = function softDelete(projectId) {
 };
 
 ProjectSchema.methods.hasUserAccess = function hasUserAccess(userId) {
-  return this.users.some(
-    (u) => u.userId.toString() === userId.toString()
-  );
+  return this.users.some((u) => {
+    const storedUserId = u.userId && u.userId._id ? u.userId._id : u.userId;
+    if (!storedUserId) return false;
+    return storedUserId.toString() === userId.toString();
+  });
 };
 
 ProjectSchema.methods.getUserRole = function getUserRole(userId) {
-  const entry = this.users.find(
-    (u) => u.userId.toString() === userId.toString()
-  );
+  const entry = this.users.find((u) => {
+    const storedUserId = u.userId && u.userId._id ? u.userId._id : u.userId;
+    if (!storedUserId) return false;
+    return storedUserId.toString() === userId.toString();
+  });
   return entry ? entry.role : null;
 };
 
