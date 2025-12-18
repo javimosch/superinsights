@@ -13,31 +13,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   </head>
   <body class="min-h-screen bg-base-200">
-    <div class="navbar bg-base-100 shadow">
-      <div class="flex-1 px-4 flex items-center gap-4">
-        <a href="/" class="text-xl font-bold">SuperInsights</a>
-        <% if (currentUser) { %>
-        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
-        <% if (currentUser.role === 'admin') { %>
-        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
-        <% } %>
-        <% } %>
-      </div>
-      <div class="flex-none gap-2 px-4">
-        <% if (currentUser) { %>
-        <span class="text-sm mr-2">
-          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
-          (<%= currentUser.role %>)
-        </span>
-        <form action="/auth/logout" method="POST">
-          <button type="submit" class="btn btn-sm">Logout</button>
-        </form>
-        <% } else { %>
-        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
-        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
-        <% } %>
-      </div>
-    </div>
+    <%- include('../partials/navbar') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
 
     <main id="app" class="container mx-auto p-4 space-y-6">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -48,7 +26,7 @@
               <ul>
                 <li><a href="/projects">Projects</a></li>
                 <li>
-                  <a :href="`/projects/${project._id}/settings`">{{ project.name }}</a>
+                  <a :href="`${base}/settings`">{{ project.name }}</a>
                 </li>
                 <li>Page views</li>
               </ul>
@@ -60,15 +38,7 @@
             </p>
           </div>
         </div>
-        <div class="flex gap-2">
-          <a href="/projects/<%= project._id %>/dashboard" class="btn btn-primary">
-            Dashboard
-          </a>
-          <a href="/projects/<%= project._id %>/events" class="btn btn-ghost">View Events</a>
-          <a href="/projects/<%= project._id %>/errors" class="btn btn-ghost">View Errors</a>
-          <a href="/projects/<%= project._id %>/performance" class="btn btn-ghost">View Performance</a>
-          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">Back to settings</a>
-        </div>
+        <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
       </div>
 
       <section class="card bg-base-100 shadow">
@@ -198,12 +168,14 @@
     </main>
 
     <script>
-      const { createApp, computed, onBeforeUnmount, onMounted, ref } = Vue;
+      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
 
       createApp({
         setup() {
           const project = ref(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
+
+          const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
 
           const timeframe = ref('<%= timeframe %>');
           const deviceType = ref('<%= deviceType %>');
@@ -230,7 +202,7 @@
               params.set('urlPrefix', urlPrefix.value.trim());
             }
 
-            const base = `/projects/${project.value._id}/pageviews`;
+            const base = `${basePath}/pageviews`;
             const query = params.toString();
             window.location.href = query ? `${base}?${query}` : base;
           }
