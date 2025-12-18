@@ -1,0 +1,14 @@
+<% const activeClass = (section) => (currentSection === section ? 'btn btn-primary' : 'btn btn-ghost'); %>
+<% const base = (typeof projectBasePath !== 'undefined' && projectBasePath) ? projectBasePath : `/projects/${project._id}`; %>
+<% const isPublic = typeof base === 'string' && base.startsWith('/p/'); %>
+<div class="flex gap-2 flex-wrap">
+  <a href="<%= base %>/dashboard" class="<%= activeClass('dashboard') %>">Dashboard</a>
+  <a href="<%= base %>/pageviews" class="<%= activeClass('pageviews') %>">Page Views</a>
+  <a href="<%= base %>/events" class="<%= activeClass('events') %>">Events</a>
+  <a href="<%= base %>/errors" class="<%= activeClass('errors') %>">Errors</a>
+  <a href="<%= base %>/performance" class="<%= activeClass('performance') %>">Performance</a>
+  <% if (!isPublic) { %>
+  <a href="<%= base %>/ai-analysis" class="<%= activeClass('ai-analysis') %>">AI Analysis</a>
+  <a href="<%= base %>/settings" class="<%= activeClass('settings') %>">Settings</a>
+  <% } %>
+</div>
