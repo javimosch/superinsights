@@ -294,6 +294,7 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
     return res.render('analytics/performance', {
       title: 'Performance Metrics',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe,
       deviceType,
       browser,
@@ -302,8 +303,9 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
       totalMeasurements: totalMeasurements || 0,
       completeMeasurements: completeMeasurements || 0,
       performanceScore,
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      currentSection: 'performance',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);
