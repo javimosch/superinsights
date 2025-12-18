@@ -4,14 +4,20 @@
 
 This is the minimum setup to run the SuperInsights server (Express + MongoDB) and serve the browser SDK (`/sdk/superinsights.js`).
 
-## Base URL / mount prefix
+## SuperInsights vs saasbackend
 
-When SuperInsights is mounted behind a prefix (for example `/saas`), all routes are prefixed.
+SuperInsights is a standalone Express app.
+
+This repo mounts `saasbackend` internally at `/saas` (see `app.js`). You normally do not need to change this.
+
+## Deployment base path (reverse proxy)
+
+If you deploy SuperInsights behind a reverse proxy that adds a base path (for example `/superinsights`), that base path applies to all routes.
 
 Example:
 
-- `/projects` becomes `/saas/projects`
-- `/v1/events` becomes `/saas/v1/events`
+- `/projects` -> `/superinsights/projects`
+- `/v1/events` -> `/superinsights/v1/events`
 
 ## Configuration
 
@@ -19,6 +25,10 @@ Required:
 
 - `MONGODB_URI`
 - `SESSION_SECRET`
+
+Optional:
+
+- `PORT` (defaults to `3000`)
 
 Recommended:
 
@@ -46,7 +56,7 @@ npm install
 npm run dev
 ```
 
-By default the app listens on port `3000`.
+By default the app listens on port `3000` (or `PORT` if set).
 
 ## Production (Docker)
 
