@@ -9,13 +9,13 @@ This walkthrough covers:
 - integrating the browser SDK into an external app
 - verifying data appears in the analytics UI
 
-## Base URL / mount prefix
+## Deployment base path (reverse proxy)
 
-When running behind a mount prefix (for example `/saas`), all routes are prefixed.
+If you deploy SuperInsights behind a reverse proxy that adds a base path (for example `/superinsights`), that base path applies to all routes.
 
 Example:
 
-- `/sdk/superinsights.js` becomes `/saas/sdk/superinsights.js`
+- `/sdk/superinsights.js` -> `/superinsights/sdk/superinsights.js`
 
 ## Configuration
 
@@ -36,7 +36,10 @@ If you use invites:
 
 ### Ingestion (API key)
 
-All ingestion endpoints require `X-API-Key`.
+Ingestion endpoints accept either:
+
+- `Authorization: Bearer <key>`
+- `X-API-Key: <key>`
 
 - `POST /v1/pageviews`
 - `POST /v1/events`
@@ -59,7 +62,7 @@ Open:
 In the UI:
 
 - create a project
-- copy the project **public API key** (used by the browser SDK as `Authorization: Bearer <pk_...>`)
+- copy the project **public API key** (starts with `pk_`)
 
 ## 3) Add the browser SDK to an external app
 
@@ -73,14 +76,16 @@ Initialize the SDK and send a basic event:
 
 ```html
 <script>
-  // The SDK sends requests to `${apiUrl}/v1/*` and authenticates via Authorization: Bearer <pk_...>.
   // If the SDK script is loaded from the SuperInsights host (recommended), `apiUrl` can be omitted.
+  // If you copy the SDK to your own domain, set `apiUrl` to your SuperInsights base URL.
   SuperInsights.init('${PROJECT_PUBLIC_API_KEY}', {
     apiUrl: '${BASE_URL}',
-    debug: true
+    debug: true,
   });
 
-  SuperInsights.trackEvent('hello_world', { source: 'getting-started' });
+  SuperInsights.trackEvent('hello_world', {
+    source: 'getting-started',
+  });
 </script>
 ```
 

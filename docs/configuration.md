@@ -4,15 +4,27 @@
 
 This document lists the main runtime configuration for SuperInsights.
 
-## Base URL / mount prefix
+## SuperInsights vs saasbackend
 
-If you deploy SuperInsights behind a prefix (for example `/saas`), the prefix applies to all routes.
+SuperInsights is a standalone Express app.
+
+It depends on `saasbackend` for org/users/invites/billing-style primitives, and mounts it internally at:
+
+- `GET/POST ... /saas/*`
+
+Developers integrating SuperInsights typically do **not** call `saasbackend` directly and do **not** need to change this mount.
+
+SuperInsights is **not** packaged as “middleware you mount into your own Express app”. You deploy the SuperInsights server.
+
+## Deployment base path (reverse proxy)
+
+If you deploy SuperInsights behind a reverse proxy that adds a base path (for example `/superinsights`), that base path applies to all routes.
 
 Examples:
 
-- `/projects` -> `/saas/projects`
-- `/v1/events` -> `/saas/v1/events`
-- `/sdk/superinsights.js` -> `/saas/sdk/superinsights.js`
+- `/projects` -> `/superinsights/projects`
+- `/v1/events` -> `/superinsights/v1/events`
+- `/sdk/superinsights.js` -> `/superinsights/sdk/superinsights.js`
 
 ## Configuration
 

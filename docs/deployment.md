@@ -4,13 +4,15 @@
 
 This document covers production deployment for SuperInsights using Docker.
 
-## Base URL / mount prefix
+## Deployment base path (reverse proxy)
 
-If you deploy behind a prefix (for example `/saas`), the prefix applies to all routes.
+If you deploy SuperInsights behind a reverse proxy that adds a base path (for example `/superinsights`), that base path applies to all routes.
 
 Example:
 
-- `/v1/events` becomes `/saas/v1/events`
+- `/v1/events` -> `/superinsights/v1/events`
+
+Note: this repo mounts `saasbackend` internally at `/saas` (see `app.js`). That is separate from any reverse-proxy base path.
 
 ## Configuration
 
@@ -43,11 +45,18 @@ Build and run:
 docker compose up -d --build
 ```
 
+If you use `compose.yml` as-is:
+
+- it loads environment variables via `env_file: ./.env.staging`
+- it expects a Docker network named `coolify-shared`
+
 ## Common errors / troubleshooting
 
 - Container exits immediately:
   - check logs
   - verify environment variables are present
 - 401 from `/v1/*`:
-  - verify `X-API-Key` is being sent by the SDK
+  - verify the request includes an API key:
+    - `Authorization: Bearer <pk_...>` (browser SDK)
+    - or `X-API-Key: <pk_...>`
   - verify the key matches the project’s public API key
