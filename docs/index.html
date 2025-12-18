@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SuperInsights Docs</title>
+    <title>SuperInsights</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
@@ -11,53 +11,125 @@
     />
   </head>
   <body class="min-h-screen bg-base-200">
-    <main class="container mx-auto p-6 space-y-8">
-      <header class="space-y-3">
-        <div class="flex items-center justify-between gap-4">
-          <h1 class="text-3xl font-bold">SuperInsights</h1>
-          <a class="btn btn-primary" href="./documentation.html">Open documentation</a>
-        </div>
-        <p class="text-base-content/70 max-w-2xl">
-          Developer-facing documentation for integrating and operating SuperInsights.
-        </p>
-      </header>
+    <div class="navbar bg-base-100 shadow">
+      <div class="navbar-start">
+        <a class="btn btn-ghost text-xl" href="./index.html">SuperInsights</a>
+      </div>
+      <div class="navbar-end gap-2">
+        <a class="btn btn-ghost" href="./documentation.html">Docs</a>
+        <a class="btn btn-primary" href="./documentation.html#feature=getting-started">Get started</a>
+      </div>
+    </div>
 
-      <section class="grid gap-4 md:grid-cols-2">
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h2 class="card-title">Getting started</h2>
-            <div class="space-y-2 text-sm text-base-content/80">
-              <div>
-                Docs are rendered directly from markdown files under <code>docs/features</code>.
-              </div>
-              <div>
-                Use the documentation page to browse and deep-link into individual features.
+    <main class="container mx-auto p-6 space-y-10">
+      <section class="grid gap-6 lg:grid-cols-12">
+        <div class="lg:col-span-7 space-y-4">
+          <div class="space-y-2">
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Product analytics you can host.</h1>
+            <p class="text-base-content/70 text-lg max-w-2xl">
+              SuperInsights is an open-source analytics server + browser SDK. Track pageviews, events, errors, and performance.
+              Add AI analysis on top of your own data.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <div class="badge badge-outline">Self-hosted</div>
+            <div class="badge badge-outline">Browser SDK</div>
+            <div class="badge badge-outline">MongoDB</div>
+            <div class="badge badge-outline">AI analysis</div>
+          </div>
+
+          <div class="flex flex-wrap gap-3 pt-2">
+            <a class="btn btn-primary" href="./documentation.html#feature=getting-started">Get started</a>
+            <a class="btn btn-outline" href="./documentation.html">Browse documentation</a>
+            <a class="btn btn-ghost" href="./documentation.html#feature=external-app-integration">SDK integration</a>
+          </div>
+
+          <div class="alert bg-base-100 border border-base-300">
+            <div class="text-sm text-base-content/80">
+              Want a hosted version? The documentation is written to work for self-hosting now, with a clear path to a future
+              cloud offering.
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5">
+          <div class="card bg-base-100 shadow">
+            <div class="card-body">
+              <h2 class="card-title">Quick links</h2>
+              <div class="grid gap-2">
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=installation">Installation</a>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=getting-started">Getting started</a>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=configuration">Configuration</a>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=deployment">Deployment</a>
+                <div class="divider my-2"></div>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=ai-analysis">AI Analysis</a>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=sdk-tracking">SDK tracking (timing)</a>
+                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=public-links">Public project links</a>
               </div>
             </div>
-            <div class="card-actions justify-end mt-4">
-              <a class="btn btn-outline" href="./documentation.html#feature=external-app-integration">External app integration</a>
-              <a class="btn btn-outline" href="./documentation.html#feature=ai-analysis">AI Analysis</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 md:grid-cols-3">
+        <div class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h3 class="card-title">Capture</h3>
+            <div class="text-sm text-base-content/75">
+              Pageviews, events, JS errors, and performance metrics via a lightweight browser SDK.
+            </div>
+            <div class="card-actions justify-end">
+              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=analytics-dashboard">View analytics</a>
             </div>
           </div>
         </div>
 
         <div class="card bg-base-100 shadow">
           <div class="card-body">
-            <h2 class="card-title">Features</h2>
-            <div class="space-y-2 text-sm text-base-content/80">
-              <div>AI Analysis + presets + sampling.</div>
-              <div>Browser SDK ingestion and timing tracking.</div>
+            <h3 class="card-title">Analyze</h3>
+            <div class="text-sm text-base-content/75">
+              AI analysis runs over aggregated project data. Presets help focus the analysis and improve repeatability.
             </div>
-            <div class="card-actions justify-end mt-4">
-              <a class="btn btn-outline" href="./documentation.html#feature=sdk-tracking">SDK tracking (timing)</a>
-              <a class="btn btn-outline" href="./documentation.html">Browse all</a>
+            <div class="card-actions justify-end">
+              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=ai-analysis">AI Analysis docs</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h3 class="card-title">Operate</h3>
+            <div class="text-sm text-base-content/75">
+              Deploy with Docker. Projects and public links are managed in the built-in UI.
+            </div>
+            <div class="card-actions justify-end">
+              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=deployment">Deployment docs</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold">Cloud (future)</h2>
+              <div class="text-sm text-base-content/75 max-w-2xl">
+                A hosted version could provide managed storage, org billing, and shared dashboards.
+                The self-hosted docs remain the source of truth.
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <a class="btn btn-outline" href="./documentation.html#feature=configuration">Config reference</a>
+              <a class="btn btn-primary" href="./documentation.html">Explore docs</a>
             </div>
           </div>
         </div>
       </section>
 
       <footer class="text-xs text-base-content/60">
-        Built for GitHub Pages.
+        Built for GitHub Pages. Docs are rendered from Markdown.
       </footer>
     </main>
   </body>
