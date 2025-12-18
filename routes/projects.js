@@ -7,6 +7,7 @@ const eventsController = require('../controllers/eventsController');
 const errorsController = require('../controllers/errorsController');
 const performanceController = require('../controllers/performanceController');
  const dashboardController = require('../controllers/dashboardController');
+const aiAnalysisController = require('../controllers/aiAnalysisController');
 const { ensureAuthenticated } = require('../middleware/auth');
 const {
   ensureProjectAccess,
@@ -38,6 +39,27 @@ router.post(
   ensureProjectAccess,
   ensureProjectRole(['owner']),
   projectController.postRegenerateKeys
+);
+
+router.post(
+  '/:id/public-link/enable',
+  ensureProjectAccess,
+  ensureProjectRole(['owner']),
+  projectController.postEnablePublicLink
+);
+
+router.post(
+  '/:id/public-link/regenerate',
+  ensureProjectAccess,
+  ensureProjectRole(['owner']),
+  projectController.postRegeneratePublicLink
+);
+
+router.post(
+  '/:id/public-link/revoke',
+  ensureProjectAccess,
+  ensureProjectRole(['owner']),
+  projectController.postRevokePublicLink
 );
 
 router.post(
@@ -107,6 +129,30 @@ router.get(
   '/:id/performance',
   ensureProjectAccess,
   performanceController.getPerformanceAnalytics
+);
+
+router.get(
+  '/:id/ai-analysis',
+  ensureProjectAccess,
+  aiAnalysisController.getAiAnalysisPage
+);
+
+router.post(
+  '/:id/ai-analysis/run',
+  ensureProjectAccess,
+  aiAnalysisController.postRunAiAnalysis
+);
+
+router.get(
+  '/:id/ai-analysis/runs',
+  ensureProjectAccess,
+  aiAnalysisController.getAiAnalysisRunsJson
+);
+
+router.get(
+  '/:id/ai-analysis/runs/:runId',
+  ensureProjectAccess,
+  aiAnalysisController.getAiAnalysisRunJson
 );
 
 module.exports = router;
