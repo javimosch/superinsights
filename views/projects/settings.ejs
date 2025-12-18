@@ -169,6 +169,28 @@
               </button>
               <pre class="mt-2 p-3 bg-base-100 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ trackEventExample }}</code></pre>
             </div>
+
+            <div class="mt-3">
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                @click="copyToClipboard(trackTimingExample, 'trackTiming example copied')"
+              >
+                Copy trackTiming example
+              </button>
+              <pre class="mt-2 p-3 bg-base-100 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ trackTimingExample }}</code></pre>
+            </div>
+
+            <div class="mt-3">
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                @click="copyToClipboard(timeAsyncExample, 'timeAsync example copied')"
+              >
+                Copy timeAsync example
+              </button>
+              <pre class="mt-2 p-3 bg-base-100 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ timeAsyncExample }}</code></pre>
+            </div>
           </div>
 
           <div class="space-y-4">
@@ -534,6 +556,10 @@
 
           const trackEventExample = `// Custom event\nSuperInsights.trackEvent("signup_completed", {\n  plan: "pro",\n  method: "google",\n});`;
 
+          const trackTimingExample = `// Timed event (duration in milliseconds)\nconst t0 = performance.now();\n\n// ... do some work\nawait fetch("/api/checkout", { method: "POST" });\n\nSuperInsights.trackTiming("checkout_submit", Math.round(performance.now() - t0), {\n  provider: "stripe",\n});`;
+
+          const timeAsyncExample = `// Measure an async function (promise)\nawait SuperInsights.timeAsync("api_fetch_products", async () => {\n  const resp = await fetch("/api/products");\n  return resp.json();\n}, {\n  view: "catalog",\n});`;
+
           function copyToClipboard(value, message) {
             if (!value) return;
             navigator.clipboard
@@ -585,6 +611,8 @@
             publicLinkUrl,
             sdkSnippet,
             trackEventExample,
+            trackTimingExample,
+            timeAsyncExample,
             copyToClipboard,
             toggleSecret,
             openRegenerateModal,
