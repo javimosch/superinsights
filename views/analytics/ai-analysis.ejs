@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
+
+    <main id="app" class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl"><span>{{ project.icon || '🤖' }}</span></div>
+          <div>
+            <div class="breadcrumbs text-sm">
+              <ul>
+                <li><a href="/projects">Projects</a></li>
+                <li>
+                  <a :href="`${base}/settings`">{{ project.name }}</a>
+                </li>
+                <li>AI Analysis</li>
+              </ul>
+            </div>
+            <h1 class="text-2xl font-bold">AI Analysis</h1>
+            <p class="text-sm text-base-content/70">
+              Environment: <span class="capitalize">{{ project.environment }}</span>
+              • Role: <span class="capitalize">{{ currentProjectRole }}</span>
+            </p>
+          </div>
+        </div>
+        <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Run analysis</h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="md:col-span-2 form-control">
+              <label class="label" for="presetGoal">
+                <span class="label-text">AI preset assistant</span>
+              </label>
+              <textarea
+                id="presetGoal"
+                v-model="presetGoal"
+                class="textarea textarea-bordered w-full"
+                rows="3"
+                placeholder="Describe what you want to analyze (e.g. 'Find purchase spikes and likely causes', 'Focus on errors by browser/device', 'Identify performance bottlenecks')"
+              ></textarea>
+              <label class="label">
+                <span class="label-text-alt text-base-content/60">
+                  This creates or refines a preset (JSON) using the LLM.
+                </span>
+              </label>
+            </div>
+            <div class="flex flex-col gap-2">
+              <button class="btn btn-outline" type="button" :disabled="presetAiRunning" @click="aiCreatePreset">
+                <span v-if="presetAiRunning" class="loading loading-spinner loading-sm"></span>
+                <span v-else>Create preset with AI</span>
+              </button>
+              <button class="btn btn-outline" type="button" :disabled="presetAiRunning || !presetId" @click="aiRefinePreset">
+                <span v-if="presetAiRunning" class="loading loading-spinner loading-sm"></span>
+                <span v-else>Refine selected preset</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div class="form-control md:col-span-2">
+              <label class="label" for="preset">
+                <span class="label-text">Analysis preset</span>
+              </label>
+              <select id="preset" v-model="presetId" class="select select-bordered w-full">
+                <option value="">General analysis (no preset)</option>
+                <optgroup v-if="presetGroups.builtins.length" label="Built-in">
+                  <option v-for="p in presetGroups.builtins" :key="p.id" :value="p.id">
+                    {{ p.name }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="presetGroups.mine.length" label="My presets">
+                  <option v-for="p in presetGroups.mine" :key="p._id" :value="p._id">
+                    {{ p.name }}
+                  </option>
+                </optgroup>
+                <optgroup v-if="presetGroups.public.length" label="Public presets">
+                  <option v-for="p in presetGroups.public" :key="p._id" :value="p._id">
+                    {{ p.name }}
+                  </option>
+                </optgroup>
+              </select>
+              <label class="label">
+                <span class="label-text-alt text-base-content/60">
+                  Presets control focus instructions; runs store a preset snapshot.
+                </span>
+              </label>
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="mode">
+                <span class="label-text">Range mode</span>
+              </label>
+              <select id="mode" v-model="mode" class="select select-bordered w-full">
+                <option value="preset">Preset</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div v-if="mode === 'preset'" class="form-control">
+              <label class="label" for="timeframe">
+                <span class="label-text">Timeframe</span>
+              </label>
+              <select id="timeframe" v-model="timeframe" class="select select-bordered w-full">
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </div>
+
+            <div v-if="mode === 'custom'" class="form-control">
+              <label class="label" for="start">
+                <span class="label-text">Start</span>
+              </label>
+              <input id="start" type="datetime-local" v-model="start" class="input input-bordered w-full" />
+            </div>
+
+            <div v-if="mode === 'custom'" class="form-control">
+              <label class="label" for="end">
+                <span class="label-text">End</span>
+              </label>
+              <input id="end" type="datetime-local" v-model="end" class="input input-bordered w-full" />
+            </div>
+
+            <div class="form-control md:col-span-2">
+              <button class="btn btn-primary w-full" :disabled="running" @click="runAnalysis">
+                <span v-if="running" class="loading loading-spinner loading-sm"></span>
+                <span v-else>Run analysis</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="error" class="alert alert-error">
+            <span class="text-sm">{{ error }}</span>
+          </div>
+
+          <div class="text-xs text-base-content/60">
+            Runs are stored and audited. LLM output is Markdown.
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-4 md:grid-cols-3">
+        <div class="card bg-base-100 shadow md:col-span-1">
+          <div class="card-body space-y-3">
+            <h2 class="card-title text-xl">Run history</h2>
+
+            <div v-if="!runs.length" class="py-4 text-center text-base-content/70">
+              No runs yet.
+            </div>
+
+            <div v-else class="space-y-2">
+              <button
+                v-for="r in runs"
+                :key="r._id"
+                class="btn btn-ghost justify-start w-full"
+                :class="selectedRunId === r._id ? 'btn-active' : ''"
+                @click="loadRun(r._id)"
+              >
+                <div class="flex flex-col items-start">
+                  <div class="font-semibold">
+                    {{ formatCreatedAt(r.createdAt) }}
+                    <span class="badge badge-sm ml-2" :class="statusBadge(r.status)">{{ r.status }}</span>
+                  </div>
+                  <div class="text-xs text-base-content/60">
+                    {{ runRangeLabel(r) }} • {{ r.model || 'model' }}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow md:col-span-2">
+          <div class="card-body space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="card-title text-xl">Result</h2>
+              <button class="btn btn-ghost btn-sm" type="button" @click="copyMarkdown" :disabled="!markdown">
+                Copy markdown
+              </button>
+            </div>
+
+            <div v-if="!markdown" class="py-10 text-center text-base-content/70">
+              Run analysis to generate a report.
+            </div>
+
+            <div v-else class="prose max-w-none" v-html="rendered"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const { createApp, computed, onMounted, ref } = Vue;
+
+      createApp({
+        setup() {
+          const project = ref(<%- JSON.stringify(project) %>);
+          const currentProjectRole = '<%= currentProjectRole %>';
+          const base = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
+
+          const runs = ref(<%- JSON.stringify(runs || []) %>);
+          const selectedRunId = ref(<%- JSON.stringify(latestRun ? String(latestRun._id) : '') %>);
+          const markdown = ref(<%- JSON.stringify(latestRun && latestRun.resultMarkdown ? latestRun.resultMarkdown : '') %>);
+
+          const presetId = ref('');
+          const presetGroups = ref({ builtins: [], mine: [], public: [] });
+          const presetGoal = ref('');
+          const presetAiRunning = ref(false);
+
+          const mode = ref('preset');
+          const timeframe = ref('7d');
+          const start = ref('');
+          const end = ref('');
+
+          const running = ref(false);
+          const error = ref('');
+
+          const rendered = computed(() => {
+            try {
+              if (!markdown.value) return '';
+              return marked.parse(markdown.value);
+            } catch (e) {
+              return '';
+            }
+          });
+
+          function statusBadge(status) {
+            if (status === 'completed') return 'badge-success';
+            if (status === 'failed') return 'badge-error';
+            if (status === 'running') return 'badge-warning';
+            return 'badge-ghost';
+          }
+
+          function runRangeLabel(run) {
+            if (run && run.timeframePreset) {
+              if (run.timeframePreset === '24h') return 'Last 24h';
+              if (run.timeframePreset === '30d') return 'Last 30d';
+              return 'Last 7d';
+            }
+            if (run && run.start && run.end) {
+              return `${formatIso(run.start)} → ${formatIso(run.end)}`;
+            }
+            return '—';
+          }
+
+          function formatIso(value) {
+            try {
+              return new Date(value).toLocaleString();
+            } catch (e) {
+              return String(value || '');
+            }
+          }
+
+          function formatCreatedAt(value) {
+            try {
+              return new Date(value).toLocaleString();
+            } catch (e) {
+              return String(value || '');
+            }
+          }
+
+          async function loadRun(runId) {
+            if (!runId) return;
+            selectedRunId.value = runId;
+            error.value = '';
+
+            try {
+              const resp = await fetch(`${base}/ai-analysis/runs/${encodeURIComponent(runId)}`);
+              const json = await resp.json();
+
+              if (!json || !json.success) {
+                error.value = (json && json.error) ? json.error : 'Failed to load run';
+                return;
+              }
+
+              const run = json.data;
+              markdown.value = run && run.resultMarkdown ? run.resultMarkdown : '';
+            } catch (e) {
+              error.value = 'Failed to load run';
+            }
+          }
+
+          async function runAnalysis() {
+            running.value = true;
+            error.value = '';
+
+            try {
+              const payload = { mode: mode.value };
+              if (presetId.value) {
+                payload.presetId = presetId.value;
+              }
+              if (mode.value === 'custom') {
+                payload.start = start.value;
+                payload.end = end.value;
+              } else {
+                payload.timeframe = timeframe.value;
+              }
+
+              const resp = await fetch(`${base}/ai-analysis/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+
+              const json = await resp.json();
+              if (!resp.ok || !json || !json.success) {
+                error.value = (json && json.details) ? json.details : ((json && json.error) ? json.error : 'AI analysis failed');
+                return;
+              }
+
+              markdown.value = json.markdown || '';
+              selectedRunId.value = json.runId || '';
+
+              await refreshRuns();
+            } catch (e) {
+              error.value = 'AI analysis failed';
+            } finally {
+              running.value = false;
+            }
+          }
+
+          async function refreshRuns() {
+            try {
+              const resp = await fetch(`${base}/ai-analysis/runs`);
+              const json = await resp.json();
+              if (json && json.success) {
+                runs.value = Array.isArray(json.data) ? json.data : [];
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          async function copyMarkdown() {
+            if (!markdown.value) return;
+            try {
+              await navigator.clipboard.writeText(markdown.value);
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          onMounted(() => {
+            if (selectedRunId.value && !markdown.value) {
+              loadRun(selectedRunId.value);
+            }
+
+            refreshPresets();
+          });
+
+          async function refreshPresets() {
+            try {
+              const resp = await fetch(`/ai-analysis/presets`);
+              const json = await resp.json();
+              if (json && json.success && json.data) {
+                presetGroups.value = {
+                  builtins: Array.isArray(json.data.builtins) ? json.data.builtins : [],
+                  mine: Array.isArray(json.data.mine) ? json.data.mine : [],
+                  public: Array.isArray(json.data.public) ? json.data.public : [],
+                };
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          async function aiCreatePreset() {
+            presetAiRunning.value = true;
+            error.value = '';
+            try {
+              const resp = await fetch('/ai-analysis/presets/ai-generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  goal: presetGoal.value,
+                  visibility: 'private',
+                }),
+              });
+              const json = await resp.json();
+              if (!resp.ok || !json || !json.success) {
+                error.value = (json && json.error) ? json.error : 'Failed to create preset';
+                return;
+              }
+
+              await refreshPresets();
+              presetId.value = json.data && json.data._id ? json.data._id : '';
+            } catch (e) {
+              error.value = 'Failed to create preset';
+            } finally {
+              presetAiRunning.value = false;
+            }
+          }
+
+          async function aiRefinePreset() {
+            if (!presetId.value) return;
+            if (String(presetId.value).startsWith('builtin:')) {
+              error.value = 'Builtin presets are read-only';
+              return;
+            }
+
+            presetAiRunning.value = true;
+            error.value = '';
+            try {
+              const resp = await fetch(`/ai-analysis/presets/${encodeURIComponent(presetId.value)}/ai-refine`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  goal: presetGoal.value,
+                }),
+              });
+              const json = await resp.json();
+              if (!resp.ok || !json || !json.success) {
+                error.value = (json && json.error) ? json.error : 'Failed to refine preset';
+                return;
+              }
+
+              await refreshPresets();
+            } catch (e) {
+              error.value = 'Failed to refine preset';
+            } finally {
+              presetAiRunning.value = false;
+            }
+          }
+
+          return {
+            project,
+            currentProjectRole,
+            base,
+            runs,
+            selectedRunId,
+            markdown,
+            rendered,
+            presetId,
+            presetGroups,
+            presetGoal,
+            presetAiRunning,
+            mode,
+            timeframe,
+            start,
+            end,
+            running,
+            error,
+            runAnalysis,
+            loadRun,
+            statusBadge,
+            runRangeLabel,
+            formatIso,
+            formatCreatedAt,
+            copyMarkdown,
+            aiCreatePreset,
+            aiRefinePreset,
+          };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

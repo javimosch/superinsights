@@ -1,2 +1,5 @@
+.env.staging
+ref-*
+uploads
 node_modules
 .env
