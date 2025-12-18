@@ -165,7 +165,7 @@
               <label class="label" for="search">
                 <span class="label-text">Search</span>
               </label>
-              <input id="search" class="input input-bordered" placeholder="Filter features..." />
+              <input id="search" class="input input-bordered" placeholder="Search docs..." />
             </div>
 
             <div class="divider my-3"></div>
@@ -218,6 +218,9 @@
           { id: 'ai-analysis', title: 'AI Analysis', path: './features/ai-analysis.md', section: 'Features' },
           { id: 'sdk-tracking', title: 'SDK tracking (timing)', path: './features/sdk-tracking.md', section: 'Features' },
           { id: 'external-app-integration', title: 'External app integration', path: './features/external-app-integration.md', section: 'Features' },
+
+          // Reference
+          { id: 'saasbackend-cheatsheet', title: 'saasbackend cheatsheet', path: './saasbackend-cheatsheet.md', section: 'Reference' },
         ];
 
         const navEl = document.getElementById('nav');
@@ -258,7 +261,7 @@
             grouped.get(key).push(d);
           }
 
-          const orderedSections = ['Getting started', 'Features'];
+          const orderedSections = ['Getting started', 'Features', 'Reference'];
           const sections = Array.from(grouped.keys()).sort((a, b) => {
             const ai = orderedSections.indexOf(a);
             const bi = orderedSections.indexOf(b);
