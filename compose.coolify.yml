@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  app:
+    container_name: superinsights
+    image: javimosch/superinsights:latest
+    environment:
+      - NODE_ENV=production
+    working_dir: /app
+    expose:
+      - "3000"
+    command: ["node", "index.js"]
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    restart: always
+    pull_policy: always
