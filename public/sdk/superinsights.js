@@ -246,6 +246,22 @@
     }
 
     try {
+      var scripts = global.document && global.document.getElementsByTagName ? global.document.getElementsByTagName('script') : null;
+      if (scripts && scripts.length) {
+        for (var i = scripts.length - 1; i >= 0; i--) {
+          var s = scripts[i];
+          var src = s && s.src ? String(s.src) : '';
+          if (!src) continue;
+          if (src.indexOf('/sdk/superinsights.js') === -1) continue;
+          var m = src.match(/^(https?:\/\/[^\/]+)\//i);
+          if (m && m[1]) return m[1];
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    try {
       var origin = (global.location && global.location.origin) ? global.location.origin : '';
       return origin;
     } catch (e) {
@@ -395,7 +411,8 @@
   }
 
   function _sendRequest(path, items, useBeacon) {
-    var endpoint = _getBaseUrl() + path;
+    var baseUrl = _getBaseUrl();
+    var endpoint = baseUrl + path;
     var payload = _buildPayload(items);
 
     var payloadStr;
@@ -411,7 +428,7 @@
     }
 
     _sendRequestRaw(endpoint, payloadStr, 0, function (success) {
-      _log('SuperInsights request', path, success ? 'ok' : 'failed');
+      _log('SuperInsights request', { path: path, endpoint: endpoint, items: items.length, beacon: Boolean(useBeacon), result: success ? 'ok' : 'failed' });
     });
   }
 
@@ -452,6 +469,8 @@
     if (!q || q.length === 0) return;
 
     var items = q.splice(0, _config.batchSize);
+
+    _log('SuperInsights flush', { queue: queueName, items: items.length, batchSize: _config.batchSize, baseUrl: _getBaseUrl() });
 
     if (queueName === 'pageviews') _sendRequest('/v1/pageviews', items, useBeacon);
     if (queueName === 'events') _sendRequest('/v1/events', items, useBeacon);
@@ -892,6 +911,8 @@
       _attachListeners();
       _startFlushTimer();
 
+      _log('SuperInsights config', { apiUrl: _config.apiUrl || null, resolvedBaseUrl: _getBaseUrl(), batchSize: _config.batchSize, flushInterval: _config.flushInterval });
+
       _observeLCP();
       _observeFID();
       _observeCLS();
@@ -914,9 +935,23 @@
     try {
       var base = _baseContext();
 
+      var props = properties && typeof properties === 'object' ? properties : {};
+      var durationMs = null;
+      if (props && (props.durationMs !== undefined && props.durationMs !== null)) {
+        try {
+          var n = Number(props.durationMs);
+          if (isFinite(n) && n >= 0) {
+            durationMs = n;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       var data = {
         eventName: eventName,
-        properties: properties && typeof properties === 'object' ? properties : {},
+        properties: props,
+        durationMs: durationMs,
       };
 
       for (var k in base) data[k] = base[k];
@@ -929,6 +964,68 @@
       _refreshSession();
     } catch (e) {
       _log('SuperInsights trackEvent failed', e);
+    }
+  }
+
+  function trackTiming(eventName, durationMs, properties) {
+    if (!_enabled) return;
+    if (!_initialized) return;
+
+    if (!eventName || typeof eventName !== 'string') return;
+
+    var n = null;
+    try {
+      n = Number(durationMs);
+    } catch (e) {
+      n = null;
+    }
+
+    if (!(n >= 0) || !isFinite(n)) return;
+
+    var props = properties && typeof properties === 'object' ? properties : {};
+    props.durationMs = n;
+    trackEvent(eventName, props);
+  }
+
+  function time(eventName, fn, properties) {
+    if (typeof fn !== 'function') return;
+    var start = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+    try {
+      var result = fn();
+      var end = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+      trackTiming(eventName, end - start, properties);
+      return result;
+    } catch (e) {
+      var end2 = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+      trackTiming(eventName, end2 - start, properties);
+      throw e;
+    }
+  }
+
+  function timeAsync(eventName, fn, properties) {
+    if (typeof fn !== 'function') return;
+    var start = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+    try {
+      var p = fn();
+      if (!p || typeof p.then !== 'function') {
+        var end = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+        trackTiming(eventName, end - start, properties);
+        return p;
+      }
+
+      return p.then(function (value) {
+        var endOk = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+        trackTiming(eventName, endOk - start, properties);
+        return value;
+      }).catch(function (err) {
+        var endErr = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+        trackTiming(eventName, endErr - start, properties);
+        throw err;
+      });
+    } catch (e) {
+      var end2 = (global.performance && typeof global.performance.now === 'function') ? global.performance.now() : new Date().getTime();
+      trackTiming(eventName, end2 - start, properties);
+      throw e;
     }
   }
 
@@ -961,6 +1058,9 @@
 
   SuperInsights.init = init;
   SuperInsights.trackEvent = trackEvent;
+  SuperInsights.trackTiming = trackTiming;
+  SuperInsights.time = time;
+  SuperInsights.timeAsync = timeAsync;
   SuperInsights.setUser = setUser;
   SuperInsights.flush = flush;
   SuperInsights.disable = disable;
