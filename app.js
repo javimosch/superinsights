@@ -19,6 +19,9 @@ const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const sessionSameSite = (process.env.SESSION_SAMESITE || 'lax').toLowerCase();
+const sessionDomain = process.env.SESSION_DOMAIN || undefined;
+
 const trustProxyEnabled =
   isProduction || String(process.env.TRUST_PROXY || '') === '1';
 
@@ -53,6 +56,7 @@ app.use(
     secret: process.env.SESSION_SECRET || 'change-me-in-production',
     resave: false,
     saveUninitialized: false,
+    proxy: trustProxyEnabled,
     store: MongoStore.create({
       mongoUrl:
         process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/superinsights',
@@ -61,8 +65,9 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: isProduction && trustProxyEnabled,
+      domain: sessionDomain,
+      sameSite: sessionSameSite,
+      secure: sessionSameSite === 'none' ? 'auto' : isProduction ? 'auto' : false,
     },
   })
 );
