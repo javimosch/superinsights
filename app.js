@@ -3,11 +3,15 @@ const path = require('path');
 const morgan = require('morgan');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const { middleware: saasbackendMiddleware } = require(process.env.NODE_ENV === 'production' ? 'saasbackend' : './ref-saasbackend');
 
 const indexRouter = require('./routes/index');
 const authRouter = require('./routes/auth');
 const adminRouter = require('./routes/admin');
 const projectRouter = require('./routes/projects');
+const aiAnalysisRouter = require('./routes/ai-analysis');
+const publicRouter = require('./routes/public');
+const invitesRouter = require('./routes/invites');
 const ingestionRouter = require('./routes/ingestion');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 
@@ -29,6 +33,17 @@ app.set('views', path.join(__dirname, 'views'));
 // Core middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.get('/sdk/superinsights.js', (req, res) => {
+  if (!isProduction) {
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+
+  return res.sendFile(path.join(__dirname, 'public', 'sdk', 'superinsights.js'));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(morgan('dev'));
 
@@ -54,6 +69,7 @@ app.use(
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  res.locals.publicUrl = process.env.PUBLIC_URL || null;
   next();
 });
 
@@ -111,11 +127,22 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(
+  '/saas',
+  saasbackendMiddleware({
+    mongodbUri: process.env.MONGODB_URI,
+    corsOrigin: process.env.CORS_ORIGIN || '*',
+  })
+);
+
 // Routes
 app.use('/', indexRouter);
+app.use('/', invitesRouter);
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
+app.use('/ai-analysis', aiAnalysisRouter);
 app.use('/projects', projectRouter);
+app.use('/p', publicRouter);
 
 // Ingestion API (CORS-enabled for SDKs)
 app.use('/v1', (req, res, next) => {

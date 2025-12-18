@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-13T09:19:25.018Z",
+  "updatedAt": "2025-12-18T09:25:01.048Z",
   "actions": {
     "AUTH_REGISTER_SUCCESS": {
       "count": 1,
@@ -17,13 +17,13 @@
       "lastPath": "/auth/register"
     },
     "AUTH_LOGIN_SUCCESS": {
-      "count": 14,
+      "count": 17,
       "firstSeenAt": "2025-12-13T07:47:41.873Z",
-      "lastSeenAt": "2025-12-13T09:07:28.445Z",
-      "avgIntervalMs": 368197.8461538461,
+      "lastSeenAt": "2025-12-17T23:56:47.866Z",
+      "avgIntervalMs": 25234124.5625,
       "minIntervalMs": 4614,
-      "maxIntervalMs": 2352427,
-      "intervalsCount": 13,
+      "maxIntervalMs": 393710964,
+      "intervalsCount": 16,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
       "lastStatus": 302,
@@ -31,20 +31,95 @@
       "lastPath": "/auth/login"
     },
     "PROJECT_CREATE": {
-      "count": 1,
+      "count": 3,
       "firstSeenAt": "2025-12-13T09:19:24.018Z",
-      "lastSeenAt": "2025-12-13T09:19:24.018Z",
+      "lastSeenAt": "2025-12-18T09:25:00.049Z",
+      "avgIntervalMs": 216168015.5,
+      "minIntervalMs": 39278576,
+      "maxIntervalMs": 393057455,
+      "intervalsCount": 2,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastProjectId": "6943c86bab3fa04c6d793de9",
+      "lastStatus": 302,
+      "lastMethod": "POST",
+      "lastPath": "/projects"
+    },
+    "AUTH_LOGOUT": {
+      "count": 3,
+      "firstSeenAt": "2025-12-17T22:29:13.948Z",
+      "lastSeenAt": "2025-12-17T23:56:19.563Z",
+      "avgIntervalMs": 2612807.5,
+      "minIntervalMs": 1617837,
+      "maxIntervalMs": 3607778,
+      "intervalsCount": 2,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastStatus": 302,
+      "lastMethod": "POST",
+      "lastPath": "/auth/logout"
+    },
+    "PROJECT_UPDATE": {
+      "count": 1,
+      "firstSeenAt": "2025-12-17T22:42:26.494Z",
+      "lastSeenAt": "2025-12-17T22:42:26.494Z",
       "avgIntervalMs": null,
       "minIntervalMs": null,
       "maxIntervalMs": null,
       "intervalsCount": 0,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
-      "lastProjectId": "693d2f9b6893a4d09eac6a97",
+      "lastProjectId": "69432efc3dc49b00e8f99b10",
+      "lastStatus": 200,
+      "lastMethod": "POST",
+      "lastPath": "/projects/69432efc3dc49b00e8f99b10/update"
+    },
+    "PROJECT_PUBLIC_LINK_ENABLE": {
+      "count": 1,
+      "firstSeenAt": "2025-12-18T09:01:35.696Z",
+      "lastSeenAt": "2025-12-18T09:01:35.696Z",
+      "avgIntervalMs": null,
+      "minIntervalMs": null,
+      "maxIntervalMs": null,
+      "intervalsCount": 0,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastProjectId": "69432efc3dc49b00e8f99b10",
       "lastStatus": 302,
       "lastMethod": "POST",
-      "lastPath": "/projects"
+      "lastPath": "/projects/69432efc3dc49b00e8f99b10/public-link/enable"
+    },
+    "PROJECT_PUBLIC_LINK_REVOKE": {
+      "count": 1,
+      "firstSeenAt": "2025-12-18T09:02:06.369Z",
+      "lastSeenAt": "2025-12-18T09:02:06.369Z",
+      "avgIntervalMs": null,
+      "minIntervalMs": null,
+      "maxIntervalMs": null,
+      "intervalsCount": 0,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastProjectId": "69432efc3dc49b00e8f99b10",
+      "lastStatus": 302,
+      "lastMethod": "POST",
+      "lastPath": "/projects/69432efc3dc49b00e8f99b10/public-link/revoke"
     }
   },
-  "errors": {}
+  "errors": {
+    "/home/jarancibia/ai/superinsights/views/projects/settings.ejs:29\n    27|           </div>\n    28|         </div>\n >> 29|         <%- include('../partials/analytics-subnav', { project, currentSection }) %>\n    30|       </div>\n    31| \n    32|       <% if (errors && errors.length) { %>\n\n/home/jarancibia/ai/superinsights/views/partials/analytics-subnav.ejs:2\n    1| <% const activeClass = (section) => (currentSection === section ? 'btn btn-primary' : 'btn btn-ghost'); %>\n >> 2| <% const base = projectBasePath || `/projects/${project._id}`; %>\n    3| <% const isPublic = typeof base === 'string' && base.startsWith('/p/'); %>\n    4| <div class=\"flex gap-2 flex-wrap\">\n    5|   <a href=\"<%= base %>/dashboard\" class=\"<%= activeClass('dashboard') %>\">Dashboard</a>\n\nprojectBasePath is not defined": {
+      "count": 1,
+      "firstSeenAt": "2025-12-18T01:18:57.871Z",
+      "lastSeenAt": "2025-12-18T01:18:57.871Z",
+      "avgIntervalMs": null,
+      "minIntervalMs": null,
+      "maxIntervalMs": null,
+      "intervalsCount": 0,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastProjectId": "69432efc3dc49b00e8f99b10",
+      "lastStatus": 500,
+      "lastMethod": "GET",
+      "lastPath": "/projects/69432efc3dc49b00e8f99b10/settings"
+    }
+  }
 }

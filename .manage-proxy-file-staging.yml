@@ -1,0 +1,15 @@
+http:
+  routers:
+    superinsights-staging:
+      entryPoints:
+        - https
+      service: superinsights-staging
+      rule: Host(`superinsights.coolify.intrane.fr`)
+      tls:
+        certresolver: letsencrypt
+  services:
+    superinsights-staging:
+      loadBalancer:
+        servers:
+          -
+            url: 'http://superinsights:3000'
