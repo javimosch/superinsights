@@ -12,31 +12,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   </head>
   <body class="min-h-screen bg-base-200">
-    <div class="navbar bg-base-100 shadow">
-      <div class="flex-1 px-4 flex items-center gap-4">
-        <a href="/" class="text-xl font-bold">SuperInsights</a>
-        <% if (currentUser) { %>
-        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
-        <% if (currentUser.role === 'admin') { %>
-        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
-        <% } %>
-        <% } %>
-      </div>
-      <div class="flex-none gap-2 px-4">
-        <% if (currentUser) { %>
-        <span class="text-sm mr-2">
-          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
-          (<%= currentUser.role %>)
-        </span>
-        <form action="/auth/logout" method="POST">
-          <button type="submit" class="btn btn-sm">Logout</button>
-        </form>
-        <% } else { %>
-        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
-        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
-        <% } %>
-      </div>
-    </div>
+    <%- include('../partials/navbar') %>
 
     <main id="app" class="container mx-auto p-4 space-y-6">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -50,22 +26,7 @@
             </p>
           </div>
         </div>
-        <div class="flex gap-2">
-          <a href="/projects/<%= project._id %>/dashboard" class="btn btn-outline">
-            📊 Dashboard
-          </a>
-          <a href="/projects/<%= project._id %>/pageviews" class="btn btn-outline">Page Views</a>
-          <a href="/projects/<%= project._id %>/events" class="btn btn-outline">
-            📊 Events
-          </a>
-          <a href="/projects/<%= project._id %>/errors" class="btn btn-outline">
-            ⚠️ Errors
-          </a>
-          <a href="/projects/<%= project._id %>/performance" class="btn btn-outline">
-            ⚡ Performance
-          </a>
-          <a href="/projects" class="btn btn-ghost">Back to projects</a>
-        </div>
+        <%- include('../partials/analytics-subnav', { project, currentSection }) %>
       </div>
 
       <% if (errors && errors.length) { %>
@@ -299,6 +260,63 @@
         </div>
       </section>
 
+      <% if (currentProjectRole === 'owner') { %>
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Public access (view-only)</h2>
+            <% if (project.publicLinkEnabled) { %>
+              <span class="badge badge-success">Enabled</span>
+            <% } else { %>
+              <span class="badge badge-outline">Disabled</span>
+            <% } %>
+          </div>
+
+          <div class="alert alert-warning text-sm">
+            <span>
+              Anyone with this link can view your project analytics.
+            </span>
+          </div>
+
+          <% if (project.publicLinkEnabled && project.publicLinkToken) { %>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Public link</span>
+            </label>
+            <div class="join w-full">
+              <input
+                type="text"
+                readonly
+                class="input input-bordered join-item w-full"
+                :value="publicLinkUrl"
+              />
+              <button
+                type="button"
+                class="btn join-item"
+                @click="copyToClipboard(publicLinkUrl, 'Public link copied')"
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-col md:flex-row gap-2">
+            <form action="/projects/<%= project._id %>/public-link/regenerate" method="POST">
+              <button type="submit" class="btn btn-outline btn-warning">Regenerate</button>
+            </form>
+            <form action="/projects/<%= project._id %>/public-link/revoke" method="POST">
+              <button type="submit" class="btn btn-outline btn-error">Disable</button>
+            </form>
+          </div>
+          <% } else { %>
+          <form action="/projects/<%= project._id %>/public-link/enable" method="POST">
+            <button type="submit" class="btn btn-primary">Generate public link</button>
+          </form>
+          <% } %>
+        </div>
+      </section>
+      <% } %>
+
       <!-- Section 3: Team Members -->
       <section class="card bg-base-100 shadow">
         <div class="card-body space-y-4">
@@ -324,8 +342,8 @@
                   <td><%= entry.userId && entry.userId.email ? entry.userId.email : '' %></td>
                   <td class="capitalize"><%= entry.role %></td>
                   <td>
-                    <% if (entry.addedAt) { %>
-                    <%= entry.addedAt.toISOString() %>
+                    <% if (entry.createdAt) { %>
+                    <%= entry.createdAt.toISOString() %>
                     <% } %>
                   </td>
                   <td class="text-right">
@@ -475,18 +493,44 @@
           const canRegenerateKeys = ['owner'].includes(currentProjectRole);
           const canDelete = ['owner'].includes(currentProjectRole);
 
-          const sdkSnippet = [
-            '<!-- SuperInsights SDK -->',
-            '<script src="/sdk/superinsights.js"><\\/script>',
-            '<script>',
-            `  SuperInsights.init(${JSON.stringify(project.value.publicApiKey)}, {`,
-            '    // apiUrl: "https://your-domain.com",',
-            '    batchSize: 20,',
-            '    flushInterval: 5000,',
-            '    debug: false,',
-            '  });',
-            '<\\/script>',
-          ].join('\n');
+          const publicUrl = <%- JSON.stringify(publicUrl || '') %>;
+          const publicUrlBase = publicUrl ? String(publicUrl).replace(/\/$/, '') : '';
+
+          const publicLinkUrl = project.value && project.value.publicLinkToken
+            ? `${publicUrlBase || location.origin}/p/${project.value._id}/${project.value.publicLinkToken}/dashboard`
+            : '';
+
+          const sdkSnippet = publicUrlBase
+            ? [
+                '<!-- SuperInsights SDK -->',
+                `<script src="${publicUrlBase}/sdk/superinsights.js"><\\/script>`,
+                '<script>',
+                `  SuperInsights.init(${JSON.stringify(project.value.publicApiKey)}, {`,
+                `    apiUrl: ${JSON.stringify(publicUrlBase)},`,
+                '    batchSize: 20,',
+                '    flushInterval: 5000,',
+                '    debug: false,',
+                '  });',
+                '<\\/script>',
+              ].join('\n')
+            : [
+                '<!-- SuperInsights SDK -->',
+                '<script>',
+                '  (function () {',
+                '    var s = document.createElement("script");',
+                '    s.src = location.origin + "/sdk/superinsights.js";',
+                '    s.onload = function () {',
+                `      SuperInsights.init(${JSON.stringify(project.value.publicApiKey)}, {`,
+                '        apiUrl: location.origin,',
+                '        batchSize: 20,',
+                '        flushInterval: 5000,',
+                '        debug: false,',
+                '      });',
+                '    };',
+                '    document.head.appendChild(s);',
+                '  })();',
+                '<\\/script>',
+              ].join('\n');
 
           const trackEventExample = `// Custom event\nSuperInsights.trackEvent("signup_completed", {\n  plan: "pro",\n  method: "google",\n});`;
 
@@ -538,6 +582,7 @@
             deleteModal,
             canRegenerateKeys,
             canDelete,
+            publicLinkUrl,
             sdkSnippet,
             trackEventExample,
             copyToClipboard,
