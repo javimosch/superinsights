@@ -30,6 +30,140 @@ function buildMatch({ projectId, start, end, eventName }) {
   return match;
 }
 
+function buildTimedMatch({ projectId, start, end, eventName }) {
+  const match = buildMatch({ projectId, start, end, eventName });
+  match.durationMs = { $ne: null, $exists: true };
+  return match;
+}
+
+async function getTimedEventSummary({ projectId, start, end }) {
+  const match = buildTimedMatch({ projectId, start, end });
+
+  try {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$eventName',
+          count: { $sum: 1 },
+          avgMs: { $avg: '$durationMs' },
+          maxMs: { $max: '$durationMs' },
+          percentiles: {
+            $percentile: {
+              input: '$durationMs',
+              p: [0.5, 0.95],
+              method: 'approximate',
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          eventName: '$_id',
+          count: 1,
+          avgMs: 1,
+          maxMs: 1,
+          p50Ms: { $arrayElemAt: ['$percentiles', 0] },
+          p95Ms: { $arrayElemAt: ['$percentiles', 1] },
+        },
+      },
+      { $sort: { p95Ms: -1, avgMs: -1, maxMs: -1 } },
+      { $limit: 10 },
+    ]);
+
+    return rows || [];
+  } catch (err) {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$eventName',
+          count: { $sum: 1 },
+          avgMs: { $avg: '$durationMs' },
+          maxMs: { $max: '$durationMs' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          eventName: '$_id',
+          count: 1,
+          avgMs: 1,
+          maxMs: 1,
+          p50Ms: { $literal: null },
+          p95Ms: { $literal: null },
+        },
+      },
+      { $sort: { avgMs: -1, maxMs: -1 } },
+      { $limit: 10 },
+    ]);
+
+    return rows || [];
+  }
+}
+
+async function getSingleEventDurationSummary({ projectId, start, end, eventName }) {
+  const match = buildTimedMatch({ projectId, start, end, eventName });
+
+  try {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          avgMs: { $avg: '$durationMs' },
+          maxMs: { $max: '$durationMs' },
+          percentiles: {
+            $percentile: {
+              input: '$durationMs',
+              p: [0.5, 0.95],
+              method: 'approximate',
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: 1,
+          avgMs: 1,
+          maxMs: 1,
+          p50Ms: { $arrayElemAt: ['$percentiles', 0] },
+          p95Ms: { $arrayElemAt: ['$percentiles', 1] },
+        },
+      },
+    ]);
+
+    return rows && rows.length ? rows[0] : { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null };
+  } catch (err) {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          avgMs: { $avg: '$durationMs' },
+          maxMs: { $max: '$durationMs' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          count: 1,
+          avgMs: 1,
+          maxMs: 1,
+          p50Ms: { $literal: null },
+          p95Ms: { $literal: null },
+        },
+      },
+    ]);
+
+    return rows && rows.length ? rows[0] : { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null };
+  }
+}
+
 async function getEventsByDay({ projectId, start, end, eventName }) {
   const match = buildMatch({ projectId, start, end, eventName });
 
@@ -149,24 +283,28 @@ exports.getEventsAnalytics = async (req, res, next) => {
       eventName,
     };
 
-    const [eventsByDay, totalEvents, uniqueEventNames, topEvents] = await Promise.all([
+    const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents] = await Promise.all([
       getEventsByDay(params),
       getTotalEvents(params),
       getUniqueEventNames({ projectId, start, end }),
       getTopEvents({ projectId, start, end }),
+      getTimedEventSummary({ projectId, start, end }),
     ]);
 
     return res.render('analytics/events', {
       title: 'Events',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe,
       eventName: eventName || '',
       eventsByDay: eventsByDay || [],
       totalEvents: totalEvents || 0,
       uniqueEventNames: uniqueEventNames || [],
       topEvents: topEvents || [],
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      timedEvents: timedEvents || [],
+      currentSection: 'events',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);
@@ -191,22 +329,26 @@ exports.getEventDetail = async (req, res, next) => {
 
     const match = buildMatch({ projectId, start, end, eventName });
 
-    const [occurrences, propertySchema, eventsByDay] = await Promise.all([
+    const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
       Event.find(match).sort({ timestamp: -1 }).limit(100),
       getEventPropertySchema({ projectId, eventName, start, end }),
       getEventsByDay({ projectId, start, end, eventName }),
+      getSingleEventDurationSummary({ projectId, start, end, eventName }),
     ]);
 
     return res.render('analytics/event-detail', {
       title: `Event: ${eventName}`,
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       eventName,
       timeframe,
       occurrences: occurrences || [],
       propertySchema: propertySchema || [],
       eventsByDay: eventsByDay || [],
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      durationSummary: durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null },
+      currentSection: 'events',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);

@@ -17,6 +17,10 @@ const EventSchema = new mongoose.Schema(
     properties: {
       type: mongoose.Schema.Types.Mixed,
     },
+    durationMs: {
+      type: Number,
+      index: true,
+    },
     sessionId: {
       type: String,
       index: true,
@@ -37,5 +41,6 @@ const EventSchema = new mongoose.Schema(
 );
 
 EventSchema.index({ projectId: 1, eventName: 1, timestamp: 1 });
+EventSchema.index({ projectId: 1, eventName: 1, durationMs: 1, timestamp: 1 });
 
 module.exports = mongoose.model('Event', EventSchema);
