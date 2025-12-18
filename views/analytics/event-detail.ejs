@@ -5,35 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><%= title %></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   </head>
   <body class="min-h-screen bg-base-200">
-    <div class="navbar bg-base-100 shadow">
-      <div class="flex-1 px-4 flex items-center gap-4">
-        <a href="/" class="text-xl font-bold">SuperInsights</a>
-        <% if (currentUser) { %>
-        <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
-        <% if (currentUser.role === 'admin') { %>
-        <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
-        <% } %>
-        <% } %>
-      </div>
-      <div class="flex-none gap-2 px-4">
-        <% if (currentUser) { %>
-        <span class="text-sm mr-2">
-          Signed in as <span class="font-semibold"><%= currentUser.email %></span>
-          (<%= currentUser.role %>)
-        </span>
-        <form action="/auth/logout" method="POST">
-          <button type="submit" class="btn btn-sm">Logout</button>
-        </form>
-        <% } else { %>
-        <a href="/auth/login" class="btn btn-ghost btn-sm">Login</a>
-        <a href="/auth/register" class="btn btn-primary btn-sm">Register</a>
-        <% } %>
-      </div>
-    </div>
+    <%- include('../partials/navbar') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
 
     <main id="app" class="container mx-auto p-4 space-y-6">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -44,10 +26,10 @@
               <ul>
                 <li><a href="/projects">Projects</a></li>
                 <li>
-                  <a :href="`/projects/${project._id}/settings`">{{ project.name }}</a>
+                  <a :href="`${base}/settings`">{{ project.name }}</a>
                 </li>
                 <li>
-                  <a :href="`/projects/${project._id}/events`">Events</a>
+                  <a :href="`${base}/events`">Events</a>
                 </li>
                 <li>{{ eventName }}</li>
               </ul>
@@ -59,18 +41,7 @@
             </p>
           </div>
         </div>
-        <div class="flex gap-2">
-          <a :href="`/projects/${project._id}/events`" class="btn btn-ghost">
-            Back to events
-          </a>
-          <a :href="`/projects/${project._id}/pageviews`" class="btn btn-ghost">View Page views</a>
-          <a :href="`/projects/${project._id}/events`" class="btn btn-ghost">View Events</a>
-          <a :href="`/projects/${project._id}/errors`" class="btn btn-ghost">View Errors</a>
-          <a :href="`/projects/${project._id}/performance`" class="btn btn-ghost">
-            View Performance
-          </a>
-          <a :href="`/projects/${project._id}/settings`" class="btn btn-ghost">Back to settings</a>
-        </div>
+        <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
       </div>
 
       <section class="card bg-base-100 shadow">
@@ -127,6 +98,56 @@
                   {{ lastSeenLabel }}
                 </div>
                 <div class="stat-desc">Newest in list</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="card-title text-xl">Duration summary</h2>
+            <div class="text-sm text-base-content/60">Timed occurrences only</div>
+          </div>
+
+          <div v-if="!durationSummary || !durationSummary.count" class="py-6 text-center text-base-content/70">
+            No timed occurrences yet.
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="stats shadow bg-base-200">
+              <div class="stat">
+                <div class="stat-title">Count</div>
+                <div class="stat-value text-base text-base-content">{{ durationSummary.count }}</div>
+              </div>
+            </div>
+
+            <div class="stats shadow bg-base-200">
+              <div class="stat">
+                <div class="stat-title">Avg (ms)</div>
+                <div class="stat-value text-base text-base-content">{{ formatMs(durationSummary.avgMs) }}</div>
+              </div>
+            </div>
+
+            <div class="stats shadow bg-base-200">
+              <div class="stat">
+                <div class="stat-title">P50 (ms)</div>
+                <div class="stat-value text-base text-base-content">{{ formatMs(durationSummary.p50Ms) }}</div>
+              </div>
+            </div>
+
+            <div class="stats shadow bg-base-200">
+              <div class="stat">
+                <div class="stat-title">P95 (ms)</div>
+                <div class="stat-value text-base text-base-content">{{ formatMs(durationSummary.p95Ms) }}</div>
+              </div>
+            </div>
+
+            <div class="stats shadow bg-base-200">
+              <div class="stat">
+                <div class="stat-title">Max (ms)</div>
+                <div class="stat-value text-base text-base-content">{{ formatMs(durationSummary.maxMs) }}</div>
               </div>
             </div>
           </div>
@@ -196,6 +217,7 @@
                 <tr>
                   <th>Timestamp</th>
                   <th>Session ID</th>
+                  <th class="text-right">Duration (ms)</th>
                   <th>Properties</th>
                 </tr>
               </thead>
@@ -207,6 +229,7 @@
                       {{ (row.sessionId || '').slice(0, 12) }}
                     </div>
                   </td>
+                  <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
                     <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
@@ -219,12 +242,14 @@
     </main>
 
     <script>
-      const { createApp, computed, onBeforeUnmount, onMounted, ref } = Vue;
+      const { createApp, computed, nextTick, onMounted, ref, watch } = Vue;
 
       createApp({
         setup() {
           const project = ref(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
+
+          const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
 
           const eventName = ref(<%- JSON.stringify(eventName) %>);
           const timeframe = ref('<%= timeframe %>');
@@ -232,6 +257,7 @@
           const occurrences = ref(<%- JSON.stringify(occurrences || []) %>);
           const propertySchema = ref(<%- JSON.stringify(propertySchema || []) %>);
           const eventsByDay = ref(<%- JSON.stringify(eventsByDay || []) %>);
+          const durationSummary = ref(<%- JSON.stringify(durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null }) %>);
 
           let chartInstance = null;
 
@@ -257,7 +283,7 @@
             const params = new URLSearchParams();
             if (timeframe.value) params.set('timeframe', timeframe.value);
 
-            const base = `/projects/${project.value._id}/events/${encodeURIComponent(eventName.value)}`;
+            const base = `${basePath}/events/${encodeURIComponent(eventName.value)}`;
             const query = params.toString();
             window.location.href = query ? `${base}?${query}` : base;
           }
@@ -348,6 +374,13 @@
               .join(', ');
           }
 
+          function formatMs(value) {
+            if (value === null || value === undefined) return '—';
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '—';
+            return String(Math.round(n));
+          }
+
           onMounted(() => {
             renderChart();
           });
@@ -367,6 +400,7 @@
             occurrences,
             propertySchema,
             eventsByDay,
+            durationSummary,
             timeframeLabel,
             firstSeenLabel,
             lastSeenLabel,
@@ -375,6 +409,7 @@
             formatTimestamp,
             inferType,
             sampleValuesLabel,
+            formatMs,
           };
         },
       }).mount('#app');
