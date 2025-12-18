@@ -11,7 +11,16 @@ services:
       - "3000"
     command: ["node", "index.js"]
     volumes:
-      - ./:/app
-      - /app/node_modules
+      - ./config:/app/config
+      - ./controllers:/app/controllers
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./public:/app/public
+      - ./routes:/app/routes
+      - ./uploads:/app/uploads
+      - ./utils:/app/utils
+      - ./views:/app/views
+      - ./app.js:/app/app.js
+      - ./index.js:/app/index.js
     restart: always
     pull_policy: always
