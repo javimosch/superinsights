@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SuperInsights Docs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <main class="container mx-auto p-6 space-y-8">
+      <header class="space-y-3">
+        <div class="flex items-center justify-between gap-4">
+          <h1 class="text-3xl font-bold">SuperInsights</h1>
+          <a class="btn btn-primary" href="./documentation.html">Open documentation</a>
+        </div>
+        <p class="text-base-content/70 max-w-2xl">
+          Developer-facing documentation for integrating and operating SuperInsights.
+        </p>
+      </header>
+
+      <section class="grid gap-4 md:grid-cols-2">
+        <div class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h2 class="card-title">Getting started</h2>
+            <div class="space-y-2 text-sm text-base-content/80">
+              <div>
+                Docs are rendered directly from markdown files under <code>docs/features</code>.
+              </div>
+              <div>
+                Use the documentation page to browse and deep-link into individual features.
+              </div>
+            </div>
+            <div class="card-actions justify-end mt-4">
+              <a class="btn btn-outline" href="./documentation.html#feature=external-app-integration">External app integration</a>
+              <a class="btn btn-outline" href="./documentation.html#feature=ai-analysis">AI Analysis</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+          <div class="card-body">
+            <h2 class="card-title">Features</h2>
+            <div class="space-y-2 text-sm text-base-content/80">
+              <div>AI Analysis + presets + sampling.</div>
+              <div>Browser SDK ingestion and timing tracking.</div>
+            </div>
+            <div class="card-actions justify-end mt-4">
+              <a class="btn btn-outline" href="./documentation.html#feature=sdk-tracking">SDK tracking (timing)</a>
+              <a class="btn btn-outline" href="./documentation.html">Browse all</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="text-xs text-base-content/60">
+        Built for GitHub Pages.
+      </footer>
+    </main>
+  </body>
+</html>
