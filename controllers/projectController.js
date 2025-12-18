@@ -1,9 +1,13 @@
 const Project = require('../models/Project');
-const User = require('../models/User');
+const { models, services } = require('../utils/saasbackend');
 const { logAction } = require('../utils/aggregatedLogger');
 const { ACTION_CODES } = require('../utils/actionCodes');
 const { logAudit } = require('../utils/auditLogger');
 const { logRawAction } = require('../utils/rawLogger');
+const {
+  generatePublicLinkToken,
+  hashPublicLinkToken,
+} = require('../utils/publicLinkTokens');
 
 function normalizeName(name) {
   return (name || '').trim();
@@ -18,7 +22,18 @@ function parseDataRetentionDays(value) {
 exports.getProjects = async (req, res, next) => {
   try {
     const userId = req.session.user.id;
-    const projects = await Project.findActiveProjects(userId);
+
+    const memberships = await models.OrganizationMember.find({
+      userId,
+      status: 'active',
+    })
+      .select('orgId')
+      .lean();
+
+    const orgIds = (memberships || []).map((m) => m.orgId);
+    const projects = orgIds.length
+      ? await Project.findActiveProjectsByOrgIds(orgIds)
+      : [];
 
     res.render('projects/index', {
       title: 'Projects - SuperInsights',
@@ -28,6 +43,172 @@ exports.getProjects = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+exports.postEnablePublicLink = async (req, res, next) => {
+  try {
+    const project = req.project;
+
+    const token = generatePublicLinkToken();
+    const tokenHash = hashPublicLinkToken(token);
+
+    project.publicLinkEnabled = true;
+    project.publicLinkToken = token;
+    project.publicLinkTokenHash = tokenHash;
+    project.publicLinkCreatedAt = project.publicLinkCreatedAt || new Date();
+    project.publicLinkRevokedAt = null;
+    project.publicLinkLastRegeneratedAt = new Date();
+
+    await project.save();
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+
+      logAction(ACTION_CODES.PROJECT_PUBLIC_LINK_ENABLE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_PUBLIC_LINK_ENABLE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_PUBLIC_LINK_ENABLE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+    }
+
+    return res.redirect(`/projects/${project._id.toString()}/settings`);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.postRegeneratePublicLink = async (req, res, next) => {
+  try {
+    const project = req.project;
+
+    const token = generatePublicLinkToken();
+    const tokenHash = hashPublicLinkToken(token);
+
+    project.publicLinkEnabled = true;
+    project.publicLinkToken = token;
+    project.publicLinkTokenHash = tokenHash;
+    project.publicLinkCreatedAt = project.publicLinkCreatedAt || new Date();
+    project.publicLinkRevokedAt = null;
+    project.publicLinkLastRegeneratedAt = new Date();
+
+    await project.save();
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+
+      logAction(ACTION_CODES.PROJECT_PUBLIC_LINK_REGENERATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_PUBLIC_LINK_REGENERATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_PUBLIC_LINK_REGENERATE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+    }
+
+    return res.redirect(`/projects/${project._id.toString()}/settings`);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.postRevokePublicLink = async (req, res, next) => {
+  try {
+    const project = req.project;
+
+    project.publicLinkEnabled = false;
+    project.publicLinkToken = null;
+    project.publicLinkTokenHash = null;
+    project.publicLinkRevokedAt = new Date();
+
+    await project.save();
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+
+      logAction(ACTION_CODES.PROJECT_PUBLIC_LINK_REVOKE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_PUBLIC_LINK_REVOKE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_PUBLIC_LINK_REVOKE, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: project._id ? String(project._id) : null,
+        status: 302,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+    }
+
+    return res.redirect(`/projects/${project._id.toString()}/settings`);
+  } catch (err) {
+    return next(err);
   }
 };
 
@@ -85,6 +266,29 @@ exports.postCreateProject = async (req, res, next) => {
       });
     }
 
+    // Create SaaS org + owner membership
+    const slugBase = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 50);
+
+    const org = await models.Organization.create({
+      name,
+      slug: `${slugBase}-${Date.now().toString(36)}`,
+      ownerUserId: req.session.user.id,
+      allowPublicJoin: false,
+      status: 'active',
+    });
+
+    await models.OrganizationMember.create({
+      orgId: org._id,
+      userId: req.session.user.id,
+      role: 'owner',
+      status: 'active',
+      addedByUserId: req.session.user.id,
+    });
+
     const { publicKey, secretKey } = Project.generateApiKeys();
 
     const project = await Project.create({
@@ -94,12 +298,7 @@ exports.postCreateProject = async (req, res, next) => {
       dataRetentionDays,
       publicApiKey: publicKey,
       secretApiKey: secretKey,
-      users: [
-        {
-          userId: req.session.user.id,
-          role: 'owner',
-        },
-      ],
+      saasOrgId: org._id,
     });
 
     try {
@@ -147,21 +346,39 @@ exports.getProjectSettings = (req, res) => {
   const project = req.project;
   const role = req.userProjectRole;
 
-  res.render('projects/settings', {
-    title: `${project.name} Settings - SuperInsights`,
-    project,
-    users: project.users,
-    currentProjectRole: role,
-    errors: [],
-    values: {
-      name: project.name,
-      icon: project.icon,
-      environment: project.environment,
-      dataRetentionDays: project.dataRetentionDays,
-    },
-    successMessage: null,
-    environments: Project.ENVIRONMENTS,
-  });
+  (async () => {
+    try {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.render('projects/settings', {
+        title: `${project.name} Settings - SuperInsights`,
+        project,
+        users,
+        currentProjectRole: role,
+        currentSection: 'settings',
+        errors: [],
+        values: {
+          name: project.name,
+          icon: project.icon,
+          environment: project.environment,
+          dataRetentionDays: project.dataRetentionDays,
+        },
+        successMessage: null,
+        environments: Project.ENVIRONMENTS,
+      });
+    } catch (err) {
+      return res.status(500).render('error', {
+        status: 500,
+        message: 'Failed to load project members.',
+      });
+    }
+  })();
 };
 
 exports.postUpdateProject = async (req, res, next) => {
@@ -199,11 +416,20 @@ exports.postUpdateProject = async (req, res, next) => {
     };
 
     if (errors.length) {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
-        users: project.users,
+        users,
         currentProjectRole: role,
+        currentSection: 'settings',
         errors,
         values,
         successMessage: null,
@@ -253,11 +479,20 @@ exports.postUpdateProject = async (req, res, next) => {
       // ignore
     }
 
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
-      users: project.users,
+      users,
       currentProjectRole: role,
+      currentSection: 'settings',
       errors: [],
       values,
       successMessage: 'Project updated successfully.',
@@ -311,11 +546,20 @@ exports.postRegenerateKeys = async (req, res, next) => {
       // ignore
     }
 
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
-      users: project.users,
+      users,
       currentProjectRole: role,
+      currentSection: 'settings',
       errors: [],
       values: {
         name: project.name,
@@ -334,7 +578,6 @@ exports.postRegenerateKeys = async (req, res, next) => {
 exports.postAddUser = async (req, res, next) => {
   try {
     const project = req.project;
-    const currentUserId = req.session.user.id;
     const currentRole = req.userProjectRole;
 
     const email = (req.body.email || '').toLowerCase().trim();
@@ -362,11 +605,20 @@ exports.postAddUser = async (req, res, next) => {
     };
 
     if (errors.length) {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
-        users: project.users,
+        users,
         currentProjectRole: currentRole,
+        currentSection: 'settings',
         errors,
         values,
         successMessage: null,
@@ -374,46 +626,108 @@ exports.postAddUser = async (req, res, next) => {
       });
     }
 
-    const user = await User.findOne({ email }).lean();
+    const user = await models.User.findOne({ email }).lean();
 
-    if (!user) {
-      return res.status(400).render('projects/settings', {
-        title: `${project.name} Settings - SuperInsights`,
-        project,
-        users: project.users,
-        currentProjectRole: currentRole,
-        errors: ['No user found with that email'],
-        values,
-        successMessage: null,
-        environments: Project.ENVIRONMENTS,
+    if (user) {
+      const existingMember = await models.OrganizationMember.findOne({
+        orgId: project.saasOrgId,
+        userId: user._id,
       });
-    }
 
-    const alreadyMember = project.users.some(
-      (u) => u.userId.toString() === user._id.toString()
-    );
+      if (existingMember && existingMember.status === 'active') {
+        const users = await models.OrganizationMember.find({
+          orgId: project.saasOrgId,
+          status: 'active',
+        })
+          .populate('userId', 'email name')
+          .sort({ createdAt: -1 })
+          .lean();
 
-    if (alreadyMember) {
-      return res.status(400).render('projects/settings', {
-        title: `${project.name} Settings - SuperInsights`,
-        project,
-        users: project.users,
-        currentProjectRole: currentRole,
-        errors: ['User is already a member of this project'],
-        values,
-        successMessage: null,
-        environments: Project.ENVIRONMENTS,
+        return res.status(400).render('projects/settings', {
+          title: `${project.name} Settings - SuperInsights`,
+          project,
+          users,
+          currentProjectRole: currentRole,
+          currentSection: 'settings',
+          errors: ['User is already a member of this project'],
+          values,
+          successMessage: null,
+          environments: Project.ENVIRONMENTS,
+        });
+      }
+
+      if (existingMember) {
+        existingMember.status = 'active';
+        existingMember.role = roleToAssign;
+        existingMember.addedByUserId = req.session.user.id;
+        await existingMember.save();
+      } else {
+        await models.OrganizationMember.create({
+          orgId: project.saasOrgId,
+          userId: user._id,
+          role: roleToAssign,
+          status: 'active',
+          addedByUserId: req.session.user.id,
+        });
+      }
+    } else {
+      // Create an invite if user does not exist
+      const existingInvite = await models.Invite.findOne({
+        email,
+        orgId: project.saasOrgId,
+        status: 'pending',
+      }).lean();
+
+      if (existingInvite) {
+        const users = await models.OrganizationMember.find({
+          orgId: project.saasOrgId,
+          status: 'active',
+        })
+          .populate('userId', 'email name')
+          .sort({ createdAt: -1 })
+          .lean();
+
+        return res.status(400).render('projects/settings', {
+          title: `${project.name} Settings - SuperInsights`,
+          project,
+          users,
+          currentProjectRole: currentRole,
+          currentSection: 'settings',
+          errors: ['An invite is already pending for that email'],
+          values,
+          successMessage: null,
+          environments: Project.ENVIRONMENTS,
+        });
+      }
+
+      const { token, tokenHash } = models.Invite.generateToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await models.Invite.create({
+        email,
+        tokenHash,
+        expiresAt,
+        createdByUserId: req.session.user.id,
+        orgId: project.saasOrgId,
+        role: roleToAssign,
+        status: 'pending',
       });
+
+      const base = process.env.PUBLIC_URL || 'http://localhost:3000';
+      const inviteLink = `${base}/accept-invite?token=${token}`;
+
+      try {
+        await services.email.sendEmail({
+          to: email,
+          subject: `You're invited to join ${project.name}`,
+          html: `<p>You've been invited to join <strong>${project.name}</strong> as a ${roleToAssign}.</p>
+            <p><a href="${inviteLink}">Click here to accept the invitation</a></p>`,
+          type: 'invite',
+        });
+      } catch (e) {
+        // ignore
+      }
     }
-
-    project.users.push({
-      userId: user._id,
-      role: roleToAssign,
-      addedAt: new Date(),
-    });
-
-    await project.save();
-    await project.populate('users.userId');
 
     try {
       const actorId = req?.session?.user?.id;
@@ -450,20 +764,23 @@ exports.postAddUser = async (req, res, next) => {
       // ignore
     }
 
-    const updatedRole = project.getUserRole(currentUserId);
-
-    if (!updatedRole) {
-      return res.redirect('/projects');
-    }
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
-      users: project.users,
-      currentProjectRole: updatedRole,
+      users,
+      currentProjectRole: currentRole,
+      currentSection: 'settings',
       errors: [],
       values,
-      successMessage: 'User added to project.',
+      successMessage: user ? 'User added to project.' : 'Invite sent.',
       environments: Project.ENVIRONMENTS,
     });
   } catch (err) {
@@ -474,17 +791,25 @@ exports.postAddUser = async (req, res, next) => {
 exports.postRemoveUser = async (req, res, next) => {
   try {
     const project = req.project;
-    const currentUserId = req.session.user.id;
     const currentRole = req.userProjectRole;
 
     const removeUserId = req.body.userId;
 
     if (!removeUserId) {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
-        users: project.users,
+        users,
         currentProjectRole: currentRole,
+        currentSection: 'settings',
         errors: ['User ID is required'],
         values: {
           name: project.name,
@@ -497,17 +822,61 @@ exports.postRemoveUser = async (req, res, next) => {
       });
     }
 
-    const owners = project.users.filter((u) => u.role === 'owner');
 
-    if (
-      owners.length === 1 &&
-      owners[0].userId.toString() === removeUserId.toString()
-    ) {
+    const owners = await models.OrganizationMember.countDocuments({
+      orgId: project.saasOrgId,
+      role: 'owner',
+      status: 'active',
+    });
+
+    const removingMember = await models.OrganizationMember.findOne({
+      orgId: project.saasOrgId,
+      userId: removeUserId,
+      status: 'active',
+    });
+
+    if (!removingMember) {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.status(404).render('projects/settings', {
+        title: `${project.name} Settings - SuperInsights`,
+        project,
+        users,
+        currentProjectRole: currentRole,
+        currentSection: 'settings',
+        errors: ['Member not found'],
+        values: {
+          name: project.name,
+          icon: project.icon,
+          environment: project.environment,
+          dataRetentionDays: project.dataRetentionDays,
+        },
+        successMessage: null,
+        environments: Project.ENVIRONMENTS,
+      });
+    }
+
+    if (removingMember.role === 'owner' && owners <= 1) {
+      const users = await models.OrganizationMember.find({
+        orgId: project.saasOrgId,
+        status: 'active',
+      })
+        .populate('userId', 'email name')
+        .sort({ createdAt: -1 })
+        .lean();
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
-        users: project.users,
+        users,
         currentProjectRole: currentRole,
+        currentSection: 'settings',
         errors: ['Cannot remove the last project owner'],
         values: {
           name: project.name,
@@ -520,12 +889,8 @@ exports.postRemoveUser = async (req, res, next) => {
       });
     }
 
-    project.users = project.users.filter(
-      (u) => u.userId.toString() !== removeUserId.toString()
-    );
-
-    await project.save();
-    await project.populate('users.userId');
+    removingMember.status = 'removed';
+    await removingMember.save();
 
     try {
       const actorId = req?.session?.user?.id;
@@ -562,17 +927,20 @@ exports.postRemoveUser = async (req, res, next) => {
       // ignore
     }
 
-    const updatedRole = project.getUserRole(currentUserId);
-
-    if (!updatedRole) {
-      return res.redirect('/projects');
-    }
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
-      users: project.users,
-      currentProjectRole: updatedRole,
+      users,
+      currentProjectRole: currentRole,
+      currentSection: 'settings',
       errors: [],
       values: {
         name: project.name,

@@ -1,5 +1,5 @@
-const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const { models } = require('../utils/saasbackend');
+const Project = require('../models/Project');
 const { logAction } = require('../utils/aggregatedLogger');
 const { ACTION_CODES } = require('../utils/actionCodes');
 const { logAudit } = require('../utils/auditLogger');
@@ -40,7 +40,7 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
-    const existing = await User.findOne({ email });
+    const existing = await models.User.findOne({ email }).lean();
     if (existing) {
       return res.status(400).render('auth/register', {
         title: 'Register - SuperInsights',
@@ -49,17 +49,44 @@ exports.postRegister = async (req, res, next) => {
       });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const userCount = await models.User.countDocuments();
+    const saasRole = userCount === 0 ? 'admin' : 'user';
 
-    const userCount = await User.countDocuments();
-    const role = userCount === 0 ? User.ROLES.ADMIN : User.ROLES.VIEWER;
+    const user = await models.User.create({ email, passwordHash: password, role: saasRole });
 
-    const user = await User.create({ email, passwordHash, role });
+    // Onboarding A: create org + initial project
+    const orgName = `${user.email.split('@')[0]}'s Workspace`;
+    const org = await models.Organization.create({
+      name: orgName,
+      slug: `${user.email.split('@')[0]}-${Date.now().toString(36)}`,
+      ownerUserId: user._id,
+      allowPublicJoin: false,
+      status: 'active',
+    });
+
+    await models.OrganizationMember.create({
+      orgId: org._id,
+      userId: user._id,
+      role: 'owner',
+      status: 'active',
+      addedByUserId: user._id,
+    });
+
+    const { publicKey, secretKey } = Project.generateApiKeys();
+    const project = await Project.create({
+      name: 'My First Project',
+      icon: '📊',
+      environment: 'production',
+      dataRetentionDays: 90,
+      publicApiKey: publicKey,
+      secretApiKey: secretKey,
+      saasOrgId: org._id,
+    });
 
     req.session.user = {
       id: user._id.toString(),
       email: user.email,
-      role: user.role,
+      role: user.role === 'admin' ? 'admin' : 'viewer',
     };
 
     try {
@@ -92,7 +119,7 @@ exports.postRegister = async (req, res, next) => {
       // ignore
     }
 
-    res.redirect('/');
+    res.redirect(`/projects/${project._id.toString()}/dashboard`);
   } catch (err) {
     next(err);
   }
@@ -115,7 +142,7 @@ exports.postLogin = async (req, res, next) => {
     const email = normalizeEmail(req.body.email);
     const password = req.body.password || '';
 
-    const user = await User.findOne({ email });
+    const user = await models.User.findOne({ email });
     if (!user) {
       return res.status(400).render('auth/login', {
         title: 'Login - SuperInsights',
@@ -124,7 +151,7 @@ exports.postLogin = async (req, res, next) => {
       });
     }
 
-    const matches = await bcrypt.compare(password, user.passwordHash);
+    const matches = await user.comparePassword(password);
     if (!matches) {
       return res.status(400).render('auth/login', {
         title: 'Login - SuperInsights',
@@ -136,7 +163,7 @@ exports.postLogin = async (req, res, next) => {
     req.session.user = {
       id: user._id.toString(),
       email: user.email,
-      role: user.role,
+      role: user.role === 'admin' ? 'admin' : 'viewer',
     };
 
     try {
@@ -169,7 +196,7 @@ exports.postLogin = async (req, res, next) => {
       // ignore
     }
 
-    res.redirect('/');
+    res.redirect('/projects');
   } catch (err) {
     next(err);
   }
@@ -222,14 +249,17 @@ exports.postLogout = (req, res, next) => {
 
 exports.getUsers = async (req, res, next) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const users = await models.User.find()
+      .select('email role createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.render('admin/users', {
       title: 'User Management - SuperInsights',
       users,
-      roles: User.ROLES,
+      roles: { ADMIN: 'admin', VIEWER: 'viewer' },
       errors: [],
-      values: { email: '', role: User.ROLES.VIEWER },
+      values: { email: '', role: 'viewer' },
       invitedUserEmail: null,
     });
   } catch (err) {
@@ -244,33 +274,33 @@ function generateTempPassword() {
 exports.postInviteUser = async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
-    const role = req.body.role || User.ROLES.VIEWER;
+    const role = req.body.role || 'viewer';
 
     const errors = [];
     if (!email) errors.push('Email is required');
-    if (![User.ROLES.ADMIN, User.ROLES.VIEWER].includes(role)) {
+    if (!['admin', 'viewer'].includes(role)) {
       errors.push('Invalid role');
     }
 
     if (errors.length) {
-      const users = await User.find().sort({ createdAt: -1 }).lean();
+      const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
       return res.status(400).render('admin/users', {
         title: 'User Management - SuperInsights',
         users,
-        roles: User.ROLES,
+        roles: { ADMIN: 'admin', VIEWER: 'viewer' },
         errors,
         values: { email, role },
         invitedUserEmail: null,
       });
     }
 
-    const existing = await User.findOne({ email });
+    const existing = await models.User.findOne({ email }).lean();
     if (existing) {
-      const users = await User.find().sort({ createdAt: -1 }).lean();
+      const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
       return res.status(400).render('admin/users', {
         title: 'User Management - SuperInsights',
         users,
-        roles: User.ROLES,
+        roles: { ADMIN: 'admin', VIEWER: 'viewer' },
         errors: ['A user with that email already exists'],
         values: { email, role },
         invitedUserEmail: null,
@@ -278,9 +308,8 @@ exports.postInviteUser = async (req, res, next) => {
     }
 
     const tempPassword = generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
-
-    const user = await User.create({ email, passwordHash, role });
+    const saasRole = role === 'admin' ? 'admin' : 'user';
+    const user = await models.User.create({ email, passwordHash: tempPassword, role: saasRole });
 
     try {
       const actorId = req?.session?.user?.id;
@@ -315,14 +344,14 @@ exports.postInviteUser = async (req, res, next) => {
       // ignore
     }
 
-    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
 
     res.render('admin/users', {
       title: 'User Management - SuperInsights',
       users,
-      roles: User.ROLES,
+      roles: { ADMIN: 'admin', VIEWER: 'viewer' },
       errors: [],
-      values: { email: '', role: User.ROLES.VIEWER },
+      values: { email: '', role: 'viewer' },
       invitedUserEmail: user.email,
     });
   } catch (err) {

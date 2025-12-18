@@ -1,4 +1,5 @@
 const Project = require('../models/Project');
+const { models } = require('../utils/saasbackend');
 
 async function ensureProjectAccess(req, res, next) {
   try {
@@ -12,7 +13,7 @@ async function ensureProjectAccess(req, res, next) {
       });
     }
 
-    const project = await Project.findById(projectId).populate('users.userId').exec();
+    const project = await Project.findById(projectId).exec();
 
     if (!project || project.deletedAt) {
       return res.status(404).render('404', {
@@ -20,17 +21,24 @@ async function ensureProjectAccess(req, res, next) {
       });
     }
 
-    if (!project.hasUserAccess(userId)) {
+    const membership = await models.OrganizationMember.findOne({
+      orgId: project.saasOrgId,
+      userId,
+      status: 'active',
+    }).lean();
+
+    if (!membership) {
       return res.status(403).render('error', {
         status: 403,
         message: 'You do not have permission to access this project.',
       });
     }
 
-    const role = project.getUserRole(userId);
+    const role = membership.role;
 
     req.project = project;
     req.userProjectRole = role;
+    req.projectBasePath = `/projects/${project._id.toString()}`;
 
     return next();
   } catch (err) {
