@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <%- include('../partials/error-tracking') %>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Public links</h1>
+          <p class="text-sm text-base-content/70 mt-1">
+            Projects with public view links enabled.
+          </p>
+        </div>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Project ID</th>
+                  <th>Enabled</th>
+                  <th>Created</th>
+                  <th>Last regenerated</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (projects && projects.length) { %>
+                <% projects.forEach(function (p) { %>
+                <tr>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <span><%= p.icon || '📊' %></span>
+                      <span class="font-semibold"><%= p.name %></span>
+                    </div>
+                  </td>
+                  <td class="font-mono text-xs"><%= p._id %></td>
+                  <td>
+                    <% if (p.publicLinkEnabled) { %>
+                      <span class="badge badge-success">Enabled</span>
+                    <% } else { %>
+                      <span class="badge">Disabled</span>
+                    <% } %>
+                  </td>
+                  <td><%= p.publicLinkCreatedAt ? new Date(p.publicLinkCreatedAt).toISOString() : '' %></td>
+                  <td><%= p.publicLinkLastRegeneratedAt ? new Date(p.publicLinkLastRegeneratedAt).toISOString() : '' %></td>
+                  <td class="text-right">
+                    <form action="/admin/public-links/revoke" method="POST" class="inline">
+                      <input type="hidden" name="projectId" value="<%= p._id %>" />
+                      <button type="submit" class="btn btn-ghost btn-xs text-error">Revoke</button>
+                    </form>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="6">No public links enabled.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

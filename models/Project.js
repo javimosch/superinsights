@@ -3,26 +3,6 @@ const { generateKeyPair } = require('../utils/apiKeys');
 
 const ENVIRONMENTS = ['production', 'staging', 'development'];
 
-const ProjectUserSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    role: {
-      type: String,
-      enum: ['owner', 'admin', 'viewer'],
-      required: true,
-    },
-    addedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
 const ProjectSchema = new mongoose.Schema(
   {
     name: {
@@ -55,7 +35,36 @@ const ProjectSchema = new mongoose.Schema(
       min: 1,
       max: 365,
     },
-    users: [ProjectUserSchema],
+    saasOrgId: {
+      type: mongoose.Schema.Types.ObjectId,
+      index: true,
+      required: true,
+    },
+    publicLinkEnabled: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    publicLinkTokenHash: {
+      type: String,
+      default: null,
+    },
+    publicLinkToken: {
+      type: String,
+      default: null,
+    },
+    publicLinkCreatedAt: {
+      type: Date,
+      default: null,
+    },
+    publicLinkRevokedAt: {
+      type: Date,
+      default: null,
+    },
+    publicLinkLastRegeneratedAt: {
+      type: Date,
+      default: null,
+    },
     deletedAt: {
       type: Date,
       default: null,
@@ -72,10 +81,10 @@ ProjectSchema.statics.generateApiKeys = function generateApiKeys() {
   return generateKeyPair();
 };
 
-ProjectSchema.statics.findActiveProjects = function findActiveProjects(userId) {
+ProjectSchema.statics.findActiveProjectsByOrgIds = function findActiveProjectsByOrgIds(orgIds) {
   return this.find({
     deletedAt: null,
-    'users.userId': userId,
+    saasOrgId: { $in: orgIds },
   })
     .sort({ createdAt: -1 })
     .lean();
@@ -87,23 +96,6 @@ ProjectSchema.statics.softDelete = function softDelete(projectId) {
     { deletedAt: new Date() },
     { new: true }
   );
-};
-
-ProjectSchema.methods.hasUserAccess = function hasUserAccess(userId) {
-  return this.users.some((u) => {
-    const storedUserId = u.userId && u.userId._id ? u.userId._id : u.userId;
-    if (!storedUserId) return false;
-    return storedUserId.toString() === userId.toString();
-  });
-};
-
-ProjectSchema.methods.getUserRole = function getUserRole(userId) {
-  const entry = this.users.find((u) => {
-    const storedUserId = u.userId && u.userId._id ? u.userId._id : u.userId;
-    if (!storedUserId) return false;
-    return storedUserId.toString() === userId.toString();
-  });
-  return entry ? entry.role : null;
 };
 
 ProjectSchema.methods.regenerateKeys = function regenerateKeys() {
