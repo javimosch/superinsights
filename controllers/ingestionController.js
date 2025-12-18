@@ -117,10 +117,18 @@ async function postEvents(req, res, next) {
         throw new Error('Field "eventName" is required');
       }
 
+      if (item.durationMs !== undefined && item.durationMs !== null) {
+        const duration = Number(item.durationMs);
+        if (!Number.isFinite(duration) || duration < 0) {
+          throw new Error('Field "durationMs" must be a non-negative number');
+        }
+      }
+
       return {
         projectId: req.project._id,
         eventName: item.eventName,
         properties: item.properties || {},
+        durationMs: item.durationMs,
         sessionId: item.sessionId,
         clientId: item.clientId,
         timestamp: parseTimestamp(item.timestamp),
