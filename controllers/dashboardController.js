@@ -479,11 +479,13 @@ exports.getDashboard = async (req, res, next) => {
     return res.render('analytics/dashboard', {
       title: 'Dashboard',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe: payload.timeframe,
       pageViews: payload.pageViews,
       events: payload.events,
       errors: payload.errors,
       performance: payload.performance,
+      currentSection: 'dashboard',
       currentUser: req.session.user || null,
       currentProjectRole: req.userProjectRole || null,
     });

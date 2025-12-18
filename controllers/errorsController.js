@@ -169,6 +169,7 @@ exports.getErrorsAnalytics = async (req, res, next) => {
     return res.render('analytics/errors', {
       title: 'Errors',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe,
       browser,
       errorType,
@@ -176,8 +177,9 @@ exports.getErrorsAnalytics = async (req, res, next) => {
       totalErrors: totalErrors || 0,
       groupedErrors: groupedErrors || [],
       uniqueFingerprints: uniqueFingerprints || 0,
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      currentSection: 'errors',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);
@@ -221,6 +223,7 @@ exports.getErrorDetail = async (req, res, next) => {
     return res.render('analytics/error-detail', {
       title: 'Error Detail',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       fingerprint,
       timeframe,
       occurrences: rows,
@@ -229,8 +232,9 @@ exports.getErrorDetail = async (req, res, next) => {
       firstSeen,
       lastSeen,
       errorDetails,
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      currentSection: 'errors',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);

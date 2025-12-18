@@ -150,6 +150,7 @@ exports.getPageViewsAnalytics = async (req, res, next) => {
     return res.render('analytics/pageviews', {
       title: 'Page views',
       project: req.project,
+      projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe,
       deviceType,
       urlPrefix,
@@ -157,8 +158,9 @@ exports.getPageViewsAnalytics = async (req, res, next) => {
       totalViews: totalViews || 0,
       uniqueVisitors: uniqueVisitors || 0,
       topPages: topPages || [],
-      currentUser: req.user,
-      currentProjectRole: req.currentProjectRole,
+      currentSection: 'pageviews',
+      currentUser: (req.session && req.session.user) || null,
+      currentProjectRole: req.userProjectRole || null,
     });
   } catch (err) {
     return next(err);
