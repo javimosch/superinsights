@@ -1,9 +1,9 @@
 {
   "name": "superinsights",
   "version": "1.0.0",
-  "description": "SuperInsights starter app",
-  "license": "ISC",
-  "author": "",
+  "description": "A comprehensive analytics and insights platform",
+  "license": "MIT",
+  "author": "Javier L. Arancibia <arancibiajav@gmail.com>",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
