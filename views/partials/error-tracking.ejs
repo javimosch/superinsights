@@ -1,0 +1,7 @@
+<script src="/saas/api/error-tracking/browser-sdk"></script>
+<script>
+  (function () {
+    if (!window.saasbackend || !window.saasbackend.errorTracking) return;
+    window.saasbackend.errorTracking.config({});
+  })();
+</script>
