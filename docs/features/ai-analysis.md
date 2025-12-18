@@ -1,15 +1,28 @@
 # AI Analysis
 
-AI Analysis generates an LLM-written report (Markdown) for a project over a selected time range by aggregating SuperInsights data (page views, events, timed events, errors, and performance web vitals) and sending it to an LLM via OpenRouter.
+## What it is
 
-## Access
+AI Analysis generates an LLM-written report (Markdown) for a project over a selected time range.
 
-- Authenticated users only.
-- AI Analysis is not available via public links.
+It aggregates SuperInsights data (page views, events, timed events, errors, and performance web vitals), optionally applies an analysis preset, and sends the payload to an LLM via OpenRouter.
+
+## Base URL / mount prefix
+
+This repo runs SuperInsights as a standalone Express app.
+
+- Project UI routes are mounted at `/projects/*`.
+- Preset API routes are mounted at `/ai-analysis/*`.
+
+If you mount SuperInsights behind a reverse proxy or under a prefix, that prefix applies to **all** routes.
+
+Example: if mounted under `/superinsights`, then:
+
+- AI Analysis page: `GET /superinsights/projects/:projectId/ai-analysis`
+- Presets API: `GET /superinsights/ai-analysis/presets`
 
 ## Configuration
 
-Set the following environment variables:
+### OpenRouter
 
 - `OPENROUTER_API_KEY` (required)
   - Your OpenRouter API key.
@@ -23,6 +36,79 @@ Set the following environment variables:
   - Default: `900`
 - `AI_ANALYSIS_TIMEOUT_MS` (optional)
   - Default: `25000`
+
+## API
+
+### User (session-authenticated)
+
+All endpoints below require an authenticated session (middleware: `middleware/auth.js`).
+
+#### Run analysis
+
+- `POST /projects/:projectId/ai-analysis/run`
+
+Request body:
+
+```json
+{
+  "mode": "preset" | "custom",
+  "timeframe": "24h" | "7d" | "30d",
+  "start": "2025-01-01T00:00",
+  "end": "2025-01-02T00:00",
+  "presetId": "builtin:traffic" | "<mongoObjectId>"
+}
+```
+
+Example:
+
+```bash
+curl -X POST "${BASE_URL}/projects/${PROJECT_ID}/ai-analysis/run" \
+  -H "Content-Type: application/json" \
+  -b "sid=${SID_COOKIE}" \
+  -d '{"mode":"preset","timeframe":"7d","presetId":"builtin:performance"}'
+```
+
+#### Run history (JSON)
+
+- `GET /projects/:projectId/ai-analysis/runs`
+- `GET /projects/:projectId/ai-analysis/runs/:runId`
+
+### Presets (user-level)
+
+Presets are user-level and can be `private` or `public`.
+
+Built-in presets exist and use IDs like `builtin:traffic` (read-only).
+
+#### List presets
+
+- `GET /ai-analysis/presets`
+
+Response shape:
+
+```json
+{
+  "success": true,
+  "data": {
+    "builtins": ["..."],
+    "mine": ["..."],
+    "public": ["..."]
+  }
+}
+```
+
+#### CRUD
+
+- `POST /ai-analysis/presets`
+- `GET /ai-analysis/presets/:presetId`
+- `PUT /ai-analysis/presets/:presetId`
+- `DELETE /ai-analysis/presets/:presetId`
+- `POST /ai-analysis/presets/:presetId/publish`
+- `POST /ai-analysis/presets/:presetId/unpublish`
+
+#### AI-assisted presets
+
+- `POST /ai-analysis/presets/ai-generate` with `{ goal, visibility }`
+- `POST /ai-analysis/presets/:presetId/ai-refine` with `{ goal }`
 
 ## Usage
 
@@ -43,44 +129,6 @@ The report is returned as Markdown and rendered in the UI using `marked`.
 - Timed events: top slow events (based on `durationMs`)
 - Errors: totals, unique fingerprints, by day, top fingerprints
 - Performance: totals, by day, web vitals percentiles
-
-## Presets
-
-Presets change the analysis focus by appending additional instructions to the LLM prompt.
-
-- Presets are **user-level**.
-- Presets can be:
-  - `private`: only the owner can see/use/edit
-  - `public`: visible to all authenticated users (read/use), but only the owner can edit/delete
-- Built-in presets exist (read-only) and are returned alongside user presets.
-
-When you run analysis with a preset, the run stores:
-
-- `presetId`
-- `presetSnapshot`
-
-This makes runs reproducible even if the preset changes later.
-
-### Preset API (authenticated)
-
-Mounted under `/ai-analysis`:
-
-- `GET /ai-analysis/presets`
-- `POST /ai-analysis/presets`
-- `GET /ai-analysis/presets/:presetId`
-- `PUT /ai-analysis/presets/:presetId`
-- `DELETE /ai-analysis/presets/:presetId`
-- `POST /ai-analysis/presets/:presetId/publish`
-- `POST /ai-analysis/presets/:presetId/unpublish`
-
-### AI-assisted presets
-
-The UI includes an **AI preset assistant** that can create or refine presets.
-
-- Create: `POST /ai-analysis/presets/ai-generate` with `{ goal, visibility }`
-- Refine: `POST /ai-analysis/presets/:presetId/ai-refine` with `{ goal }`
-
-The LLM returns strict JSON defining the preset.
 
 ## Samples per pattern
 
