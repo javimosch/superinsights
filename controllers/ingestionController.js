@@ -130,7 +130,7 @@ async function postEvents(req, res, next) {
         properties: item.properties || {},
         durationMs: item.durationMs,
         sessionId: item.sessionId,
-        clientId: item.clientId,
+        clientId: item.clientId || (item.properties && (item.properties.client_id || item.properties.clientId)) || undefined,
         timestamp: parseTimestamp(item.timestamp),
       };
     });
@@ -241,9 +241,11 @@ async function postPerformanceMetrics(req, res, next) {
         fid: item.fid,
         ttfb: item.ttfb,
         url: item.url,
+        clientId: item.clientId || (item.properties && (item.properties.client_id || item.properties.clientId)) || undefined,
         deviceType: item.deviceType,
         browser: item.browser,
         connectionType: item.connectionType,
+        properties: item.properties || {},
         timestamp: parseTimestamp(item.timestamp),
       };
     });
