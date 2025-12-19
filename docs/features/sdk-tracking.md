@@ -37,6 +37,14 @@ Relevant options:
   - Default: `false`
   - When enabled, logs SDK activity to the browser console.
 
+- `transport` (`'http' | 'ws'`, optional)
+  - Default: `'http'`
+  - When set to `'ws'`, the SDK uses a WebSocket connection for ingestion instead of HTTP POST.
+
+- `wsPath` (string, optional)
+  - Default: `'/v1/ws'`
+  - Only used when `transport: 'ws'`. Useful if SuperInsights is mounted behind a reverse proxy under a different path.
+
 ## API
 
 ### Public (API key)
@@ -50,7 +58,28 @@ Accepted headers (either works):
 - `Authorization: Bearer ${API_KEY}`
 - `X-API-Key: ${API_KEY}`
 
+### WebSocket (API key)
+
+When using `transport: 'ws'`, the SDK connects to:
+
+- `GET /v1/ws?apiKey=${API_KEY}`
+
+Notes:
+
+- The browser WebSocket API does not allow setting `Authorization` / `X-API-Key` headers in a portable way, so the key is passed via a query parameter.
+- If you mount SuperInsights under a prefix, the prefix applies here too.
+  - Example: `wss://your-domain/superinsights/v1/ws?apiKey=pk_...`
+
 ### Browser SDK methods
+
+#### Enabling WS transport
+
+```js
+SuperInsights.init('pk_...', {
+  transport: 'ws',
+  // wsPath: '/superinsights/v1/ws', // only if you need to override
+});
+```
 
 #### `SuperInsights.trackTiming(eventName, durationMs, properties?)`
 
