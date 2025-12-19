@@ -28,6 +28,20 @@ router.get(
 );
 
 router.post(
+  '/:id/settings/drop-events',
+  ensureProjectAccess,
+  ensureProjectRole(['owner', 'admin']),
+  projectController.postUpdateDropEventsSettings
+);
+
+router.get(
+  '/:id/settings/drop-events/report',
+  ensureProjectAccess,
+  ensureProjectRole(['owner', 'admin']),
+  projectController.getDropEventsReport
+);
+
+router.post(
   '/:id/update',
   ensureProjectAccess,
   ensureProjectRole(['owner', 'admin']),
