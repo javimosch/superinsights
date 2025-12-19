@@ -255,10 +255,12 @@ exports.getUsers = async (req, res, next) => {
       .lean();
 
     res.render('admin/users', {
-      title: 'User Management - SuperInsights',
+      title: 'Platform users - SuperInsights',
       users,
-      roles: { ADMIN: 'admin', VIEWER: 'viewer' },
+      platformInvites: [],
       errors: [],
+      successMessage: null,
+      inviteLink: null,
       values: { email: '', role: 'viewer' },
       invitedUserEmail: null,
     });
@@ -285,10 +287,12 @@ exports.postInviteUser = async (req, res, next) => {
     if (errors.length) {
       const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
       return res.status(400).render('admin/users', {
-        title: 'User Management - SuperInsights',
+        title: 'Platform users - SuperInsights',
         users,
-        roles: { ADMIN: 'admin', VIEWER: 'viewer' },
+        platformInvites: [],
         errors,
+        successMessage: null,
+        inviteLink: null,
         values: { email, role },
         invitedUserEmail: null,
       });
@@ -298,10 +302,12 @@ exports.postInviteUser = async (req, res, next) => {
     if (existing) {
       const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
       return res.status(400).render('admin/users', {
-        title: 'User Management - SuperInsights',
+        title: 'Platform users - SuperInsights',
         users,
-        roles: { ADMIN: 'admin', VIEWER: 'viewer' },
+        platformInvites: [],
         errors: ['A user with that email already exists'],
+        successMessage: null,
+        inviteLink: null,
         values: { email, role },
         invitedUserEmail: null,
       });
@@ -347,10 +353,12 @@ exports.postInviteUser = async (req, res, next) => {
     const users = await models.User.find().select('email role createdAt').sort({ createdAt: -1 }).lean();
 
     res.render('admin/users', {
-      title: 'User Management - SuperInsights',
+      title: 'Platform users - SuperInsights',
       users,
-      roles: { ADMIN: 'admin', VIEWER: 'viewer' },
+      platformInvites: [],
       errors: [],
+      successMessage: null,
+      inviteLink: null,
       values: { email: '', role: 'viewer' },
       invitedUserEmail: user.email,
     });
