@@ -2,6 +2,11 @@ const PageView = require('../models/PageView');
 const Event = require('../models/Event');
 const ErrorModel = require('../models/Error');
 const PerformanceMetric = require('../models/PerformanceMetric');
+const {
+  getDropEventsConfig,
+  shouldDropEventItem,
+  incrementDropCounter,
+} = require('../utils/ingestionDropSettings');
 
 function parseTimestamp(value) {
   if (value === undefined || value === null) {
@@ -108,7 +113,28 @@ async function postEvents(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
-    const docs = items.map((item) => {
+    const dropConfig = await getDropEventsConfig(req.project._id);
+    const keptItems = [];
+    let droppedCount = 0;
+
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
+      if (shouldDropEventItem(dropConfig, item)) {
+        droppedCount += 1;
+      } else {
+        keptItems.push(item);
+      }
+    }
+
+    if (droppedCount) {
+      incrementDropCounter(req.project._id, droppedCount);
+    }
+
+    if (!keptItems.length) {
+      return res.status(201).json({ success: true, count: 0, dropped: droppedCount });
+    }
+
+    const docs = keptItems.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
       }
