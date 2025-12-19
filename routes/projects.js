@@ -9,16 +9,18 @@ const performanceController = require('../controllers/performanceController');
  const dashboardController = require('../controllers/dashboardController');
 const aiAnalysisController = require('../controllers/aiAnalysisController');
 const { ensureAuthenticated } = require('../middleware/auth');
+ const { requireOrgSelected, requireOrgRoleAtLeast } = require('../middleware/orgContext');
 const {
   ensureProjectAccess,
   ensureProjectRole,
 } = require('../middleware/projectAccess');
 
 router.use(ensureAuthenticated);
+ router.use(requireOrgSelected);
 
 router.get('/', projectController.getProjects);
-router.get('/new', projectController.getNewProject);
-router.post('/', projectController.postCreateProject);
+router.get('/new', requireOrgRoleAtLeast('owner'), projectController.getNewProject);
+router.post('/', requireOrgRoleAtLeast('owner'), projectController.postCreateProject);
 
 router.get(
   '/:id/settings',

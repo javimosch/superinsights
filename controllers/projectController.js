@@ -37,25 +37,24 @@ function parseDataRetentionDays(value) {
 
 exports.getProjects = async (req, res, next) => {
   try {
-    const userId = req.session.user.id;
+    const orgId = req.currentOrg ? req.currentOrg._id : null;
 
-    const memberships = await models.OrganizationMember.find({
-      userId,
-      status: 'active',
-    })
-      .select('orgId')
-      .lean();
-
-    const orgIds = (memberships || []).map((m) => m.orgId);
-    const projects = orgIds.length
-      ? await Project.findActiveProjectsByOrgIds(orgIds)
+    const projects = orgId
+      ? await Project.find({ deletedAt: null, saasOrgId: orgId }).sort({ createdAt: -1 }).lean()
       : [];
+
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
     res.render('projects/index', {
       title: 'Projects - SuperInsights',
       projects,
       errors: [],
       values: {},
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' }
+      ]
     });
   } catch (err) {
     next(err);
@@ -244,6 +243,7 @@ exports.getNewProject = (req, res) => {
 
 exports.postCreateProject = async (req, res, next) => {
   try {
+    const orgId = req.currentOrg ? req.currentOrg._id : null;
     const name = normalizeName(req.body.name);
     const icon = req.body.icon || '📊';
     const environment = req.body.environment || 'production';
@@ -282,28 +282,12 @@ exports.postCreateProject = async (req, res, next) => {
       });
     }
 
-    // Create SaaS org + owner membership
-    const slugBase = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 50);
-
-    const org = await models.Organization.create({
-      name,
-      slug: `${slugBase}-${Date.now().toString(36)}`,
-      ownerUserId: req.session.user.id,
-      allowPublicJoin: false,
-      status: 'active',
-    });
-
-    await models.OrganizationMember.create({
-      orgId: org._id,
-      userId: req.session.user.id,
-      role: 'owner',
-      status: 'active',
-      addedByUserId: req.session.user.id,
-    });
+    if (!orgId) {
+      return res.status(403).render('error', {
+        status: 403,
+        message: 'You must belong to an organization to create a project.',
+      });
+    }
 
     const { publicKey, secretKey } = Project.generateApiKeys();
 
@@ -314,7 +298,7 @@ exports.postCreateProject = async (req, res, next) => {
       dataRetentionDays,
       publicApiKey: publicKey,
       secretApiKey: secretKey,
-      saasOrgId: org._id,
+      saasOrgId: orgId,
     });
 
     try {
@@ -374,24 +358,33 @@ exports.getProjectSettings = (req, res) => {
 
       const dropEventsConfig = await getDropEventsConfig(project._id);
 
-      return res.render('projects/settings', {
-        title: `${project.name} Settings - SuperInsights`,
-        project,
-        users,
-        currentProjectRole: role,
-        currentSection: 'settings',
-        errors: [],
-        values: {
-          name: project.name,
-          icon: project.icon,
-          environment: project.environment,
-          dataRetentionDays: project.dataRetentionDays,
-        },
-        dropEventsConfig,
-        dropEventsCount: getDropCounter(project._id),
-        successMessage: null,
-        environments: Project.ENVIRONMENTS,
-      });
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
+    return res.render('projects/settings', {
+      title: `${project.name} Settings - SuperInsights`,
+      project,
+      users,
+      currentProjectRole: role,
+      currentSection: 'settings',
+      errors: [],
+      values: {
+        name: project.name,
+        icon: project.icon,
+        environment: project.environment,
+        dataRetentionDays: project.dataRetentionDays,
+      },
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(project._id),
+      successMessage: null,
+      environments: Project.ENVIRONMENTS,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: project.name, href: `/projects/${project._id}/dashboard` },
+        { label: 'Settings', href: `/projects/${project._id}/settings` }
+      ]
+    });
     } catch (err) {
       return res.status(500).render('error', {
         status: 500,
