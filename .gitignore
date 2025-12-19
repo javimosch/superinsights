@@ -1,5 +1,6 @@
 .env.staging
-ref-*
+data
 uploads
 node_modules
 .env
+ref-*
