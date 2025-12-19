@@ -1,4 +1,10 @@
 const Project = require('../models/Project');
+const Event = require('../models/Event');
+const ErrorModel = require('../models/Error');
+const PageView = require('../models/PageView');
+const PerformanceMetric = require('../models/PerformanceMetric');
+const AiAnalysisRun = require('../models/AiAnalysisRun');
+const RawLogEvent = require('../models/RawLogEvent');
 const { models, services } = require('../utils/saasbackend');
 const { logAction } = require('../utils/aggregatedLogger');
 const { ACTION_CODES } = require('../utils/actionCodes');
@@ -12,7 +18,12 @@ const {
   getDropEventsConfig,
   saveDropEventsConfig,
   getDropCounter,
+  SETTINGS_VERSION,
+  resetDropCounter,
 } = require('../utils/ingestionDropSettings');
+const { getModel } = require('../utils/saasbackend');
+
+const GlobalSetting = getModel('GlobalSetting');
 
 function normalizeName(name) {
   return (name || '').trim();
@@ -1151,5 +1162,99 @@ exports.postSoftDelete = async (req, res, next) => {
     res.redirect('/projects');
   } catch (err) {
     next(err);
+  }
+};
+
+exports.postClearProjectData = async (req, res, next) => {
+  try {
+    const project = req.project;
+    const role = req.userProjectRole;
+
+    const projectId = project && project._id;
+    if (!projectId) {
+      return res.status(400).render('error', {
+        status: 400,
+        message: 'Project not found.',
+      });
+    }
+
+    await Promise.all([
+      Event.deleteMany({ projectId }),
+      ErrorModel.deleteMany({ projectId }),
+      PageView.deleteMany({ projectId }),
+      PerformanceMetric.deleteMany({ projectId }),
+      AiAnalysisRun.deleteMany({ projectId }),
+      RawLogEvent.deleteMany({ projectId: String(projectId) }),
+      GlobalSetting.deleteMany({
+        key: `PROJECT:${String(projectId)}:INGESTION_DROP_EVENTS_V${SETTINGS_VERSION}`,
+      }),
+    ]);
+
+    resetDropCounter(projectId);
+
+    try {
+      const actorId = req?.session?.user?.id;
+      const actorEmail = req?.session?.user?.email;
+      logAction(ACTION_CODES.PROJECT_CLEAR_DATA, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: projectId ? String(projectId) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+      });
+
+      logAudit(ACTION_CODES.PROJECT_CLEAR_DATA, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: projectId ? String(projectId) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+
+      logRawAction(ACTION_CODES.PROJECT_CLEAR_DATA, {
+        userId: actorId ? String(actorId) : null,
+        email: actorEmail ? String(actorEmail) : null,
+        projectId: projectId ? String(projectId) : null,
+        status: 200,
+        method: req.method,
+        path: req.originalUrl,
+        ip: req.ip,
+      });
+    } catch (e) {
+    }
+
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const dropEventsConfig = await getDropEventsConfig(projectId);
+
+    return res.render('projects/settings', {
+      title: `${project.name} Settings - SuperInsights`,
+      project,
+      users,
+      currentProjectRole: role,
+      currentSection: 'settings',
+      errors: [],
+      values: {
+        name: project.name,
+        icon: project.icon,
+        environment: project.environment,
+        dataRetentionDays: project.dataRetentionDays,
+      },
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(projectId),
+      successMessage: 'Project data cleared successfully.',
+      environments: Project.ENVIRONMENTS,
+    });
+  } catch (err) {
+    return next(err);
   }
 };
