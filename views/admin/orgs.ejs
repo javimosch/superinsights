@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <%- include('../partials/error-tracking') %>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Organizations</h1>
+          <p class="text-sm text-base-content/70 mt-1">Manage orgs across the platform.</p>
+        </div>
+      </div>
+
+      <% if (errors && errors.length) { %>
+      <div class="alert alert-error">
+        <ul class="list-disc list-inside text-sm">
+          <% errors.forEach(function (err) { %>
+          <li><%= err %></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Create org</h2>
+          <form action="/admin/orgs" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="form-control md:col-span-2">
+              <label class="label" for="name"><span class="label-text">Name</span></label>
+              <input id="name" name="name" class="input input-bordered w-full" required value="<%= values && values.name ? values.name : '' %>" />
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Create</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Orgs</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Slug</th>
+                  <th>Status</th>
+                  <th>ID</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (orgs && orgs.length) { %>
+                <% orgs.forEach(function (org) { %>
+                <tr>
+                  <td>
+                    <form action="/admin/orgs/rename" method="POST" class="flex gap-2 items-center">
+                      <input type="hidden" name="orgId" value="<%= org._id %>" />
+                      <input name="name" class="input input-bordered input-sm w-full" value="<%= org.name %>" />
+                      <button type="submit" class="btn btn-sm">Rename</button>
+                    </form>
+                  </td>
+                  <td class="font-mono text-xs"><%= org.slug %></td>
+                  <td class="capitalize"><%= org.status %></td>
+                  <td class="font-mono text-xs"><%= org._id %></td>
+                  <td class="text-right">
+                    <% if (org.status === 'active') { %>
+                    <form action="/admin/orgs/disable" method="POST" class="inline">
+                      <input type="hidden" name="orgId" value="<%= org._id %>" />
+                      <button type="submit" class="btn btn-ghost btn-xs text-error">Disable</button>
+                    </form>
+                    <% } %>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="5">No orgs found.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
