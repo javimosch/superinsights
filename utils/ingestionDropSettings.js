@@ -21,6 +21,14 @@ function normalizeMode(value) {
   return value === 'whitelist' ? 'whitelist' : 'blacklist';
 }
 
+function normalizeOp(value) {
+  const op = String(value || '').trim();
+  if (op === 'lowerThan') return 'lowerThan';
+  if (op === 'greaterThan') return 'greaterThan';
+  if (op === 'contains') return 'contains';
+  return 'equals';
+}
+
 function normalizeFilters(filters) {
   if (!Array.isArray(filters)) return [];
 
@@ -28,7 +36,8 @@ function normalizeFilters(filters) {
     .map((f) => {
       const key = f && f.key != null ? String(f.key).trim() : '';
       const value = f && f.value != null ? String(f.value).trim() : '';
-      return { key, value };
+      const op = normalizeOp(f && f.op != null ? f.op : 'equals');
+      return { key, op, value };
     })
     .filter((f) => Boolean(f.key));
 }
@@ -100,14 +109,60 @@ function getItemMetadataValue(item, key) {
   return undefined;
 }
 
+function parseCsvList(value) {
+  if (value == null) return [];
+  const raw = String(value);
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function isFiniteNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num);
+}
+
+function matchFilterValue(v, filter) {
+  if (v === undefined || v === null) return false;
+
+  const op = normalizeOp(filter && filter.op);
+  const filterValue = filter && filter.value != null ? String(filter.value) : '';
+
+  if (op === 'equals') {
+    return String(v) === filterValue;
+  }
+
+  if (op === 'contains') {
+    const list = parseCsvList(filterValue);
+    if (!list.length) return false;
+    const vs = String(v);
+    for (let i = 0; i < list.length; i += 1) {
+      if (vs === list[i]) return true;
+    }
+    return false;
+  }
+
+  if (op === 'lowerThan') {
+    if (!isFiniteNumber(v) || !isFiniteNumber(filterValue)) return false;
+    return Number(v) < Number(filterValue);
+  }
+
+  if (op === 'greaterThan') {
+    if (!isFiniteNumber(v) || !isFiniteNumber(filterValue)) return false;
+    return Number(v) > Number(filterValue);
+  }
+
+  return false;
+}
+
 function matchesAllFilters(item, filters) {
   if (!filters || !filters.length) return false;
 
   for (let i = 0; i < filters.length; i += 1) {
     const f = filters[i];
     const v = getItemMetadataValue(item, f.key);
-    if (v === undefined || v === null) return false;
-    if (String(v) !== String(f.value)) return false;
+    if (!matchFilterValue(v, f)) return false;
   }
 
   return true;
