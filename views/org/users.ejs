@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <%- include('../partials/error-tracking') %>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold">Organization users</h1>
+          <p class="text-sm text-base-content/70 mt-1">
+            Manage members and invitations for <span class="font-semibold"><%= org && org.name ? org.name : '' %></span>.
+          </p>
+        </div>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Organization settings</h2>
+          <form action="/org/rename" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="form-control md:col-span-2">
+              <label class="label" for="orgName"><span class="label-text">Name</span></label>
+              <input id="orgName" name="name" class="input input-bordered w-full" value="<%= org && org.name ? org.name : '' %>" required />
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Rename</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <% if (successMessage) { %>
+      <div class="alert alert-success text-sm"><%= successMessage %></div>
+      <% } %>
+
+      <% if (errors && errors.length) { %>
+      <div class="alert alert-error">
+        <ul class="list-disc list-inside text-sm">
+          <% errors.forEach(function (err) { %>
+          <li><%= err %></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <% if (joinLink) { %>
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl">Invite link</h2>
+          <p class="text-sm text-base-content/70">Anyone with this link can join as a viewer.</p>
+          <div class="font-mono text-xs break-all p-3 bg-base-200 rounded border border-base-300"><%= joinLink %></div>
+        </div>
+      </section>
+      <% } %>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Add existing user</h2>
+          <form action="/org/users/add" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="form-control">
+              <label class="label" for="addEmail"><span class="label-text">Email</span></label>
+              <input id="addEmail" name="email" type="email" required class="input input-bordered w-full" />
+            </div>
+            <div class="form-control">
+              <label class="label" for="addRole"><span class="label-text">Role</span></label>
+              <select id="addRole" name="role" class="select select-bordered w-full">
+                <option value="viewer" selected>Viewer</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Add</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Invite by email</h2>
+          <form action="/org/users/invite" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="form-control">
+              <label class="label" for="inviteEmail"><span class="label-text">Email</span></label>
+              <input id="inviteEmail" name="email" type="email" required class="input input-bordered w-full" />
+            </div>
+            <div class="form-control">
+              <label class="label" for="inviteRole"><span class="label-text">Role</span></label>
+              <select id="inviteRole" name="role" class="select select-bordered w-full">
+                <option value="viewer" selected>Viewer</option>
+                <option value="owner">Owner</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Create invite</button>
+            </div>
+          </form>
+
+          <% if (inviteLink) { %>
+          <div class="alert alert-info text-sm">
+            <div class="w-full">
+              <div class="font-semibold">Invite link</div>
+              <div class="font-mono text-xs break-all mt-1"><%= inviteLink %></div>
+            </div>
+          </div>
+          <% } %>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Members</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (members && members.length) { %>
+                <% members.forEach(function (m) { %>
+                <tr>
+                  <td><%= m.userId && m.userId.email ? m.userId.email : '' %></td>
+                  <td><%= m.userId && m.userId.name ? m.userId.name : '' %></td>
+                  <td>
+                    <form action="/org/users/set-role" method="POST" class="inline-flex items-center gap-2">
+                      <input type="hidden" name="userId" value="<%= m.userId && m.userId._id ? m.userId._id : '' %>" />
+                      <select name="role" class="select select-bordered select-xs">
+                        <option value="viewer" <%= m.role === 'viewer' ? 'selected' : '' %>>Viewer</option>
+                        <option value="owner" <%= m.role === 'owner' ? 'selected' : '' %>>Owner</option>
+                      </select>
+                      <button type="submit" class="btn btn-xs">Set</button>
+                    </form>
+                  </td>
+                  <td class="text-right">
+                    <form action="/org/users/remove" method="POST" class="inline">
+                      <input type="hidden" name="userId" value="<%= m.userId && m.userId._id ? m.userId._id : '' %>" />
+                      <button type="submit" class="btn btn-ghost btn-xs text-error">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="4">No members yet.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-2">Pending invites</h2>
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (invites && invites.length) { %>
+                <% invites.forEach(function (inv) { %>
+                <tr>
+                  <td><%= inv.email %></td>
+                  <td class="capitalize"><%= inv.role %></td>
+                  <td><%= inv.expiresAt ? new Date(inv.expiresAt).toISOString() : '' %></td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="3">No pending invites.</td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
