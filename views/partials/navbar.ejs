@@ -2,11 +2,26 @@
   <div class="flex-1 px-4 flex items-center gap-4">
     <a href="/" class="text-xl font-bold">SuperInsights</a>
     <% if (currentUser) { %>
+    <% if (orgs && orgs.length) { %>
+    <form action="/org/switch" method="POST" class="flex items-center">
+      <input type="hidden" name="redirectTo" value="<%= (typeof request !== 'undefined' && request.originalUrl) ? request.originalUrl : '/projects' %>" />
+      <select name="orgId" class="select select-bordered select-sm" onchange="this.form.submit()">
+        <% orgs.forEach(function (o) { %>
+          <option value="<%= o._id %>" <%= (currentOrg && String(currentOrg._id) === String(o._id)) ? 'selected' : '' %>>
+            <%= o.name %>
+          </option>
+        <% }) %>
+      </select>
+    </form>
+    <% } %>
     <a href="/projects" class="btn btn-ghost btn-sm">Projects</a>
+    <% if (currentOrg && currentOrg.myRole === 'owner') { %>
+    <a href="/org/users" class="btn btn-ghost btn-sm">Users</a>
+    <a href="/org/public-links" class="btn btn-ghost btn-sm">Public links</a>
+    <a href="/org/logs" class="btn btn-ghost btn-sm">Logs</a>
+    <% } %>
     <% if (currentUser.role === 'admin') { %>
-    <a href="/admin/users" class="btn btn-ghost btn-sm">Users</a>
-    <a href="/admin/public-links" class="btn btn-ghost btn-sm">Public links</a>
-    <a href="/admin/logs" class="btn btn-ghost btn-sm">Logs</a>
+    <a href="/admin" class="btn btn-ghost btn-sm">Platform admin</a>
     <% } %>
     <% } %>
   </div>
@@ -25,3 +40,11 @@
     <% } %>
   </div>
 </div>
+
+<%- include('confirm-modal') %>
+<%- include('toast-container') %>
+<%- include('loading-overlay') %>
+<%- include('dropdown-menu') %>
+<%- include('slideover-panel') %>
+<%- include('alert-banner') %>
+<%- include('command-palette') %>

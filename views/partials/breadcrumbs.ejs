@@ -1,0 +1,32 @@
+<!-- Breadcrumbs - Reusable navigation component -->
+<% if (typeof breadcrumbs !== 'undefined' && breadcrumbs && breadcrumbs.length > 0) { %>
+<div class="bg-base-200/50 border-b border-base-300 px-4 py-3">
+  <div class="breadcrumbs text-sm">
+    <ul>
+      <% breadcrumbs.forEach(function(crumb, index) { %>
+      <li>
+        <% if (index < breadcrumbs.length - 1) { %>
+          <a href="<%= crumb.href %>" class="text-primary hover:text-primary-focus transition-colors duration-200">
+            <% if (crumb.icon === 'home') { %>
+              <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+              </svg>
+            <% } %>
+            <%= crumb.label %>
+          </a>
+        <% } else { %>
+          <span class="text-base-content font-medium">
+            <% if (crumb.icon === 'home') { %>
+              <svg class="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+              </svg>
+            <% } %>
+            <%= crumb.label %>
+          </span>
+        <% } %>
+      </li>
+      <% }); %>
+    </ul>
+  </div>
+</div>
+<% } %>

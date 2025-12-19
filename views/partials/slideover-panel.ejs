@@ -1,0 +1,490 @@
+<!-- Slide-over Panel - Reusable side panel for forms and details -->
+<!-- Enhanced with animations, sizes, and customizable content -->
+<div id="slideover-panel" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="slideover-panel-title">
+  <!-- Backdrop -->
+  <div class="slideover-backdrop absolute inset-0 bg-base-300/80 backdrop-blur-sm" onclick="slideoverPanel.hide()"></div>
+  
+  <!-- Panel -->
+  <div class="slideover-content absolute top-0 bottom-0 bg-base-100 shadow-xl flex flex-col">
+    <!-- Header -->
+    <div class="slideover-header flex items-center justify-between p-6 border-b border-base-300">
+      <h2 id="slideover-panel-title" class="text-xl font-bold">Panel Title</h2>
+      <button 
+        class="btn btn-sm btn-circle btn-ghost" 
+        onclick="slideoverPanel.hide()"
+        aria-label="Close panel">
+        ✕
+      </button>
+    </div>
+    
+    <!-- Body -->
+    <div id="slideover-panel-body" class="slideover-body flex-1 overflow-y-auto p-6">
+      <!-- Content will be dynamically inserted here -->
+    </div>
+    
+    <!-- Footer (hidden by default) -->
+    <div id="slideover-panel-footer" class="slideover-footer hidden border-t border-base-300 p-6">
+      <!-- Footer content will be dynamically inserted here -->
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Slide-over panel animations */
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutRight {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutLeft {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes backdropFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes backdropFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* Panel positioning and sizing */
+  #slideover-panel .slideover-content {
+    right: 0;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  #slideover-panel.position-left .slideover-content {
+    right: auto;
+    left: 0;
+  }
+
+  #slideover-panel.size-sm .slideover-content {
+    max-width: 384px;
+  }
+
+  #slideover-panel.size-md .slideover-content {
+    max-width: 500px;
+  }
+
+  #slideover-panel.size-lg .slideover-content {
+    max-width: 672px;
+  }
+
+  #slideover-panel.size-xl .slideover-content {
+    max-width: 896px;
+  }
+
+  #slideover-panel.size-full .slideover-content {
+    max-width: 100%;
+  }
+
+  /* Show animations */
+  #slideover-panel.slideover-show {
+    display: block !important;
+  }
+
+  #slideover-panel.slideover-show .slideover-backdrop {
+    animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #slideover-panel.slideover-show .slideover-content {
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #slideover-panel.slideover-show.position-left .slideover-content {
+    animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Hide animations */
+  #slideover-panel.slideover-hiding .slideover-backdrop {
+    animation: backdropFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  #slideover-panel.slideover-hiding .slideover-content {
+    animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  #slideover-panel.slideover-hiding.position-left .slideover-content {
+    animation: slideOutLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Prevent body scroll when panel is active */
+  body.slideover-active {
+    overflow: hidden;
+  }
+</style>
+
+<script>
+/**
+ * Slide-over Panel System
+ * Provides a side panel for forms, details, and other content
+ */
+class SlideoverPanel {
+  constructor(panelId = 'slideover-panel') {
+    this.panel = document.getElementById(panelId);
+    this.titleEl = document.getElementById('slideover-panel-title');
+    this.bodyEl = document.getElementById('slideover-panel-body');
+    this.footerEl = document.getElementById('slideover-panel-footer');
+    this.isVisible = false;
+    this.currentOnClose = null;
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Close on ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.isVisible) {
+        this.hide();
+      }
+    });
+  }
+
+  /**
+   * Show the slide-over panel
+   * @param {Object} options - Configuration options
+   * @param {string} options.title - Panel title (default: 'Panel Title')
+   * @param {string|HTMLElement} options.content - Body content (HTML string or element)
+   * @param {string|HTMLElement} options.footer - Footer content (HTML string or element)
+   * @param {string} options.position - Position: 'right', 'left' (default: 'right')
+   * @param {string} options.size - Size: 'sm', 'md', 'lg', 'xl', 'full' (default: 'md')
+   * @param {Function} options.onClose - Callback when panel is closed
+   */
+  show(options = {}) {
+    const {
+      title = 'Panel Title',
+      content = '',
+      footer = null,
+      position = 'right',
+      size = 'md',
+      onClose = null
+    } = options;
+
+    // Set title
+    this.titleEl.textContent = title;
+
+    // Set content
+    if (typeof content === 'string') {
+      this.bodyEl.innerHTML = content;
+    } else if (content instanceof HTMLElement) {
+      this.bodyEl.innerHTML = '';
+      this.bodyEl.appendChild(content);
+    }
+
+    // Set footer
+    if (footer) {
+      if (typeof footer === 'string') {
+        this.footerEl.innerHTML = footer;
+      } else if (footer instanceof HTMLElement) {
+        this.footerEl.innerHTML = '';
+        this.footerEl.appendChild(footer);
+      }
+      this.footerEl.classList.remove('hidden');
+    } else {
+      this.footerEl.classList.add('hidden');
+    }
+
+    // Set position
+    this.panel.classList.remove('position-left');
+    if (position === 'left') {
+      this.panel.classList.add('position-left');
+    }
+
+    // Set size
+    this.panel.classList.remove('size-sm', 'size-md', 'size-lg', 'size-xl', 'size-full');
+    this.panel.classList.add(`size-${size}`);
+
+    // Store callback
+    this.currentOnClose = onClose;
+
+    // Show panel with animation
+    this.panel.classList.remove('slideover-hiding');
+    this.panel.classList.add('slideover-show');
+    document.body.classList.add('slideover-active');
+    this.isVisible = true;
+
+    // Set ARIA attributes
+    this.panel.setAttribute('aria-hidden', 'false');
+  }
+
+  /**
+   * Hide the slide-over panel
+   */
+  hide() {
+    if (!this.isVisible) return;
+
+    // Add hiding animation
+    this.panel.classList.add('slideover-hiding');
+    this.panel.classList.remove('slideover-show');
+
+    setTimeout(() => {
+      this.panel.classList.remove('slideover-hiding');
+      this.panel.classList.add('hidden');
+      document.body.classList.remove('slideover-active');
+      this.isVisible = false;
+
+      // Call onClose callback
+      if (this.currentOnClose) {
+        this.currentOnClose();
+        this.currentOnClose = null;
+      }
+
+      // Reset ARIA attributes
+      this.panel.setAttribute('aria-hidden', 'true');
+    }, 300);
+  }
+
+  /**
+   * Update panel title
+   * @param {string} title - New title
+   */
+  setTitle(title) {
+    this.titleEl.textContent = title;
+  }
+
+  /**
+   * Update panel content
+   * @param {string|HTMLElement} content - New content
+   */
+  setContent(content) {
+    if (typeof content === 'string') {
+      this.bodyEl.innerHTML = content;
+    } else if (content instanceof HTMLElement) {
+      this.bodyEl.innerHTML = '';
+      this.bodyEl.appendChild(content);
+    }
+  }
+
+  /**
+   * Update panel footer
+   * @param {string|HTMLElement} footer - New footer content
+   */
+  setFooter(footer) {
+    if (footer) {
+      if (typeof footer === 'string') {
+        this.footerEl.innerHTML = footer;
+      } else if (footer instanceof HTMLElement) {
+        this.footerEl.innerHTML = '';
+        this.footerEl.appendChild(footer);
+      }
+      this.footerEl.classList.remove('hidden');
+    } else {
+      this.footerEl.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Check if panel is currently visible
+   * @returns {boolean}
+   */
+  isShowing() {
+    return this.isVisible;
+  }
+}
+
+// Global slide-over panel instance
+const slideoverPanel = new SlideoverPanel();
+
+// Make it globally available
+window.showSlideoverPanel = (options) => {
+  slideoverPanel.show(options);
+};
+
+window.hideSlideoverPanel = () => {
+  slideoverPanel.hide();
+};
+
+// Expose helper functions for console testing
+window.slideoverTest = {
+  /**
+   * Show basic slide-over panel
+   */
+  show: function() {
+    slideoverPanel.show({
+      title: 'Example Panel',
+      content: '<p class="text-base-content">This is a basic slide-over panel with some content.</p>',
+      footer: '<div class="flex justify-end gap-2"><button class="btn btn-ghost" onclick="slideoverPanel.hide()">Cancel</button><button class="btn btn-primary" onclick="slideoverPanel.hide()">Save</button></div>'
+    });
+  },
+
+  /**
+   * Test with form content
+   */
+  showForm: function() {
+    const formContent = `
+      <form class="space-y-4">
+        <div>
+          <label class="label"><span class="label-text">Name</span></label>
+          <input type="text" placeholder="Enter name" class="input input-bordered w-full" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text">Email</span></label>
+          <input type="email" placeholder="Enter email" class="input input-bordered w-full" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text">Message</span></label>
+          <textarea class="textarea textarea-bordered w-full" placeholder="Enter message" rows="4"></textarea>
+        </div>
+      </form>
+    `;
+
+    slideoverPanel.show({
+      title: 'Contact Form',
+      content: formContent,
+      footer: '<div class="flex justify-end gap-2"><button class="btn btn-ghost" onclick="slideoverPanel.hide()">Cancel</button><button class="btn btn-primary">Submit</button></div>',
+      size: 'md'
+    });
+  },
+
+  /**
+   * Test different sizes
+   */
+  testSizes: function() {
+    const sizes = ['sm', 'md', 'lg', 'xl'];
+    let index = 0;
+
+    const showNext = () => {
+      if (index >= sizes.length) return;
+
+      slideoverPanel.show({
+        title: `Size: ${sizes[index]}`,
+        content: `<p>This panel is using the <strong>${sizes[index]}</strong> size.</p>`,
+        size: sizes[index]
+      });
+
+      setTimeout(() => {
+        slideoverPanel.hide();
+        index++;
+        setTimeout(showNext, 500);
+      }, 2000);
+    };
+
+    showNext();
+  },
+
+  /**
+   * Test different positions
+   */
+  testPositions: function() {
+    slideoverPanel.show({
+      title: 'Left Position',
+      content: '<p>This panel slides in from the left.</p>',
+      position: 'left'
+    });
+
+    setTimeout(() => {
+      slideoverPanel.hide();
+      setTimeout(() => {
+        slideoverPanel.show({
+          title: 'Right Position',
+          content: '<p>This panel slides in from the right.</p>',
+          position: 'right'
+        });
+      }, 500);
+    }, 3000);
+  },
+
+  /**
+   * Test with long content
+   */
+  showLongContent: function() {
+    const longContent = '<div class="space-y-4">' + 
+      Array(20).fill('<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>').join('') +
+      '</div>';
+
+    slideoverPanel.show({
+      title: 'Long Content Example',
+      content: longContent,
+      footer: '<button class="btn btn-primary w-full" onclick="slideoverPanel.hide()">Close</button>'
+    });
+  },
+
+  /**
+   * Test with callback
+   */
+  showWithCallback: function() {
+    slideoverPanel.show({
+      title: 'Panel with Callback',
+      content: '<p>This panel will log a message when closed.</p>',
+      onClose: () => {
+        console.log('Panel was closed!');
+      }
+    });
+  },
+
+  /**
+   * Help text
+   */
+  help: function() {
+    console.log(`
+Slide-over Panel Testing Helper - Available Commands:
+
+  slideoverTest.show()
+    Show basic slide-over panel
+
+  slideoverTest.showForm()
+    Show panel with form content
+
+  slideoverTest.testSizes()
+    Cycle through all size options (sm, md, lg, xl)
+
+  slideoverTest.testPositions()
+    Test left and right positions
+
+  slideoverTest.showLongContent()
+    Show panel with scrollable content
+
+  slideoverTest.showWithCallback()
+    Show panel with onClose callback
+
+  slideoverTest.help()
+    Show this help message
+    `);
+  }
+};
+
+// Print help message to console on page load
+if (typeof console !== 'undefined') {
+  console.log('%cSlide-over Panel loaded!', 'color: #4CAF50; font-weight: bold;');
+  console.log('Type `slideoverTest.help()` to see all available test functions');
+}
+</script>

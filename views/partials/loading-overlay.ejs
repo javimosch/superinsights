@@ -1,0 +1,398 @@
+<!-- Loading Overlay - Reusable full-screen loading indicator -->
+<!-- Enhanced with multiple spinner types, progress bar, and customizable messages -->
+<div id="loading-overlay" class="fixed inset-0 z-50 hidden items-center justify-center" role="status" aria-live="polite" aria-atomic="true">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-base-300/80 backdrop-blur-sm"></div>
+  
+  <!-- Loading content -->
+  <div class="relative z-10 flex flex-col items-center gap-4 p-8 bg-base-100 rounded-box shadow-xl max-w-sm">
+    <!-- Spinner container -->
+    <div id="loading-overlay-spinner" class="loading-overlay-spinner">
+      <!-- Default spinner -->
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+    
+    <!-- Message -->
+    <div class="text-center">
+      <p id="loading-overlay-message" class="text-base font-medium text-base-content">Loading...</p>
+      <p id="loading-overlay-submessage" class="text-sm text-base-content/60 mt-1 hidden"></p>
+    </div>
+    
+    <!-- Progress bar (hidden by default) -->
+    <div id="loading-overlay-progress-container" class="w-full hidden">
+      <progress id="loading-overlay-progress" class="progress progress-primary w-full" value="0" max="100"></progress>
+      <p id="loading-overlay-progress-text" class="text-xs text-center text-base-content/60 mt-1">0%</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Loading overlay animations */
+  @keyframes overlayFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes overlayFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes contentScaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes contentScaleOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+
+  #loading-overlay.loading-overlay-show {
+    display: flex !important;
+    animation: overlayFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #loading-overlay.loading-overlay-show > div:last-child {
+    animation: contentScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #loading-overlay.loading-overlay-hiding {
+    animation: overlayFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  #loading-overlay.loading-overlay-hiding > div:last-child {
+    animation: contentScaleOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Prevent body scroll when overlay is active */
+  body.loading-overlay-active {
+    overflow: hidden;
+  }
+</style>
+
+<script>
+/**
+ * Loading Overlay System
+ * Provides a full-screen loading indicator with multiple spinner types and progress tracking
+ */
+class LoadingOverlay {
+  constructor(overlayId = 'loading-overlay') {
+    this.overlay = document.getElementById(overlayId);
+    this.spinnerContainer = document.getElementById('loading-overlay-spinner');
+    this.messageEl = document.getElementById('loading-overlay-message');
+    this.submessageEl = document.getElementById('loading-overlay-submessage');
+    this.progressContainer = document.getElementById('loading-overlay-progress-container');
+    this.progressBar = document.getElementById('loading-overlay-progress');
+    this.progressText = document.getElementById('loading-overlay-progress-text');
+    this.isVisible = false;
+    this.currentType = 'spinner';
+  }
+
+  /**
+   * Show the loading overlay
+   * @param {Object} options - Configuration options
+   * @param {string} options.message - Main loading message (default: 'Loading...')
+   * @param {string} options.submessage - Optional secondary message
+   * @param {string} options.type - Spinner type: 'spinner', 'dots', 'ring', 'ball', 'bars', 'infinity' (default: 'spinner')
+   * @param {boolean} options.showProgress - Show progress bar (default: false)
+   * @param {number} options.progress - Initial progress value 0-100 (default: 0)
+   * @param {boolean} options.backdrop - Show backdrop blur (default: true)
+   */
+  show(options = {}) {
+    const {
+      message = 'Loading...',
+      submessage = '',
+      type = 'spinner',
+      showProgress = false,
+      progress = 0,
+      backdrop = true
+    } = options;
+
+    // Set message
+    this.messageEl.textContent = message;
+
+    // Handle submessage
+    if (submessage) {
+      this.submessageEl.textContent = submessage;
+      this.submessageEl.classList.remove('hidden');
+    } else {
+      this.submessageEl.classList.add('hidden');
+    }
+
+    // Set spinner type
+    this.setSpinnerType(type);
+
+    // Handle progress bar
+    if (showProgress) {
+      this.progressContainer.classList.remove('hidden');
+      this.setProgress(progress);
+    } else {
+      this.progressContainer.classList.add('hidden');
+    }
+
+    // Handle backdrop
+    const backdropEl = this.overlay.querySelector('.absolute.inset-0');
+    if (backdrop) {
+      backdropEl.classList.remove('hidden');
+    } else {
+      backdropEl.classList.add('hidden');
+    }
+
+    // Show overlay with animation
+    this.overlay.classList.remove('loading-overlay-hiding');
+    this.overlay.classList.add('loading-overlay-show');
+    document.body.classList.add('loading-overlay-active');
+    this.isVisible = true;
+
+    // Set ARIA attributes
+    this.overlay.setAttribute('aria-busy', 'true');
+    this.overlay.setAttribute('aria-label', message);
+  }
+
+  /**
+   * Hide the loading overlay
+   */
+  hide() {
+    if (!this.isVisible) return;
+
+    // Add hiding animation
+    this.overlay.classList.add('loading-overlay-hiding');
+    this.overlay.classList.remove('loading-overlay-show');
+
+    setTimeout(() => {
+      this.overlay.classList.remove('loading-overlay-hiding');
+      this.overlay.classList.add('hidden');
+      document.body.classList.remove('loading-overlay-active');
+      this.isVisible = false;
+      
+      // Reset ARIA attributes
+      this.overlay.setAttribute('aria-busy', 'false');
+      this.overlay.removeAttribute('aria-label');
+    }, 200);
+  }
+
+  /**
+   * Set the spinner type
+   * @param {string} type - Spinner type: 'spinner', 'dots', 'ring', 'ball', 'bars', 'infinity'
+   */
+  setSpinnerType(type) {
+    const validTypes = ['spinner', 'dots', 'ring', 'ball', 'bars', 'infinity'];
+    const spinnerType = validTypes.includes(type) ? type : 'spinner';
+    this.currentType = spinnerType;
+
+    this.spinnerContainer.innerHTML = `<span class="loading loading-${spinnerType} loading-lg text-primary"></span>`;
+  }
+
+  /**
+   * Update the loading message
+   * @param {string} message - New message
+   * @param {string} submessage - Optional submessage
+   */
+  setMessage(message, submessage = '') {
+    this.messageEl.textContent = message;
+    
+    if (submessage) {
+      this.submessageEl.textContent = submessage;
+      this.submessageEl.classList.remove('hidden');
+    } else {
+      this.submessageEl.classList.add('hidden');
+    }
+
+    this.overlay.setAttribute('aria-label', message);
+  }
+
+  /**
+   * Update progress value
+   * @param {number} value - Progress value 0-100
+   */
+  setProgress(value) {
+    const progress = Math.max(0, Math.min(100, value));
+    this.progressBar.value = progress;
+    this.progressText.textContent = `${Math.round(progress)}%`;
+  }
+
+  /**
+   * Show progress bar
+   */
+  showProgress() {
+    this.progressContainer.classList.remove('hidden');
+  }
+
+  /**
+   * Hide progress bar
+   */
+  hideProgress() {
+    this.progressContainer.classList.add('hidden');
+  }
+
+  /**
+   * Check if overlay is currently visible
+   * @returns {boolean}
+   */
+  isShowing() {
+    return this.isVisible;
+  }
+}
+
+// Global loading overlay instance
+const loadingOverlay = new LoadingOverlay();
+
+// Make it globally available
+window.showLoadingOverlay = (options) => {
+  loadingOverlay.show(options);
+};
+
+window.hideLoadingOverlay = () => {
+  loadingOverlay.hide();
+};
+
+// Expose helper functions for console testing
+window.loadingTest = {
+  /**
+   * Show loading overlay with default settings
+   */
+  show: function() {
+    loadingOverlay.show();
+  },
+
+  /**
+   * Hide loading overlay
+   */
+  hide: function() {
+    loadingOverlay.hide();
+  },
+
+  /**
+   * Test all spinner types
+   */
+  testSpinners: function() {
+    const types = ['spinner', 'dots', 'ring', 'ball', 'bars', 'infinity'];
+    let index = 0;
+
+    loadingOverlay.show({ type: types[index], message: `Spinner: ${types[index]}` });
+
+    const interval = setInterval(() => {
+      index++;
+      if (index >= types.length) {
+        clearInterval(interval);
+        loadingOverlay.hide();
+        return;
+      }
+      loadingOverlay.setSpinnerType(types[index]);
+      loadingOverlay.setMessage(`Spinner: ${types[index]}`);
+    }, 2000);
+  },
+
+  /**
+   * Test progress bar
+   */
+  testProgress: function() {
+    loadingOverlay.show({
+      message: 'Uploading file...',
+      submessage: 'Please wait',
+      showProgress: true,
+      progress: 0
+    });
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      loadingOverlay.setProgress(progress);
+      
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          loadingOverlay.hide();
+        }, 500);
+      }
+    }, 300);
+  },
+
+  /**
+   * Test with custom message
+   * @param {string} message - Custom message
+   * @param {string} type - Spinner type
+   */
+  showCustom: function(message = 'Processing...', type = 'spinner') {
+    loadingOverlay.show({ message, type });
+  },
+
+  /**
+   * Test message update
+   */
+  testMessageUpdate: function() {
+    loadingOverlay.show({ message: 'Step 1: Initializing...' });
+    
+    setTimeout(() => {
+      loadingOverlay.setMessage('Step 2: Processing data...', 'This may take a moment');
+    }, 2000);
+    
+    setTimeout(() => {
+      loadingOverlay.setMessage('Step 3: Finalizing...', 'Almost done');
+    }, 4000);
+    
+    setTimeout(() => {
+      loadingOverlay.hide();
+    }, 6000);
+  },
+
+  /**
+   * Help text
+   */
+  help: function() {
+    console.log(`
+Loading Overlay Testing Helper - Available Commands:
+
+  loadingTest.show()
+    Show loading overlay with default settings
+
+  loadingTest.hide()
+    Hide loading overlay
+
+  loadingTest.testSpinners()
+    Cycle through all spinner types
+
+  loadingTest.testProgress()
+    Test progress bar animation
+
+  loadingTest.showCustom(message, type)
+    Show with custom message and spinner type
+    Types: 'spinner', 'dots', 'ring', 'ball', 'bars', 'infinity'
+    Example: loadingTest.showCustom('Uploading...', 'bars')
+
+  loadingTest.testMessageUpdate()
+    Test dynamic message updates
+
+  loadingTest.help()
+    Show this help message
+    `);
+  }
+};
+
+// Print help message to console on page load
+if (typeof console !== 'undefined') {
+  console.log('%cLoading Overlay loaded!', 'color: #4CAF50; font-weight: bold;');
+  console.log('Type `loadingTest.help()` to see all available test functions');
+}
+</script>

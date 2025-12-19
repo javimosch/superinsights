@@ -1,0 +1,706 @@
+<!-- Command Palette - Reusable keyboard-driven command interface -->
+<!-- Enhanced with search, keyboard shortcuts, and grouped results -->
+<div id="command-palette" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="command-palette-title">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-base-300/80 backdrop-blur-sm" onclick="commandPalette.hide()"></div>
+  
+  <!-- Palette -->
+  <div class="relative z-10 w-full max-w-2xl bg-base-100 rounded-box shadow-xl overflow-hidden">
+    <!-- Search input -->
+    <div class="flex items-center gap-3 p-4 border-b border-base-300">
+      <img src="/icons/search.svg" alt="Search" class="w-5 h-5 opacity-60" />
+      <input 
+        id="command-palette-input" 
+        type="text" 
+        placeholder="Search commands..." 
+        class="flex-1 bg-transparent outline-none text-base"
+        aria-label="Search commands"
+        autocomplete="off"
+      />
+      <kbd class="kbd kbd-sm">ESC</kbd>
+    </div>
+    
+    <!-- Results -->
+    <div id="command-palette-results" class="max-h-96 overflow-y-auto">
+      <!-- Results will be dynamically inserted here -->
+    </div>
+    
+    <!-- Footer with keyboard hints -->
+    <div class="flex items-center justify-between gap-4 px-4 py-3 border-t border-base-300 text-xs text-base-content/60">
+      <div class="flex items-center gap-4">
+        <span class="flex items-center gap-1">
+          <kbd class="kbd kbd-xs">↑</kbd>
+          <kbd class="kbd kbd-xs">↓</kbd>
+          Navigate
+        </span>
+        <span class="flex items-center gap-1">
+          <kbd class="kbd kbd-xs">Enter</kbd>
+          Select
+        </span>
+      </div>
+      <span id="command-palette-hint" class="hidden">Press <kbd class="kbd kbd-xs">⌘</kbd><kbd class="kbd kbd-xs">K</kbd> to open</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Command palette animations */
+  @keyframes paletteScaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes paletteScaleOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+  }
+
+  @keyframes backdropFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes backdropFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  #command-palette.command-palette-show {
+    display: flex !important;
+  }
+
+  #command-palette.command-palette-show > div:first-child {
+    animation: backdropFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #command-palette.command-palette-show > div:last-child {
+    animation: paletteScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #command-palette.command-palette-hiding > div:first-child {
+    animation: backdropFadeOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  #command-palette.command-palette-hiding > div:last-child {
+    animation: paletteScaleOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Command item styles */
+  .command-palette-group {
+    @apply py-2;
+  }
+
+  .command-palette-group-title {
+    @apply px-4 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider;
+  }
+
+  .command-palette-item {
+    @apply flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors;
+  }
+
+  .command-palette-item:hover {
+    @apply bg-base-200;
+  }
+
+  .command-palette-item.command-palette-focused {
+    @apply bg-primary text-primary-content;
+  }
+
+  .command-palette-item.command-palette-disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .command-palette-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .command-palette-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .command-palette-label {
+    @apply text-sm font-medium;
+  }
+
+  .command-palette-description {
+    @apply text-xs opacity-70 mt-0.5;
+  }
+
+  .command-palette-shortcut {
+    @apply flex items-center gap-1 flex-shrink-0;
+  }
+
+  .command-palette-empty {
+    @apply px-4 py-8 text-center text-base-content/60;
+  }
+
+  /* Prevent body scroll when palette is active */
+  body.command-palette-active {
+    overflow: hidden;
+  }
+</style>
+
+<script>
+/**
+ * Command Palette System
+ * Provides keyboard-driven command interface with search
+ */
+class CommandPalette {
+  constructor(paletteId = 'command-palette') {
+    this.palette = document.getElementById(paletteId);
+    this.input = document.getElementById('command-palette-input');
+    this.results = document.getElementById('command-palette-results');
+    this.isVisible = false;
+    this.commands = [];
+    this.filteredCommands = [];
+    this.focusedIndex = -1;
+    this.recentCommands = [];
+    this.maxRecent = 5;
+
+    this.setupEventListeners();
+    this.loadRecentCommands();
+  }
+
+  setupEventListeners() {
+    // Global keyboard shortcut (Cmd+K or Ctrl+K)
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (this.isVisible) {
+          this.hide();
+        } else {
+          this.show();
+        }
+      }
+
+      // Handle navigation when palette is open
+      if (!this.isVisible) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hide();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this.focusNext();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.focusPrevious();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        this.activateFocused();
+      }
+    });
+
+    // Search input
+    this.input.addEventListener('input', (e) => {
+      this.search(e.target.value);
+    });
+  }
+
+  /**
+   * Register commands
+   * @param {Array} commands - Array of command objects
+   */
+  register(commands) {
+    this.commands = commands;
+  }
+
+  /**
+   * Add a single command
+   * @param {Object} command - Command object
+   */
+  addCommand(command) {
+    this.commands.push(command);
+  }
+
+  /**
+   * Show the command palette
+   */
+  show() {
+    // Reset state
+    this.input.value = '';
+    this.focusedIndex = -1;
+    
+    // Show all commands or recent commands
+    this.search('');
+
+    // Show palette with animation
+    this.palette.classList.remove('command-palette-hiding');
+    this.palette.classList.add('command-palette-show');
+    document.body.classList.add('command-palette-active');
+    this.isVisible = true;
+
+    // Focus input
+    setTimeout(() => {
+      this.input.focus();
+    }, 100);
+
+    // Set ARIA attributes
+    this.palette.setAttribute('aria-hidden', 'false');
+  }
+
+  /**
+   * Hide the command palette
+   */
+  hide() {
+    if (!this.isVisible) return;
+
+    this.palette.classList.add('command-palette-hiding');
+    this.palette.classList.remove('command-palette-show');
+
+    setTimeout(() => {
+      this.palette.classList.remove('command-palette-hiding');
+      this.palette.classList.add('hidden');
+      document.body.classList.remove('command-palette-active');
+      this.isVisible = false;
+
+      // Reset ARIA attributes
+      this.palette.setAttribute('aria-hidden', 'true');
+    }, 200);
+  }
+
+  /**
+   * Search and filter commands
+   * @param {string} query - Search query
+   */
+  search(query) {
+    const lowerQuery = query.toLowerCase().trim();
+
+    if (lowerQuery === '') {
+      // Show recent commands if no query
+      this.filteredCommands = this.getRecentCommandsObjects();
+    } else {
+      // Filter commands by label, description, keywords
+      this.filteredCommands = this.commands.filter(cmd => {
+        const label = (cmd.label || '').toLowerCase();
+        const description = (cmd.description || '').toLowerCase();
+        const keywords = (cmd.keywords || []).join(' ').toLowerCase();
+        const category = (cmd.category || '').toLowerCase();
+
+        return label.includes(lowerQuery) || 
+               description.includes(lowerQuery) || 
+               keywords.includes(lowerQuery) ||
+               category.includes(lowerQuery);
+      });
+    }
+
+    this.renderResults();
+  }
+
+  /**
+   * Render search results
+   */
+  renderResults() {
+    this.results.innerHTML = '';
+    this.focusedIndex = -1;
+
+    if (this.filteredCommands.length === 0) {
+      this.results.innerHTML = '<div class="command-palette-empty">No commands found</div>';
+      return;
+    }
+
+    // Group commands by category
+    const grouped = this.groupByCategory(this.filteredCommands);
+
+    Object.entries(grouped).forEach(([category, commands]) => {
+      const group = document.createElement('div');
+      group.className = 'command-palette-group';
+
+      // Group title
+      if (category !== 'undefined') {
+        const title = document.createElement('div');
+        title.className = 'command-palette-group-title';
+        title.textContent = category;
+        group.appendChild(title);
+      }
+
+      // Commands
+      commands.forEach((cmd, index) => {
+        const item = document.createElement('div');
+        item.className = 'command-palette-item';
+        item.setAttribute('role', 'option');
+        item.dataset.commandId = cmd.id;
+
+        if (cmd.disabled) {
+          item.classList.add('command-palette-disabled');
+        }
+
+        // Icon
+        if (cmd.icon) {
+          const icon = document.createElement('img');
+          icon.src = cmd.icon;
+          icon.alt = '';
+          icon.className = 'command-palette-icon';
+          item.appendChild(icon);
+        }
+
+        // Content
+        const content = document.createElement('div');
+        content.className = 'command-palette-content';
+
+        const label = document.createElement('div');
+        label.className = 'command-palette-label';
+        label.textContent = cmd.label;
+        content.appendChild(label);
+
+        if (cmd.description) {
+          const description = document.createElement('div');
+          description.className = 'command-palette-description';
+          description.textContent = cmd.description;
+          content.appendChild(description);
+        }
+
+        item.appendChild(content);
+
+        // Shortcut
+        if (cmd.shortcut) {
+          const shortcut = document.createElement('div');
+          shortcut.className = 'command-palette-shortcut';
+          cmd.shortcut.split('+').forEach(key => {
+            const kbd = document.createElement('kbd');
+            kbd.className = 'kbd kbd-xs';
+            kbd.textContent = key;
+            shortcut.appendChild(kbd);
+          });
+          item.appendChild(shortcut);
+        }
+
+        // Click handler
+        if (!cmd.disabled) {
+          item.addEventListener('click', () => {
+            this.executeCommand(cmd);
+          });
+
+          // Hover handler
+          item.addEventListener('mouseenter', () => {
+            this.setFocus(Array.from(this.results.querySelectorAll('.command-palette-item')).indexOf(item));
+          });
+        }
+
+        group.appendChild(item);
+      });
+
+      this.results.appendChild(group);
+    });
+  }
+
+  /**
+   * Group commands by category
+   * @param {Array} commands - Commands to group
+   * @returns {Object} Grouped commands
+   */
+  groupByCategory(commands) {
+    const grouped = {};
+    
+    commands.forEach(cmd => {
+      const category = cmd.category || 'Other';
+      if (!grouped[category]) {
+        grouped[category] = [];
+      }
+      grouped[category].push(cmd);
+    });
+
+    return grouped;
+  }
+
+  /**
+   * Execute a command
+   * @param {Object} command - Command to execute
+   */
+  executeCommand(command) {
+    if (command.disabled || !command.action) return;
+
+    // Add to recent commands
+    this.addToRecent(command.id);
+
+    // Execute action
+    command.action();
+
+    // Hide palette
+    this.hide();
+  }
+
+  /**
+   * Focus next command
+   */
+  focusNext() {
+    const items = Array.from(this.results.querySelectorAll('.command-palette-item:not(.command-palette-disabled)'));
+    if (items.length === 0) return;
+
+    this.focusedIndex = (this.focusedIndex + 1) % items.length;
+    this.setFocus(this.focusedIndex);
+  }
+
+  /**
+   * Focus previous command
+   */
+  focusPrevious() {
+    const items = Array.from(this.results.querySelectorAll('.command-palette-item:not(.command-palette-disabled)'));
+    if (items.length === 0) return;
+
+    this.focusedIndex = this.focusedIndex <= 0 ? items.length - 1 : this.focusedIndex - 1;
+    this.setFocus(this.focusedIndex);
+  }
+
+  /**
+   * Set focus to specific item
+   * @param {number} index - Item index
+   */
+  setFocus(index) {
+    const items = this.results.querySelectorAll('.command-palette-item');
+    items.forEach((item, i) => {
+      if (i === index) {
+        item.classList.add('command-palette-focused');
+        item.scrollIntoView({ block: 'nearest' });
+      } else {
+        item.classList.remove('command-palette-focused');
+      }
+    });
+    this.focusedIndex = index;
+  }
+
+  /**
+   * Activate focused command
+   */
+  activateFocused() {
+    const items = Array.from(this.results.querySelectorAll('.command-palette-item:not(.command-palette-disabled)'));
+    if (this.focusedIndex >= 0 && this.focusedIndex < items.length) {
+      const commandId = items[this.focusedIndex].dataset.commandId;
+      const command = this.commands.find(cmd => cmd.id === commandId);
+      if (command) {
+        this.executeCommand(command);
+      }
+    }
+  }
+
+  /**
+   * Add command to recent list
+   * @param {string} commandId - Command ID
+   */
+  addToRecent(commandId) {
+    // Remove if already exists
+    this.recentCommands = this.recentCommands.filter(id => id !== commandId);
+    
+    // Add to beginning
+    this.recentCommands.unshift(commandId);
+    
+    // Limit size
+    if (this.recentCommands.length > this.maxRecent) {
+      this.recentCommands = this.recentCommands.slice(0, this.maxRecent);
+    }
+
+    // Save to localStorage
+    this.saveRecentCommands();
+  }
+
+  /**
+   * Get recent command objects
+   * @returns {Array} Recent commands
+   */
+  getRecentCommandsObjects() {
+    return this.recentCommands
+      .map(id => this.commands.find(cmd => cmd.id === id))
+      .filter(cmd => cmd !== undefined);
+  }
+
+  /**
+   * Save recent commands to localStorage
+   */
+  saveRecentCommands() {
+    try {
+      localStorage.setItem('commandPaletteRecent', JSON.stringify(this.recentCommands));
+    } catch (e) {
+      console.warn('Failed to save recent commands:', e);
+    }
+  }
+
+  /**
+   * Load recent commands from localStorage
+   */
+  loadRecentCommands() {
+    try {
+      const saved = localStorage.getItem('commandPaletteRecent');
+      if (saved) {
+        this.recentCommands = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load recent commands:', e);
+    }
+  }
+
+  /**
+   * Clear recent commands
+   */
+  clearRecent() {
+    this.recentCommands = [];
+    this.saveRecentCommands();
+  }
+}
+
+// Global command palette instance
+const commandPalette = new CommandPalette();
+
+// Make it globally available
+window.showCommandPalette = () => {
+  commandPalette.show();
+};
+
+window.registerCommands = (commands) => {
+  commandPalette.register(commands);
+};
+
+// Expose helper functions for console testing
+window.commandPaletteTest = {
+  /**
+   * Register sample commands
+   */
+  registerSample: function() {
+    commandPalette.register([
+      {
+        id: 'new-project',
+        label: 'Create New Project',
+        description: 'Start a new project',
+        icon: '/icons/plus.svg',
+        category: 'Projects',
+        keywords: ['add', 'create', 'new'],
+        shortcut: '⌘+N',
+        action: () => console.log('Create new project')
+      },
+      {
+        id: 'search',
+        label: 'Search',
+        description: 'Search across all content',
+        icon: '/icons/search.svg',
+        category: 'Navigation',
+        keywords: ['find', 'lookup'],
+        shortcut: '⌘+F',
+        action: () => console.log('Open search')
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        description: 'Open application settings',
+        icon: '/icons/settings.svg',
+        category: 'Navigation',
+        keywords: ['preferences', 'config'],
+        shortcut: '⌘+,',
+        action: () => console.log('Open settings')
+      },
+      {
+        id: 'profile',
+        label: 'View Profile',
+        description: 'Go to your profile page',
+        icon: '/icons/user.svg',
+        category: 'Account',
+        keywords: ['user', 'account'],
+        action: () => console.log('View profile')
+      },
+      {
+        id: 'logout',
+        label: 'Logout',
+        description: 'Sign out of your account',
+        icon: '/icons/log-out.svg',
+        category: 'Account',
+        keywords: ['sign out', 'exit'],
+        action: () => console.log('Logout')
+      }
+    ]);
+    console.log('Sample commands registered');
+  },
+
+  /**
+   * Show command palette
+   */
+  show: function() {
+    commandPalette.show();
+  },
+
+  /**
+   * Hide command palette
+   */
+  hide: function() {
+    commandPalette.hide();
+  },
+
+  /**
+   * Clear recent commands
+   */
+  clearRecent: function() {
+    commandPalette.clearRecent();
+    console.log('Recent commands cleared');
+  },
+
+  /**
+   * Get recent commands
+   */
+  getRecent: function() {
+    return commandPalette.recentCommands;
+  },
+
+  /**
+   * Help text
+   */
+  help: function() {
+    console.log(`
+Command Palette Testing Helper - Available Commands:
+
+  commandPaletteTest.registerSample()
+    Register sample commands for testing
+
+  commandPaletteTest.show()
+    Show command palette
+
+  commandPaletteTest.hide()
+    Hide command palette
+
+  commandPaletteTest.clearRecent()
+    Clear recent commands history
+
+  commandPaletteTest.getRecent()
+    Get list of recent command IDs
+
+  commandPaletteTest.help()
+    Show this help message
+
+Keyboard Shortcuts:
+  ⌘+K / Ctrl+K - Toggle command palette
+  ↑/↓ - Navigate commands
+  Enter - Execute command
+  Esc - Close palette
+
+Usage Example:
+  commandPaletteTest.registerSample();
+  commandPaletteTest.show();
+    `);
+  }
+};
+
+// Print help message to console on page load
+if (typeof console !== 'undefined') {
+  console.log('%cCommand Palette loaded!', 'color: #4CAF50; font-weight: bold;');
+  console.log('Type `commandPaletteTest.help()` to see all available test functions');
+  console.log('Press ⌘+K (Mac) or Ctrl+K (Windows/Linux) to open the command palette');
+}
+</script>
