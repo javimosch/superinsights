@@ -1,5 +1,6 @@
 const PerformanceMetric = require('../models/PerformanceMetric');
 const { calculatePerformanceScore } = require('../utils/performanceScore');
+const { parseSegmentFilters, buildPerformanceMetadataMatch } = require('../utils/segmentFilters');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -34,7 +35,7 @@ function normalizeBrowser(rawBrowser) {
   return allowed.includes(trimmed) ? trimmed : 'all';
 }
 
-function buildMatch({ projectId, start, end, deviceType, browser }) {
+function buildMatch({ projectId, start, end, deviceType, browser, metadataMatch }) {
   const match = {
     projectId,
     timestamp: { $gte: start, $lte: end },
@@ -50,6 +51,10 @@ function buildMatch({ projectId, start, end, deviceType, browser }) {
     match.browser = normalizedBrowser;
   }
 
+  if (metadataMatch && typeof metadataMatch === 'object') {
+    Object.assign(match, metadataMatch);
+  }
+
   return match;
 }
 
@@ -61,8 +66,8 @@ function percentileFromSortedValues(sortedValues, p) {
   return typeof val === 'number' && Number.isFinite(val) ? val : null;
 }
 
-async function calculatePercentilesWithPercentileOperator({ projectId, start, end, deviceType, browser }) {
-  const match = buildMatch({ projectId, start, end, deviceType, browser });
+async function calculatePercentilesWithPercentileOperator({ projectId, start, end, deviceType, browser, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser, metadataMatch });
 
   const rows = await PerformanceMetric.aggregate([
     { $match: match },
@@ -129,8 +134,8 @@ async function calculatePercentilesWithPercentileOperator({ projectId, start, en
   return rows && rows.length ? rows[0] : null;
 }
 
-async function calculatePercentilesFallback({ projectId, start, end, deviceType, browser }) {
-  const match = buildMatch({ projectId, start, end, deviceType, browser });
+async function calculatePercentilesFallback({ projectId, start, end, deviceType, browser, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser, metadataMatch });
 
   async function getSortedValues(metricField) {
     const rows = await PerformanceMetric.aggregate([
@@ -172,7 +177,7 @@ async function calculatePercentilesFallback({ projectId, start, end, deviceType,
   };
 }
 
-async function calculatePercentiles({ projectId, start, end, deviceType, browser }) {
+async function calculatePercentiles({ projectId, start, end, deviceType, browser, metadataMatch }) {
   try {
     const result = await calculatePercentilesWithPercentileOperator({
       projectId,
@@ -180,6 +185,7 @@ async function calculatePercentiles({ projectId, start, end, deviceType, browser
       end,
       deviceType,
       browser,
+      metadataMatch,
     });
     if (!result) return null;
     return result;
@@ -192,12 +198,12 @@ async function calculatePercentiles({ projectId, start, end, deviceType, browser
       browser: browser || 'all',
       error: err && err.message ? err.message : String(err),
     });
-    return calculatePercentilesFallback({ projectId, start, end, deviceType, browser });
+    return calculatePercentilesFallback({ projectId, start, end, deviceType, browser, metadataMatch });
   }
 }
 
-async function getMetricsByDay({ projectId, start, end, deviceType, browser }) {
-  const match = buildMatch({ projectId, start, end, deviceType, browser });
+async function getMetricsByDay({ projectId, start, end, deviceType, browser, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser, metadataMatch });
 
   const rows = await PerformanceMetric.aggregate([
     { $match: match },
@@ -222,14 +228,14 @@ async function getMetricsByDay({ projectId, start, end, deviceType, browser }) {
   return rows || [];
 }
 
-async function getTotalMeasurements({ projectId, start, end, deviceType, browser }) {
-  const match = buildMatch({ projectId, start, end, deviceType, browser });
+async function getTotalMeasurements({ projectId, start, end, deviceType, browser, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser, metadataMatch });
   const total = await PerformanceMetric.countDocuments(match);
   return total || 0;
 }
 
-async function getCompleteMeasurements({ projectId, start, end, deviceType, browser }) {
-  const match = buildMatch({ projectId, start, end, deviceType, browser });
+async function getCompleteMeasurements({ projectId, start, end, deviceType, browser, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, deviceType, browser, metadataMatch });
   const total = await PerformanceMetric.countDocuments({
     ...match,
     lcp: { $ne: null, $exists: true },
@@ -257,12 +263,16 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
     const deviceType = normalizeDeviceType(req.query.deviceType);
     const browser = normalizeBrowser(req.query.browser);
 
+    const segment = parseSegmentFilters(req);
+    const metadataMatch = buildPerformanceMetadataMatch(segment);
+
     const params = {
       projectId,
       start,
       end,
       deviceType: deviceType === 'all' ? undefined : deviceType,
       browser: browser === 'all' ? undefined : browser,
+      metadataMatch,
     };
 
     const [percentilesRaw, metricsByDay, totalMeasurements, completeMeasurements] = await Promise.all([
@@ -298,6 +308,7 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
       timeframe,
       deviceType,
       browser,
+      segment,
       percentiles,
       metricsByDay: metricsByDay || [],
       totalMeasurements: totalMeasurements || 0,
