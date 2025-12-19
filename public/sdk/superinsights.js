@@ -12,6 +12,8 @@
     batchSize: 20,
     flushInterval: 5000,
     debug: false,
+    transport: 'http',
+    wsPath: '/v1/ws',
   };
 
   var _user = {
@@ -27,6 +29,13 @@
   };
 
   var _flushTimerId = null;
+
+  var _ws = null;
+  var _wsConnected = false;
+  var _wsConnecting = false;
+  var _wsRetryAttempt = 0;
+  var _wsRetryTimerId = null;
+  var _wsQueue = [];
 
   var _sessionTtlMs = 30 * 60 * 1000;
   var _clientIdKey = 'si_client_id';
@@ -52,6 +61,139 @@
       return dnt === '1' || dnt === 'yes';
     } catch (e) {
       return false;
+    }
+  }
+
+  function _getWsUrl() {
+    var baseUrl = _getBaseUrl();
+    if (!baseUrl) return '';
+
+    var wsBase = baseUrl;
+    try {
+      wsBase = wsBase.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
+    } catch (e) {
+      // ignore
+    }
+
+    var path = _config.wsPath || '/v1/ws';
+    if (path.charAt(0) !== '/') path = '/' + path;
+
+    return wsBase + path + '?apiKey=' + encodeURIComponent(_apiKey);
+  }
+
+  function _scheduleWsReconnect() {
+    if (_wsRetryTimerId) return;
+
+    var delays = [1000, 2000, 4000, 8000, 15000];
+    var delay = delays[Math.min(_wsRetryAttempt, delays.length - 1)];
+
+    _wsRetryTimerId = global.setTimeout(function () {
+      _wsRetryTimerId = null;
+      _connectWs();
+    }, delay);
+
+    _wsRetryAttempt += 1;
+  }
+
+  function _flushWsQueue() {
+    if (!_ws || !_wsConnected) return;
+    if (!_wsQueue || !_wsQueue.length) return;
+
+    var copy = _wsQueue.splice(0, _wsQueue.length);
+    for (var i = 0; i < copy.length; i++) {
+      try {
+        _ws.send(copy[i]);
+      } catch (e) {
+        _wsQueue.unshift(copy[i]);
+        _wsConnected = false;
+        _scheduleWsReconnect();
+        return;
+      }
+    }
+  }
+
+  function _connectWs() {
+    if (!_initialized) return;
+    if (!_enabled) return;
+    if (_config.transport !== 'ws') return;
+
+    if (_wsConnected || _wsConnecting) return;
+    if (!global.WebSocket) return;
+
+    var url = _getWsUrl();
+    if (!url) return;
+
+    _wsConnecting = true;
+
+    try {
+      _ws = new global.WebSocket(url);
+    } catch (e) {
+      _ws = null;
+      _wsConnecting = false;
+      _scheduleWsReconnect();
+      return;
+    }
+
+    _ws.onopen = function () {
+      _wsConnected = true;
+      _wsConnecting = false;
+      _wsRetryAttempt = 0;
+      _log('SuperInsights ws connected');
+      _flushWsQueue();
+    };
+
+    _ws.onclose = function () {
+      _wsConnected = false;
+      _wsConnecting = false;
+      _log('SuperInsights ws closed');
+      _scheduleWsReconnect();
+    };
+
+    _ws.onerror = function () {
+      _wsConnected = false;
+      _wsConnecting = false;
+      _log('SuperInsights ws error');
+      _scheduleWsReconnect();
+    };
+
+    _ws.onmessage = function (evt) {
+      try {
+        var msg = JSON.parse(evt && evt.data ? String(evt.data) : '{}');
+        if (msg && msg.type === 'ack') {
+          _log('SuperInsights ws ack', msg);
+        }
+        if (msg && msg.type === 'error') {
+          _log('SuperInsights ws server error', msg);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+  }
+
+  function _wsSend(channel, items) {
+    var payload = { channel: channel, items: items };
+    var str;
+    try {
+      str = JSON.stringify(payload);
+    } catch (e) {
+      return false;
+    }
+
+    if (!_ws || !_wsConnected) {
+      _wsQueue.push(str);
+      _connectWs();
+      return true;
+    }
+
+    try {
+      _ws.send(str);
+      return true;
+    } catch (e) {
+      _wsQueue.push(str);
+      _wsConnected = false;
+      _scheduleWsReconnect();
+      return true;
     }
   }
 
@@ -471,6 +613,14 @@
     var items = q.splice(0, _config.batchSize);
 
     _log('SuperInsights flush', { queue: queueName, items: items.length, batchSize: _config.batchSize, baseUrl: _getBaseUrl() });
+
+    if (_config.transport === 'ws') {
+      if (queueName === 'pageviews') _wsSend('pageviews', items);
+      if (queueName === 'events') _wsSend('events', items);
+      if (queueName === 'errors') _wsSend('errors', items);
+      if (queueName === 'performance') _wsSend('performance', items);
+      return;
+    }
 
     if (queueName === 'pageviews') _sendRequest('/v1/pageviews', items, useBeacon);
     if (queueName === 'events') _sendRequest('/v1/events', items, useBeacon);
@@ -911,6 +1061,10 @@
       _attachListeners();
       _startFlushTimer();
 
+      if (_config.transport === 'ws') {
+        _connectWs();
+      }
+
       _log('SuperInsights config', { apiUrl: _config.apiUrl || null, resolvedBaseUrl: _getBaseUrl(), batchSize: _config.batchSize, flushInterval: _config.flushInterval });
 
       _observeLCP();
@@ -1047,6 +1201,22 @@
   function disable() {
     _enabled = false;
     _stopFlushTimer();
+
+    try {
+      if (_wsRetryTimerId) global.clearTimeout(_wsRetryTimerId);
+    } catch (e) {
+      // ignore
+    }
+    _wsRetryTimerId = null;
+
+    try {
+      if (_ws) _ws.close();
+    } catch (e) {
+      // ignore
+    }
+    _ws = null;
+    _wsConnected = false;
+    _wsConnecting = false;
   }
 
   function enable() {
@@ -1054,6 +1224,10 @@
     if (_enabled) return;
     _enabled = true;
     _startFlushTimer();
+
+    if (_config.transport === 'ws') {
+      _connectWs();
+    }
   }
 
   SuperInsights.init = init;

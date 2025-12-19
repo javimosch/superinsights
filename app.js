@@ -37,6 +37,26 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+  );
+
+  const requestedHeaders = req.header('Access-Control-Request-Headers');
+  res.header(
+    'Access-Control-Allow-Headers',
+    requestedHeaders || 'Authorization, X-API-Key, Content-Type'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
 app.get('/sdk/superinsights.js', (req, res) => {
   if (!isProduction) {
     res.setHeader('Cache-Control', 'no-store, must-revalidate');
@@ -151,14 +171,6 @@ app.use('/p', publicRouter);
 
 // Ingestion API (CORS-enabled for SDKs)
 app.use('/v1', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Authorization, X-API-Key, Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
-
   return next();
 });
 

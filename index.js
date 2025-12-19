@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const app = require('./app');
 const { connectDB } = require('./config/db');
+const http = require('http');
+const { attachWsIngestionServer } = require('./utils/wsIngestionServer');
 
 const PORT = process.env.PORT || 3000;
 
@@ -18,7 +20,10 @@ process.on('uncaughtException', (err) => {
   try {
     await connectDB();
 
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+    attachWsIngestionServer(server);
+
+    server.listen(PORT, () => {
       console.log(`Server listening on http://localhost:${PORT}`);
     });
   } catch (err) {
