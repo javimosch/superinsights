@@ -18,6 +18,11 @@ exports.getPublicLinks = async (req, res, next) => {
       projects: projects || [],
       errors: [],
       successMessage: null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: 'Platform Admin', href: '/admin' },
+        { label: 'Public Links', href: '/admin/public-links' }
+      ]
     });
   } catch (err) {
     return next(err);
