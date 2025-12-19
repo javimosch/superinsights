@@ -13,7 +13,10 @@ const aiAnalysisRouter = require('./routes/ai-analysis');
 const publicRouter = require('./routes/public');
 const invitesRouter = require('./routes/invites');
 const ingestionRouter = require('./routes/ingestion');
+const orgRouter = require('./routes/org');
+const docsController = require('./controllers/docsController');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { loadUserOrgs, exposeOrgContextToViews } = require('./middleware/orgContext');
 
 const app = express();
 
@@ -95,8 +98,12 @@ app.use(
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.publicUrl = process.env.PUBLIC_URL || null;
+  res.locals.request = req;
   next();
 });
+
+ app.use(loadUserOrgs);
+ app.use(exposeOrgContextToViews);
 
 app.use((req, res, next) => {
   if (String(process.env.DEBUG_AUTH || '') !== '1') return next();
@@ -163,10 +170,18 @@ app.use(
 // Routes
 app.use('/', indexRouter);
 app.use('/', invitesRouter);
+app.use('/org', orgRouter);
 app.use('/auth', authRouter);
 app.use('/admin', adminRouter);
 app.use('/ai-analysis', aiAnalysisRouter);
 app.use('/projects', projectRouter);
+
+// Public docs routes (no authentication required)
+app.get('/docs', docsController.getDocs);
+app.get('/docs/:section', docsController.getDocs);
+app.use('/docs', publicRouter);
+
+// Other public routes
 app.use('/p', publicRouter);
 
 // Ingestion API (CORS-enabled for SDKs)
