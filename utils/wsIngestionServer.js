@@ -7,6 +7,11 @@ const Event = require('../models/Event');
 const ErrorModel = require('../models/Error');
 const PerformanceMetric = require('../models/PerformanceMetric');
 const { parseTimestamp, validateBulkPayload } = require('../controllers/ingestionController');
+const {
+  getDropEventsConfig,
+  shouldDropEventItem,
+  incrementDropCounter,
+} = require('./ingestionDropSettings');
 
 function pickApiKeyFromRequest(reqUrl) {
   try {
@@ -81,7 +86,28 @@ async function ingestPageviews({ projectId, items }) {
 }
 
 async function ingestEvents({ projectId, items }) {
-  const docs = items.map((item) => {
+  const dropConfig = await getDropEventsConfig(projectId);
+  const keptItems = [];
+  let droppedCount = 0;
+
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    if (shouldDropEventItem(dropConfig, item)) {
+      droppedCount += 1;
+    } else {
+      keptItems.push(item);
+    }
+  }
+
+  if (droppedCount) {
+    incrementDropCounter(projectId, droppedCount);
+  }
+
+  if (!keptItems.length) {
+    return 0;
+  }
+
+  const docs = keptItems.map((item) => {
     if (!item || typeof item !== 'object') throw new Error('Each item must be an object');
     if (!item.eventName) throw new Error('Field "eventName" is required');
 

@@ -8,6 +8,11 @@ const {
   generatePublicLinkToken,
   hashPublicLinkToken,
 } = require('../utils/publicLinkTokens');
+const {
+  getDropEventsConfig,
+  saveDropEventsConfig,
+  getDropCounter,
+} = require('../utils/ingestionDropSettings');
 
 function normalizeName(name) {
   return (name || '').trim();
@@ -356,6 +361,8 @@ exports.getProjectSettings = (req, res) => {
         .sort({ createdAt: -1 })
         .lean();
 
+      const dropEventsConfig = await getDropEventsConfig(project._id);
+
       return res.render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
@@ -369,6 +376,8 @@ exports.getProjectSettings = (req, res) => {
           environment: project.environment,
           dataRetentionDays: project.dataRetentionDays,
         },
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
         successMessage: null,
         environments: Project.ENVIRONMENTS,
       });
@@ -379,6 +388,105 @@ exports.getProjectSettings = (req, res) => {
       });
     }
   })();
+};
+
+function parseDropFilters(body) {
+  const keys = Array.isArray(body.dropFilterKey) ? body.dropFilterKey : body.dropFilterKey ? [body.dropFilterKey] : [];
+  const values = Array.isArray(body.dropFilterValue) ? body.dropFilterValue : body.dropFilterValue ? [body.dropFilterValue] : [];
+
+  const out = [];
+  const n = Math.max(keys.length, values.length);
+
+  for (let i = 0; i < n; i += 1) {
+    const key = keys[i] != null ? String(keys[i]).trim() : '';
+    const value = values[i] != null ? String(values[i]).trim() : '';
+    if (!key) continue;
+    out.push({ key, value });
+  }
+
+  return out;
+}
+
+exports.postUpdateDropEventsSettings = async (req, res, next) => {
+  try {
+    const project = req.project;
+    const role = req.userProjectRole;
+
+    const enabled = req.body.dropEnabled === 'on' || req.body.dropEnabled === 'true' || req.body.dropEnabled === true;
+    const mode = req.body.dropMode === 'whitelist' ? 'whitelist' : 'blacklist';
+    const filters = parseDropFilters(req.body);
+
+    const errors = [];
+    if (enabled) {
+      if (!filters.length) {
+        errors.push('Drop data ingestion: at least one metadata filter is required when enabled');
+      }
+    }
+
+    const users = await models.OrganizationMember.find({
+      orgId: project.saasOrgId,
+      status: 'active',
+    })
+      .populate('userId', 'email name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const values = {
+      name: project.name,
+      icon: project.icon,
+      environment: project.environment,
+      dataRetentionDays: project.dataRetentionDays,
+    };
+
+    const dropEventsConfig = {
+      enabled,
+      mode,
+      filters,
+    };
+
+    if (errors.length) {
+      return res.status(400).render('projects/settings', {
+        title: `${project.name} Settings - SuperInsights`,
+        project,
+        users,
+        currentProjectRole: role,
+        currentSection: 'settings',
+        errors,
+        values,
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
+        successMessage: null,
+        environments: Project.ENVIRONMENTS,
+      });
+    }
+
+    const saved = await saveDropEventsConfig(project._id, dropEventsConfig);
+
+    return res.render('projects/settings', {
+      title: `${project.name} Settings - SuperInsights`,
+      project,
+      users,
+      currentProjectRole: role,
+      currentSection: 'settings',
+      errors: [],
+      values,
+      dropEventsConfig: saved,
+      dropEventsCount: getDropCounter(project._id),
+      successMessage: 'Drop data ingestion settings updated.',
+      environments: Project.ENVIRONMENTS,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDropEventsReport = async (req, res, next) => {
+  try {
+    const project = req.project;
+    return res.json({ dropped: getDropCounter(project._id) });
+  } catch (err) {
+    return next(err);
+  }
 };
 
 exports.postUpdateProject = async (req, res, next) => {
@@ -487,6 +595,8 @@ exports.postUpdateProject = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const dropEventsConfig = await getDropEventsConfig(project._id);
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
@@ -495,6 +605,8 @@ exports.postUpdateProject = async (req, res, next) => {
       currentSection: 'settings',
       errors: [],
       values,
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(project._id),
       successMessage: 'Project updated successfully.',
       environments: Project.ENVIRONMENTS,
     });
@@ -554,6 +666,8 @@ exports.postRegenerateKeys = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const dropEventsConfig = await getDropEventsConfig(project._id);
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
@@ -567,6 +681,8 @@ exports.postRegenerateKeys = async (req, res, next) => {
         environment: project.environment,
         dataRetentionDays: project.dataRetentionDays,
       },
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(project._id),
       successMessage: 'API keys regenerated successfully.',
       environments: Project.ENVIRONMENTS,
     });
@@ -613,6 +729,8 @@ exports.postAddUser = async (req, res, next) => {
         .sort({ createdAt: -1 })
         .lean();
 
+      const dropEventsConfig = await getDropEventsConfig(project._id);
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
@@ -621,6 +739,8 @@ exports.postAddUser = async (req, res, next) => {
         currentSection: 'settings',
         errors,
         values,
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
         successMessage: null,
         environments: Project.ENVIRONMENTS,
       });
@@ -643,6 +763,8 @@ exports.postAddUser = async (req, res, next) => {
           .sort({ createdAt: -1 })
           .lean();
 
+        const dropEventsConfig = await getDropEventsConfig(project._id);
+
         return res.status(400).render('projects/settings', {
           title: `${project.name} Settings - SuperInsights`,
           project,
@@ -651,6 +773,8 @@ exports.postAddUser = async (req, res, next) => {
           currentSection: 'settings',
           errors: ['User is already a member of this project'],
           values,
+          dropEventsConfig,
+          dropEventsCount: getDropCounter(project._id),
           successMessage: null,
           environments: Project.ENVIRONMENTS,
         });
@@ -687,6 +811,8 @@ exports.postAddUser = async (req, res, next) => {
           .sort({ createdAt: -1 })
           .lean();
 
+        const dropEventsConfig = await getDropEventsConfig(project._id);
+
         return res.status(400).render('projects/settings', {
           title: `${project.name} Settings - SuperInsights`,
           project,
@@ -695,6 +821,8 @@ exports.postAddUser = async (req, res, next) => {
           currentSection: 'settings',
           errors: ['An invite is already pending for that email'],
           values,
+          dropEventsConfig,
+          dropEventsCount: getDropCounter(project._id),
           successMessage: null,
           environments: Project.ENVIRONMENTS,
         });
@@ -772,6 +900,8 @@ exports.postAddUser = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const dropEventsConfig = await getDropEventsConfig(project._id);
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
@@ -780,6 +910,8 @@ exports.postAddUser = async (req, res, next) => {
       currentSection: 'settings',
       errors: [],
       values,
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(project._id),
       successMessage: user ? 'User added to project.' : 'Invite sent.',
       environments: Project.ENVIRONMENTS,
     });
@@ -804,6 +936,8 @@ exports.postRemoveUser = async (req, res, next) => {
         .sort({ createdAt: -1 })
         .lean();
 
+      const dropEventsConfig = await getDropEventsConfig(project._id);
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
@@ -817,6 +951,8 @@ exports.postRemoveUser = async (req, res, next) => {
           environment: project.environment,
           dataRetentionDays: project.dataRetentionDays,
         },
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
         successMessage: null,
         environments: Project.ENVIRONMENTS,
       });
@@ -844,6 +980,8 @@ exports.postRemoveUser = async (req, res, next) => {
         .sort({ createdAt: -1 })
         .lean();
 
+      const dropEventsConfig = await getDropEventsConfig(project._id);
+
       return res.status(404).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
@@ -857,6 +995,8 @@ exports.postRemoveUser = async (req, res, next) => {
           environment: project.environment,
           dataRetentionDays: project.dataRetentionDays,
         },
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
         successMessage: null,
         environments: Project.ENVIRONMENTS,
       });
@@ -871,6 +1011,8 @@ exports.postRemoveUser = async (req, res, next) => {
         .sort({ createdAt: -1 })
         .lean();
 
+      const dropEventsConfig = await getDropEventsConfig(project._id);
+
       return res.status(400).render('projects/settings', {
         title: `${project.name} Settings - SuperInsights`,
         project,
@@ -884,6 +1026,8 @@ exports.postRemoveUser = async (req, res, next) => {
           environment: project.environment,
           dataRetentionDays: project.dataRetentionDays,
         },
+        dropEventsConfig,
+        dropEventsCount: getDropCounter(project._id),
         successMessage: null,
         environments: Project.ENVIRONMENTS,
       });
@@ -935,6 +1079,8 @@ exports.postRemoveUser = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const dropEventsConfig = await getDropEventsConfig(project._id);
+
     res.render('projects/settings', {
       title: `${project.name} Settings - SuperInsights`,
       project,
@@ -948,6 +1094,8 @@ exports.postRemoveUser = async (req, res, next) => {
         environment: project.environment,
         dataRetentionDays: project.dataRetentionDays,
       },
+      dropEventsConfig,
+      dropEventsCount: getDropCounter(project._id),
       successMessage: 'User removed from project.',
       environments: Project.ENVIRONMENTS,
     });
