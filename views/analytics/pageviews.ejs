@@ -177,6 +177,7 @@
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
+          const base = basePath;
 
           const timeframe = ref('<%= timeframe %>');
           const deviceType = ref('<%= deviceType %>');
@@ -275,6 +276,7 @@
           return {
             project,
             currentProjectRole,
+            base,
             timeframe,
             deviceType,
             urlPrefix,

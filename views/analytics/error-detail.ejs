@@ -254,6 +254,7 @@
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
+          const base = basePath;
 
           const fingerprint = ref('<%= fingerprint %>');
           const timeframe = ref('<%= timeframe %>');
@@ -391,6 +392,7 @@
           return {
             project,
             currentProjectRole,
+            base,
             fingerprint,
             timeframe,
             occurrences,

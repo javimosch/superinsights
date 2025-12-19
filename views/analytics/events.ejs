@@ -256,6 +256,7 @@
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
+          const base = basePath;
 
           const timeframe = ref('<%= timeframe %>');
           const eventName = ref('<%= eventName ? eventName : "" %>');
@@ -398,6 +399,7 @@
           return {
             project,
             currentProjectRole,
+            base,
             timeframe,
             eventName,
             metaPairs,
