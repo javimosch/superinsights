@@ -10,6 +10,7 @@ const {
   isBuiltinPresetId,
   getBuiltinPreset,
 } = require('../utils/aiAnalysisPresets');
+const { getModel } = require('../utils/saasbackend');
 
 function safeStr(v, maxLen) {
   const s = v == null ? '' : String(v);
@@ -42,10 +43,20 @@ function audit(req, actionCode, status) {
   }
 }
 
-function getOpenAiClient() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+async function getOpenAiClient() {
+  const GlobalSetting = getModel('GlobalSetting');
+  
+  // Try to get API key from global settings first
+  const setting = await GlobalSetting.findOne({ key: 'OPENROUTER_API_KEY' }).lean();
+  let apiKey = setting && setting.value ? setting.value : null;
+  
+  // Fallback to environment variable if not found in global settings
   if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY is not configured');
+    apiKey = process.env.OPENROUTER_API_KEY;
+  }
+  
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not configured in global settings or environment');
   }
 
   return new OpenAI({
@@ -60,7 +71,7 @@ async function callPresetJsonFromLlm({ prompt }) {
   const maxTokens = process.env.AI_ANALYSIS_MAX_TOKENS != null ? Number(process.env.AI_ANALYSIS_MAX_TOKENS) : 900;
   const timeoutMs = process.env.AI_ANALYSIS_TIMEOUT_MS != null ? Number(process.env.AI_ANALYSIS_TIMEOUT_MS) : 25000;
 
-  const client = getOpenAiClient();
+  const client = await getOpenAiClient();
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
 
