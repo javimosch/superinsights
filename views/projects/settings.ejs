@@ -583,6 +583,16 @@
             </button>
           </div>
 
+          <div v-if="canDelete" class="mt-2">
+            <button
+              type="button"
+              class="btn btn-error"
+              @click="openClearDataModal()"
+            >
+              Clear data
+            </button>
+          </div>
+
           <!-- Delete confirmation modal -->
           <dialog ref="deleteModal" class="modal">
             <div class="modal-box">
@@ -604,6 +614,31 @@
                 >
                   <button type="submit" class="btn btn-error">
                     Yes, delete project
+                  </button>
+                </form>
+              </div>
+            </div>
+          </dialog>
+
+          <dialog ref="clearDataModal" class="modal">
+            <div class="modal-box">
+              <h3 class="font-bold text-lg mb-2">Clear all project data?</h3>
+              <p class="text-sm text-base-content/70 mb-4">
+                This will permanently delete all ingested data for this project (events, errors, page views, performance metrics, and AI analysis runs).
+                The project, members, and API keys will remain.
+              </p>
+              <div class="modal-action">
+                <form method="dialog" class="flex gap-2">
+                  <button type="button" class="btn" @click="closeClearDataModal()">
+                    Cancel
+                  </button>
+                </form>
+                <form
+                  action="/projects/<%= project._id %>/clear-data"
+                  method="POST"
+                >
+                  <button type="submit" class="btn btn-error">
+                    Yes, clear data
                   </button>
                 </form>
               </div>
@@ -638,6 +673,7 @@
           const showSecret = ref(false);
           const regenerateModal = ref(null);
           const deleteModal = ref(null);
+          const clearDataModal = ref(null);
 
           const canRegenerateKeys = ['owner'].includes(currentProjectRole);
           const canDelete = ['owner'].includes(currentProjectRole);
@@ -727,6 +763,18 @@
             }
           }
 
+          function openClearDataModal() {
+            if (clearDataModal.value) {
+              clearDataModal.value.showModal();
+            }
+          }
+
+          function closeClearDataModal() {
+            if (clearDataModal.value) {
+              clearDataModal.value.close();
+            }
+          }
+
           function addDropFilterRow() {
             dropFilters.value.push({ key: '', op: 'equals', value: '' });
           }
@@ -763,6 +811,7 @@
             showSecret,
             regenerateModal,
             deleteModal,
+            clearDataModal,
             canRegenerateKeys,
             canDelete,
             publicLinkUrl,
@@ -776,6 +825,8 @@
             closeRegenerateModal,
             openDeleteModal,
             closeDeleteModal,
+            openClearDataModal,
+            closeClearDataModal,
             addDropFilterRow,
             removeDropFilterRow,
             reportDrops,

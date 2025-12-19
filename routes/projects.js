@@ -97,6 +97,13 @@ router.post(
   projectController.postSoftDelete
 );
 
+router.post(
+  '/:id/clear-data',
+  ensureProjectAccess,
+  ensureProjectRole(['owner']),
+  projectController.postClearProjectData
+);
+
 router.get(
   '/:id/dashboard',
   ensureProjectAccess,
