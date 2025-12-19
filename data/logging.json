@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-19T13:01:09.413Z",
+  "updatedAt": "2025-12-19T19:41:04.722Z",
   "actions": {
     "AUTH_REGISTER_SUCCESS": {
       "count": 1,
@@ -17,13 +17,13 @@
       "lastPath": "/auth/register"
     },
     "AUTH_LOGIN_SUCCESS": {
-      "count": 17,
+      "count": 22,
       "firstSeenAt": "2025-12-13T07:47:41.873Z",
-      "lastSeenAt": "2025-12-17T23:56:47.866Z",
-      "avgIntervalMs": 25234124.5625,
+      "lastSeenAt": "2025-12-19T19:40:40.264Z",
+      "avgIntervalMs": 26722780.523809522,
       "minIntervalMs": 4614,
       "maxIntervalMs": 393710964,
-      "intervalsCount": 16,
+      "intervalsCount": 21,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
       "lastStatus": 302,
@@ -31,30 +31,30 @@
       "lastPath": "/auth/login"
     },
     "PROJECT_CREATE": {
-      "count": 3,
+      "count": 5,
       "firstSeenAt": "2025-12-13T09:19:24.018Z",
-      "lastSeenAt": "2025-12-18T09:25:00.049Z",
-      "avgIntervalMs": 216168015.5,
-      "minIntervalMs": 39278576,
+      "lastSeenAt": "2025-12-19T19:41:03.721Z",
+      "avgIntervalMs": 138924925.75,
+      "minIntervalMs": 6838059,
       "maxIntervalMs": 393057455,
-      "intervalsCount": 2,
+      "intervalsCount": 4,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
-      "lastProjectId": "6943c86bab3fa04c6d793de9",
+      "lastProjectId": "6945aa4f07bad46bd2ae80ae",
       "lastStatus": 302,
       "lastMethod": "POST",
       "lastPath": "/projects"
     },
     "AUTH_LOGOUT": {
-      "count": 3,
+      "count": 6,
       "firstSeenAt": "2025-12-17T22:29:13.948Z",
-      "lastSeenAt": "2025-12-17T23:56:19.563Z",
-      "avgIntervalMs": 2612807.5,
-      "minIntervalMs": 1617837,
-      "maxIntervalMs": 3607778,
-      "intervalsCount": 2,
-      "lastUserId": "693d1a1474004a93dd8413ed",
-      "lastEmail": "arancibiajav@gmail.com",
+      "lastSeenAt": "2025-12-19T19:40:37.597Z",
+      "avgIntervalMs": 32536729.8,
+      "minIntervalMs": 1058713,
+      "maxIntervalMs": 150733155,
+      "intervalsCount": 5,
+      "lastUserId": "693b48affbc31f8ef8e015d5",
+      "lastEmail": "admin@admin.com",
       "lastStatus": 302,
       "lastMethod": "POST",
       "lastPath": "/auth/logout"
@@ -135,6 +135,34 @@
       "lastStatus": 500,
       "lastMethod": "GET",
       "lastPath": "/projects/69432efc3dc49b00e8f99b10/settings"
+    },
+    "/home/jarancibia/ai/superinsights/views/admin/users.ejs:96\n    94|           </div>\n    95|           <% } %>\n >> 96|           <% if (invitedUserEmail) { %>\n    97|           <div class=\"alert alert-success mb-4 text-sm\">\n    98|             Invited\n    99|             <span class=\"font-semibold\"><%= invitedUserEmail %></span>.\n\ninvitedUserEmail is not defined": {
+      "count": 4,
+      "firstSeenAt": "2025-12-19T18:10:24.262Z",
+      "lastSeenAt": "2025-12-19T19:17:30.461Z",
+      "avgIntervalMs": 1342066.3333333335,
+      "minIntervalMs": 26,
+      "maxIntervalMs": 3999912,
+      "intervalsCount": 3,
+      "lastUserId": "693d1a1474004a93dd8413ed",
+      "lastEmail": "arancibiajav@gmail.com",
+      "lastStatus": 500,
+      "lastMethod": "GET",
+      "lastPath": "/admin/users"
+    },
+    "Operation `organizationmembers.find()` buffering timed out after 10000ms": {
+      "count": 2,
+      "firstSeenAt": "2025-12-19T19:35:15.299Z",
+      "lastSeenAt": "2025-12-19T19:35:28.557Z",
+      "avgIntervalMs": 13258,
+      "minIntervalMs": 13258,
+      "maxIntervalMs": 13258,
+      "intervalsCount": 1,
+      "lastUserId": "693b48affbc31f8ef8e015d5",
+      "lastEmail": "admin@admin.com",
+      "lastStatus": 500,
+      "lastMethod": "GET",
+      "lastPath": "/admin/users"
     }
   }
 }
