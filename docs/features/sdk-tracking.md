@@ -221,3 +221,7 @@ If `fn()` returns a non-promise value, it is treated like a synchronous call and
   - Ensure `SuperInsights.init()` is called before `trackTiming/time/timeAsync`.
   - Ensure your project API key is correct.
   - Ensure the ingestion API is reachable (check browser network calls to `/v1/events`).
+
+- **Events are being dropped unexpectedly**
+  - Check your Project Settings → **Drop data ingestion**.
+  - The feature currently applies to **events only** (it can be extended later to errors/pageviews/performance).
