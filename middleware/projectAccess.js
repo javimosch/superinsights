@@ -5,6 +5,7 @@ async function ensureProjectAccess(req, res, next) {
   try {
     const projectId = req.params.id;
     const userId = req.session.user && req.session.user.id;
+    const userRole = req.session.user && req.session.user.role;
 
     if (!projectId || !userId) {
       return res.status(403).render('error', {
@@ -21,20 +22,25 @@ async function ensureProjectAccess(req, res, next) {
       });
     }
 
-    const membership = await models.OrganizationMember.findOne({
-      orgId: project.saasOrgId,
-      userId,
-      status: 'active',
-    }).lean();
+    let role = 'viewer';
+    if (userRole === 'admin') {
+      role = 'admin';
+    } else {
+      const membership = await models.OrganizationMember.findOne({
+        orgId: project.saasOrgId,
+        userId,
+        status: 'active',
+      }).lean();
 
-    if (!membership) {
-      return res.status(403).render('error', {
-        status: 403,
-        message: 'You do not have permission to access this project.',
-      });
+      if (!membership) {
+        return res.status(403).render('error', {
+          status: 403,
+          message: 'You do not have permission to access this project.',
+        });
+      }
+
+      role = membership.role;
     }
-
-    const role = membership.role;
 
     req.project = project;
     req.userProjectRole = role;
