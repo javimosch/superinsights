@@ -88,6 +88,11 @@ exports.getLogs = async (req, res, next) => {
         from: req.query.from || '',
         to: req.query.to || '',
       },
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: 'Platform Admin', href: '/admin' },
+        { label: 'Logs', href: '/admin/logs' }
+      ]
     });
   } catch (err) {
     return next(err);
