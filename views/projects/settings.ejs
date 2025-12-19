@@ -405,7 +405,7 @@
               </p>
 
               <div class="mt-3 space-y-2">
-                <div v-for="(f, idx) in dropFilters" :key="idx" class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+                <div v-for="(f, idx) in dropFilters" :key="idx" class="grid grid-cols-1 md:grid-cols-7 gap-2 items-center">
                   <div class="md:col-span-2">
                     <input
                       type="text"
@@ -416,11 +416,23 @@
                     />
                   </div>
                   <div class="md:col-span-2">
+                    <select
+                      name="dropFilterOp"
+                      class="select select-bordered w-full"
+                      v-model="f.op"
+                    >
+                      <option value="equals">equals</option>
+                      <option value="contains">contains</option>
+                      <option value="lowerThan">lowerThan</option>
+                      <option value="greaterThan">greaterThan</option>
+                    </select>
+                  </div>
+                  <div class="md:col-span-2">
                     <input
                       type="text"
                       name="dropFilterValue"
                       class="input input-bordered w-full"
-                      placeholder="value (e.g. 73)"
+                      :placeholder="f.op === 'contains' ? 'values (e.g. 73,123,45)' : 'value (e.g. 73)'"
                       v-model="f.value"
                     />
                   </div>
@@ -616,7 +628,11 @@
           const dropEventsCount = ref(<%- JSON.stringify(typeof dropEventsCount === 'number' ? dropEventsCount : 0) %>);
 
           if (!dropFilters.value.length) {
-            dropFilters.value.push({ key: '', value: '' });
+            dropFilters.value.push({ key: '', op: 'equals', value: '' });
+          } else {
+            for (let i = 0; i < dropFilters.value.length; i += 1) {
+              if (!dropFilters.value[i].op) dropFilters.value[i].op = 'equals';
+            }
           }
 
           const showSecret = ref(false);
@@ -712,14 +728,14 @@
           }
 
           function addDropFilterRow() {
-            dropFilters.value.push({ key: '', value: '' });
+            dropFilters.value.push({ key: '', op: 'equals', value: '' });
           }
 
           function removeDropFilterRow(idx) {
             if (!Array.isArray(dropFilters.value)) return;
             dropFilters.value.splice(idx, 1);
             if (!dropFilters.value.length) {
-              dropFilters.value.push({ key: '', value: '' });
+              dropFilters.value.push({ key: '', op: 'equals', value: '' });
             }
           }
 

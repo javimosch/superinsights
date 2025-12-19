@@ -393,6 +393,7 @@ exports.getProjectSettings = (req, res) => {
 function parseDropFilters(body) {
   const keys = Array.isArray(body.dropFilterKey) ? body.dropFilterKey : body.dropFilterKey ? [body.dropFilterKey] : [];
   const values = Array.isArray(body.dropFilterValue) ? body.dropFilterValue : body.dropFilterValue ? [body.dropFilterValue] : [];
+  const ops = Array.isArray(body.dropFilterOp) ? body.dropFilterOp : body.dropFilterOp ? [body.dropFilterOp] : [];
 
   const out = [];
   const n = Math.max(keys.length, values.length);
@@ -400,8 +401,10 @@ function parseDropFilters(body) {
   for (let i = 0; i < n; i += 1) {
     const key = keys[i] != null ? String(keys[i]).trim() : '';
     const value = values[i] != null ? String(values[i]).trim() : '';
+    const opRaw = ops[i] != null ? String(ops[i]).trim() : 'equals';
+    const op = ['equals', 'lowerThan', 'greaterThan', 'contains'].includes(opRaw) ? opRaw : 'equals';
     if (!key) continue;
-    out.push({ key, value });
+    out.push({ key, op, value });
   }
 
   return out;
