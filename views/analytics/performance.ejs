@@ -9,6 +9,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
     />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   </head>
@@ -82,7 +83,50 @@
               </select>
             </div>
 
-            <div class="form-control">
+            <div class="form-control md:col-span-4">
+              <label class="label">
+                <span class="label-text">Metadata filters</span>
+              </label>
+              <div class="space-y-2">
+                <div
+                  v-for="(row, idx) in metaPairs"
+                  :key="idx"
+                  class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end"
+                >
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`metaKey-${idx}`">
+                      <span class="label-text">Key</span>
+                    </label>
+                    <input
+                      class="input input-bordered w-full"
+                      :id="`metaKey-${idx}`"
+                      v-model="row.key"
+                      placeholder="e.g. module"
+                    />
+                  </div>
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`metaValue-${idx}`">
+                      <span class="label-text">Value</span>
+                    </label>
+                    <input
+                      class="input input-bordered w-full"
+                      :id="`metaValue-${idx}`"
+                      v-model="row.value"
+                      placeholder="e.g. foo"
+                    />
+                  </div>
+                  <div class="md:col-span-2 flex gap-2">
+                    <button type="button" class="btn btn-outline w-full" @click="removeMetaPair(idx)">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-outline" @click="addMetaPair">Add metadata filter</button>
+              </div>
+            </div>
+
+            <div class="form-control md:col-span-4">
               <button type="submit" class="btn btn-primary w-full">Apply</button>
             </div>
           </form>
@@ -281,6 +325,13 @@
           const deviceType = ref('<%= deviceType %>');
           const browser = ref('<%= browser %>');
 
+          const segment = ref(<%- JSON.stringify(segment || {}) %>);
+          const metaPairs = ref(
+            segment.value && segment.value.meta && typeof segment.value.meta === 'object'
+              ? Object.entries(segment.value.meta).map(([k, v]) => ({ key: String(k), value: String(v) }))
+              : []
+          );
+
           const percentiles = ref(<%- JSON.stringify(percentiles || {}) %>);
           const metricsByDay = ref(<%- JSON.stringify(metricsByDay || []) %>);
           const performanceScore = ref(<%- JSON.stringify(performanceScore || { score: 0 }) %>);
@@ -436,9 +487,29 @@
               params.set('browser', browser.value);
             }
 
+            const meta = {};
+            for (const row of metaPairs.value || []) {
+              const k = row && row.key ? String(row.key).trim() : '';
+              const v = row && row.value ? String(row.value).trim() : '';
+              if (!k || !v) continue;
+              meta[k] = v;
+            }
+            if (Object.keys(meta).length) {
+              params.set('meta', JSON.stringify(meta));
+            }
+
             const base = `${basePath}/performance`;
             const query = params.toString();
             window.location.href = query ? `${base}?${query}` : base;
+          }
+
+          function addMetaPair() {
+            metaPairs.value.push({ key: '', value: '' });
+          }
+
+          function removeMetaPair(idx) {
+            if (!Array.isArray(metaPairs.value)) return;
+            metaPairs.value.splice(idx, 1);
           }
 
           function buildThresholdSeries(labels, value) {
@@ -594,6 +665,7 @@
             timeframe,
             deviceType,
             browser,
+            metaPairs,
             percentiles,
             metricsByDay,
             performanceScore,
@@ -603,6 +675,8 @@
             hasAnyPercentiles,
             percentileRows,
             applyFilters,
+            addMetaPair,
+            removeMetaPair,
           };
         },
       }).mount('#app');
