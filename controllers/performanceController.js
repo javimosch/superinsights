@@ -4,14 +4,28 @@ const { parseSegmentFilters, buildPerformanceMetadataMatch } = require('../utils
 
 function getDateRange(timeframe) {
   const now = new Date();
-  const allowed = ['24h', '7d', '30d'];
+  const allowed = ['5m', '30m', '1h', '6h', '12h', '24h', '7d', '30d', '3m', '1y'];
   const tf = allowed.includes(timeframe) ? timeframe : '7d';
 
   let start;
-  if (tf === '24h') {
+  if (tf === '5m') {
+    start = new Date(now.getTime() - 5 * 60 * 1000);
+  } else if (tf === '30m') {
+    start = new Date(now.getTime() - 30 * 60 * 1000);
+  } else if (tf === '1h') {
+    start = new Date(now.getTime() - 60 * 60 * 1000);
+  } else if (tf === '6h') {
+    start = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+  } else if (tf === '12h') {
+    start = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+  } else if (tf === '24h') {
     start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   } else if (tf === '30d') {
     start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else if (tf === '3m') {
+    start = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  } else if (tf === '1y') {
+    start = new Date(new Date().getFullYear(), 0, 1); // Start of current year
   } else {
     start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   }
