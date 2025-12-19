@@ -1,5 +1,5 @@
 .env.staging
-data
+data*
 uploads
 node_modules
 .env
