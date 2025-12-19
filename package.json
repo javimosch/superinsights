@@ -22,7 +22,7 @@
     "mongoose": "^8.5.0",
     "morgan": "^1.10.0",
     "openai": "^4.0.0",
-    "saasbackend": "^1.2.1",
+    "saasbackend": "^1.2.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
