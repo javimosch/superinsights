@@ -127,6 +127,8 @@ exports.postAcceptInvite = async (req, res, next) => {
       role: user.role === 'admin' ? 'admin' : 'viewer',
     };
 
+    req.session.currentOrgId = invite.orgId && invite.orgId._id ? invite.orgId._id.toString() : null;
+
     return res.redirect('/projects');
   } catch (err) {
     return next(err);
