@@ -180,6 +180,8 @@ exports.getErrorsAnalytics = async (req, res, next) => {
       getUniqueFingerprints({ projectId, start, end, errorType: params.errorType }),
     ]);
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/errors', {
       title: 'Errors',
       project: req.project,
@@ -194,6 +196,13 @@ exports.getErrorsAnalytics = async (req, res, next) => {
       currentSection: 'errors',
       currentUser: (req.session && req.session.user) || null,
       currentProjectRole: req.userProjectRole || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'Errors', href: `/projects/${req.project._id}/errors` }
+      ]
     });
   } catch (err) {
     return next(err);
