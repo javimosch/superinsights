@@ -15,23 +15,16 @@
   </head>
   <body class="min-h-screen bg-base-200">
     <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
 
     <% const base = projectBasePath || `/projects/${project._id}`; %>
 
-    <main id="app" class="container mx-auto p-4 space-y-6">
+    <div id="app">
+    <main class="container mx-auto p-4 space-y-6">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
           <div>
-            <div class="breadcrumbs text-sm">
-              <ul>
-                <li><a href="/projects">Projects</a></li>
-                <li>
-                  <a :href="`${base}/settings`">{{ project.name }}</a>
-                </li>
-                <li>Dashboard</li>
-              </ul>
-            </div>
             <h1 class="text-2xl font-bold">Dashboard</h1>
             <p class="text-sm text-base-content/70">
               Environment: <span class="capitalize">{{ project.environment }}</span>
@@ -147,7 +140,7 @@
             <div v-if="!pageViewsData.viewsByDay || !pageViewsData.viewsByDay.length" class="py-10 text-center text-base-content/70">
               No page views yet.
               <div class="mt-2">
-                <a href="/sdk/README.md" class="link">See SDK docs</a>
+                <a href="/docs" class="link">See SDK docs</a>
               </div>
             </div>
             <div v-else class="w-full h-72">
@@ -165,7 +158,7 @@
             <div v-if="!eventsData.eventsByDay || !eventsData.eventsByDay.length" class="py-10 text-center text-base-content/70">
               No events yet.
               <div class="mt-2">
-                <a href="/sdk/README.md" class="link">See SDK docs</a>
+                <a href="/docs" class="link">See SDK docs</a>
               </div>
             </div>
             <div v-else class="w-full h-72">
@@ -183,7 +176,7 @@
             <div v-if="!errorsData.errorsByDay || !errorsData.errorsByDay.length" class="py-10 text-center text-base-content/70">
               No errors yet.
               <div class="mt-2">
-                <a href="/sdk/README.md" class="link">See SDK docs</a>
+                <a href="/docs" class="link">See SDK docs</a>
               </div>
             </div>
             <div v-else class="w-full h-72">
@@ -201,7 +194,7 @@
             <div v-if="!performanceData.metricsByDay || !performanceData.metricsByDay.length" class="py-10 text-center text-base-content/70">
               No performance measurements yet.
               <div class="mt-2">
-                <a href="/sdk/README.md" class="link">See SDK docs</a>
+                <a href="/docs" class="link">See SDK docs</a>
               </div>
             </div>
             <div v-else class="w-full h-72">
@@ -653,5 +646,6 @@
         },
       }).mount('#app');
     </script>
+    </div>
   </body>
 </html>

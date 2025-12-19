@@ -315,6 +315,8 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
 
     const performanceScore = calculatePerformanceScore(percentiles);
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/performance', {
       title: 'Performance Metrics',
       project: req.project,
@@ -331,6 +333,13 @@ exports.getPerformanceAnalytics = async (req, res, next) => {
       currentSection: 'performance',
       currentUser: (req.session && req.session.user) || null,
       currentProjectRole: req.userProjectRole || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'Performance', href: `/projects/${req.project._id}/performance` }
+      ]
     });
   } catch (err) {
     return next(err);

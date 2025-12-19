@@ -897,6 +897,8 @@ exports.getAiAnalysisPage = async (req, res, next) => {
     const runs = await getRecentRuns({ projectId, limit: 30 });
     const latest = runs && runs.length ? runs[0] : null;
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/ai-analysis', {
       title: 'AI Analysis',
       project: req.project,
@@ -906,6 +908,13 @@ exports.getAiAnalysisPage = async (req, res, next) => {
       currentProjectRole: req.userProjectRole || null,
       runs: runs || [],
       latestRun: latest || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'AI Analysis', href: `/projects/${req.project._id}/ai-analysis` }
+      ]
     });
   } catch (err) {
     return next(err);

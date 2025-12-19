@@ -490,6 +490,8 @@ exports.getDashboard = async (req, res, next) => {
     const payload = await buildDashboardPayload(req);
     if (!payload) return res.redirect('/projects');
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/dashboard', {
       title: 'Dashboard',
       project: req.project,
@@ -502,6 +504,13 @@ exports.getDashboard = async (req, res, next) => {
       currentSection: 'dashboard',
       currentUser: req.session.user || null,
       currentProjectRole: req.userProjectRole || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'Dashboard', href: `/projects/${req.project._id}/dashboard` }
+      ]
     });
   } catch (err) {
     return next(err);

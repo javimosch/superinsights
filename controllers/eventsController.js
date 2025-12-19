@@ -314,6 +314,8 @@ exports.getEventsAnalytics = async (req, res, next) => {
       getTimedEventSummary({ projectId, start, end, metadataMatch }),
     ]);
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/events', {
       title: 'Events',
       project: req.project,
@@ -329,6 +331,13 @@ exports.getEventsAnalytics = async (req, res, next) => {
       currentSection: 'events',
       currentUser: (req.session && req.session.user) || null,
       currentProjectRole: req.userProjectRole || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'Events', href: `/projects/${req.project._id}/events` }
+      ]
     });
   } catch (err) {
     return next(err);

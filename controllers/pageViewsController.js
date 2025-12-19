@@ -161,6 +161,8 @@ exports.getPageViewsAnalytics = async (req, res, next) => {
       getTopPages(params),
     ]);
 
+    const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
+
     return res.render('analytics/pageviews', {
       title: 'Page views',
       project: req.project,
@@ -175,6 +177,13 @@ exports.getPageViewsAnalytics = async (req, res, next) => {
       currentSection: 'pageviews',
       currentUser: (req.session && req.session.user) || null,
       currentProjectRole: req.userProjectRole || null,
+      breadcrumbs: [
+        { label: 'Home', href: '/', icon: 'home' },
+        { label: orgName, href: '/org/users' },
+        { label: 'Projects', href: '/projects' },
+        { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
+        { label: 'Page views', href: `/projects/${req.project._id}/pageviews` }
+      ]
     });
   } catch (err) {
     return next(err);
