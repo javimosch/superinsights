@@ -9,6 +9,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
     />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   </head>
@@ -148,6 +149,51 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div class="form-control md:col-span-4">
+              <label class="label">
+                <span class="label-text">Metadata filters</span>
+              </label>
+              <div class="space-y-2">
+                <div
+                  v-for="(row, idx) in metaPairs"
+                  :key="idx"
+                  class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end"
+                >
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`metaKey-${idx}`">
+                      <span class="label-text">Key</span>
+                    </label>
+                    <input
+                      class="input input-bordered w-full"
+                      :id="`metaKey-${idx}`"
+                      v-model="row.key"
+                      placeholder="e.g. module"
+                    />
+                  </div>
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`metaValue-${idx}`">
+                      <span class="label-text">Value</span>
+                    </label>
+                    <input
+                      class="input input-bordered w-full"
+                      :id="`metaValue-${idx}`"
+                      v-model="row.value"
+                      placeholder="e.g. foo"
+                    />
+                  </div>
+                  <div class="md:col-span-2 flex gap-2">
+                    <button type="button" class="btn btn-outline w-full" @click="removeMetaPair(idx)">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <button type="button" class="btn btn-outline" @click="addMetaPair">Add metadata filter</button>
+              </div>
+            </div>
+          </div>
+
           <div v-if="error" class="alert alert-error">
             <span class="text-sm">{{ error }}</span>
           </div>
@@ -231,6 +277,8 @@
           const start = ref('');
           const end = ref('');
 
+          const metaPairs = ref([]);
+
           const running = ref(false);
           const error = ref('');
 
@@ -241,7 +289,17 @@
             } catch (e) {
               return '';
             }
+
           });
+
+          function addMetaPair() {
+            metaPairs.value.push({ key: '', value: '' });
+          }
+
+          function removeMetaPair(idx) {
+            if (!Array.isArray(metaPairs.value)) return;
+            metaPairs.value.splice(idx, 1);
+          }
 
           function statusBadge(status) {
             if (status === 'completed') return 'badge-success';
@@ -313,6 +371,17 @@
                 payload.end = end.value;
               } else {
                 payload.timeframe = timeframe.value;
+              }
+
+              const meta = {};
+              for (const row of metaPairs.value || []) {
+                const k = row && row.key ? String(row.key).trim() : '';
+                const v = row && row.value ? String(row.value).trim() : '';
+                if (!k || !v) continue;
+                meta[k] = v;
+              }
+              if (Object.keys(meta).length) {
+                payload.meta = meta;
               }
 
               const resp = await fetch(`${base}/ai-analysis/run`, {
@@ -457,6 +526,7 @@
             timeframe,
             start,
             end,
+            metaPairs,
             running,
             error,
             runAnalysis,
@@ -468,6 +538,8 @@
             copyMarkdown,
             aiCreatePreset,
             aiRefinePreset,
+            addMetaPair,
+            removeMetaPair,
           };
         },
       }).mount('#app');

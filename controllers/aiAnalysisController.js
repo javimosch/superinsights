@@ -10,6 +10,13 @@ const AiAnalysisPreset = require('../models/AiAnalysisPreset');
 const { logAudit } = require('../utils/auditLogger');
 const { ACTION_CODES } = require('../utils/actionCodes');
 const { isBuiltinPresetId, getBuiltinPreset } = require('../utils/aiAnalysisPresets');
+const {
+  parseSegmentFilters,
+  buildEventMetadataMatch,
+  buildPerformanceMetadataMatch,
+  buildPageViewMetadataMatch,
+  buildErrorMetadataMatch,
+} = require('../utils/segmentFilters');
 
 const SAMPLE_LIMITS = {
   maxPatterns: 10,
@@ -109,9 +116,15 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, x));
 }
 
-async function buildSamples({ projectId, start, end, aggregates }) {
+async function buildSamples({ projectId, start, end, aggregates, matchers }) {
   const maxPatterns = SAMPLE_LIMITS.maxPatterns;
   const maxSamples = SAMPLE_LIMITS.maxSamplesPerPattern;
+
+  const m = matchers || {};
+  const eventMatch = m.eventMatch || {};
+  const pageViewMatch = m.pageViewMatch || {};
+  const perfMatch = m.perfMatch || {};
+  const errorMatch = m.errorMatch || {};
 
   const samples = {
     errors: {},
@@ -146,6 +159,7 @@ async function buildSamples({ projectId, start, end, aggregates }) {
       projectId,
       timestamp: { $gte: start, $lte: end },
       fingerprint,
+      ...errorMatch,
     })
       .sort({ timestamp: -1 })
       .limit(maxSamples)
@@ -173,6 +187,7 @@ async function buildSamples({ projectId, start, end, aggregates }) {
       timestamp: { $gte: start, $lte: end },
       eventName,
       durationMs: { $ne: null, $exists: true },
+      ...eventMatch,
     })
       .sort({ durationMs: -1, timestamp: -1 })
       .limit(maxSamples)
@@ -199,6 +214,7 @@ async function buildSamples({ projectId, start, end, aggregates }) {
       projectId,
       timestamp: { $gte: start, $lte: end },
       eventName,
+      ...eventMatch,
     })
       .sort({ timestamp: -1 })
       .limit(maxSamples)
@@ -225,6 +241,7 @@ async function buildSamples({ projectId, start, end, aggregates }) {
       projectId,
       timestamp: { $gte: start, $lte: end },
       url,
+      ...pageViewMatch,
     })
       .sort({ timestamp: -1 })
       .limit(maxSamples)
@@ -265,6 +282,7 @@ async function buildSamples({ projectId, start, end, aggregates }) {
       const q = {
         projectId,
         timestamp: { $gte: start, $lte: end },
+        ...perfMatch,
       };
 
       q[metric] = { $gte: t };
@@ -296,8 +314,8 @@ async function buildSamples({ projectId, start, end, aggregates }) {
   return samples;
 }
 
-async function buildPageViewsAgg({ projectId, start, end }) {
-  const match = { projectId, timestamp: { $gte: start, $lte: end } };
+async function buildPageViewsAgg({ projectId, start, end, pageViewMatch }) {
+  const match = { projectId, timestamp: { $gte: start, $lte: end }, ...(pageViewMatch || {}) };
 
   const [totalViews, uniqueRows, viewsByDay, topPages] = await Promise.all([
     PageView.countDocuments(match),
@@ -356,8 +374,8 @@ async function buildPageViewsAgg({ projectId, start, end }) {
   };
 }
 
-async function buildEventsAgg({ projectId, start, end }) {
-  const match = { projectId, timestamp: { $gte: start, $lte: end } };
+async function buildEventsAgg({ projectId, start, end, eventMatch }) {
+  const match = { projectId, timestamp: { $gte: start, $lte: end }, ...(eventMatch || {}) };
 
   const [totalEvents, eventsByDay, topEvents] = await Promise.all([
     Event.countDocuments(match),
@@ -396,11 +414,12 @@ async function buildEventsAgg({ projectId, start, end }) {
   };
 }
 
-async function buildTimedEventsAgg({ projectId, start, end }) {
+async function buildTimedEventsAgg({ projectId, start, end, eventMatch }) {
   const match = {
     projectId,
     timestamp: { $gte: start, $lte: end },
     durationMs: { $ne: null, $exists: true },
+    ...(eventMatch || {}),
   };
 
   try {
@@ -479,8 +498,8 @@ async function buildTimedEventsAgg({ projectId, start, end }) {
   }
 }
 
-async function buildErrorsAgg({ projectId, start, end }) {
-  const match = { projectId, timestamp: { $gte: start, $lte: end } };
+async function buildErrorsAgg({ projectId, start, end, errorMatch }) {
+  const match = { projectId, timestamp: { $gte: start, $lte: end }, ...(errorMatch || {}) };
 
   const [totalErrors, uniqueFpRows, errorsByDay, topFingerprints] = await Promise.all([
     ErrorModel.countDocuments(match),
@@ -549,8 +568,8 @@ async function buildErrorsAgg({ projectId, start, end }) {
   };
 }
 
-async function buildPerformanceAgg({ projectId, start, end }) {
-  const match = { projectId, timestamp: { $gte: start, $lte: end } };
+async function buildPerformanceAgg({ projectId, start, end, perfMatch }) {
+  const match = { projectId, timestamp: { $gte: start, $lte: end }, ...(perfMatch || {}) };
 
   const [totalMeasurements, metricsByDay, percentilesRows] = await Promise.all([
     PerformanceMetric.countDocuments(match),
@@ -658,19 +677,21 @@ async function buildPerformanceAgg({ projectId, start, end }) {
   };
 }
 
-async function buildAiPayload({ project, start, end }) {
+async function buildAiPayload({ project, start, end, matchers }) {
   const projectId = project._id;
 
+  const m = matchers || {};
+
   const [pageviews, events, timedEvents, errors, performance] = await Promise.all([
-    buildPageViewsAgg({ projectId, start, end }),
-    buildEventsAgg({ projectId, start, end }),
-    buildTimedEventsAgg({ projectId, start, end }),
-    buildErrorsAgg({ projectId, start, end }),
-    buildPerformanceAgg({ projectId, start, end }),
+    buildPageViewsAgg({ projectId, start, end, pageViewMatch: m.pageViewMatch }),
+    buildEventsAgg({ projectId, start, end, eventMatch: m.eventMatch }),
+    buildTimedEventsAgg({ projectId, start, end, eventMatch: m.eventMatch }),
+    buildErrorsAgg({ projectId, start, end, errorMatch: m.errorMatch }),
+    buildPerformanceAgg({ projectId, start, end, perfMatch: m.perfMatch }),
   ]);
 
   const aggregates = { pageviews, events, timedEvents, errors, performance };
-  const samples = await buildSamples({ projectId, start, end, aggregates });
+  const samples = await buildSamples({ projectId, start, end, aggregates, matchers });
 
   return {
     meta: {
@@ -910,6 +931,14 @@ exports.postRunAiAnalysis = async (req, res, next) => {
       return res.status(400).json({ success: false, error: range.error });
     }
 
+    const segment = parseSegmentFilters(req);
+    const matchers = {
+      eventMatch: buildEventMetadataMatch(segment),
+      perfMatch: buildPerformanceMetadataMatch(segment),
+      pageViewMatch: buildPageViewMetadataMatch(segment),
+      errorMatch: buildErrorMetadataMatch(segment),
+    };
+
     const actorId = req?.session?.user?.id;
     const actorEmail = req?.session?.user?.email;
 
@@ -950,7 +979,7 @@ exports.postRunAiAnalysis = async (req, res, next) => {
       // ignore
     }
 
-    const payload = await buildAiPayload({ project: req.project, start: range.start, end: range.end });
+    const payload = await buildAiPayload({ project: req.project, start: range.start, end: range.end, matchers });
     const basePrompt = buildPrompt(payload);
     const presetPrompt =
       presetLoad && presetLoad.promptTemplate ? String(presetLoad.promptTemplate).trim() : '';
