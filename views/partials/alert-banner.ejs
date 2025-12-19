@@ -1,0 +1,569 @@
+<!-- Alert Banner - Reusable persistent page-level alerts -->
+<!-- Enhanced with positioning, actions, and stacking support -->
+<div id="alert-banner-container" class="fixed left-0 right-0 z-40 pointer-events-none" data-position="top">
+  <!-- Alert banners will be dynamically inserted here -->
+</div>
+
+<style>
+  /* Alert banner positioning */
+  #alert-banner-container {
+    top: 0;
+  }
+
+  #alert-banner-container.position-bottom {
+    top: auto;
+    bottom: 0;
+  }
+
+  /* Alert banner animations */
+  @keyframes bannerSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bannerSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bannerSlideOutUp {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }
+
+  @keyframes bannerSlideOutDown {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+
+  /* Banner item styles */
+  .alert-banner-item {
+    @apply pointer-events-auto;
+    animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #alert-banner-container.position-bottom .alert-banner-item {
+    animation: bannerSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .alert-banner-item.removing {
+    animation: bannerSlideOutUp 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  #alert-banner-container.position-bottom .alert-banner-item.removing {
+    animation: bannerSlideOutDown 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Banner content layout */
+  .alert-banner-content {
+    @apply flex items-center justify-between gap-4 w-full;
+  }
+
+  .alert-banner-message-wrapper {
+    @apply flex items-center gap-3 flex-1 min-w-0;
+  }
+
+  .alert-banner-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .alert-banner-message {
+    @apply text-sm font-medium flex-1;
+  }
+
+  .alert-banner-actions {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+
+  .alert-banner-action-btn {
+    @apply btn btn-sm;
+  }
+
+  .alert-banner-close-btn {
+    @apply btn btn-sm btn-circle btn-ghost;
+  }
+
+  /* Prevent page content shift */
+  body.alert-banner-active {
+    padding-top: 0;
+  }
+</style>
+
+<script>
+/**
+ * Alert Banner System
+ * Provides persistent page-level alerts with actions and stacking
+ */
+class AlertBanner {
+  constructor(containerId = 'alert-banner-container') {
+    this.container = document.getElementById(containerId);
+    this.banners = [];
+    this.currentPosition = 'top';
+    this.updatePosition('top');
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, char => map[char]);
+  }
+
+  /**
+   * Show an alert banner
+   * @param {Object} options - Configuration options
+   * @param {string} options.message - Alert message (required)
+   * @param {string} options.type - Alert type: 'info', 'success', 'warning', 'error' (default: 'info')
+   * @param {string} options.position - Position: 'top', 'bottom' (default: 'top')
+   * @param {boolean} options.dismissible - Show close button (default: true)
+   * @param {Object} options.action - Action button config: { text, onClick }
+   * @param {number} options.duration - Auto-dismiss duration in ms (0 = persistent, default: 0)
+   * @param {boolean} options.icon - Show icon (default: true)
+   * @param {string} options.customIcon - Custom icon path
+   * @returns {HTMLElement} The banner element
+   */
+  show(options = {}) {
+    const {
+      message = '',
+      type = 'info',
+      position = 'top',
+      dismissible = true,
+      action = null,
+      duration = 0,
+      icon = true,
+      customIcon = null
+    } = options;
+
+    if (!message) {
+      console.warn('AlertBanner: message is required');
+      return null;
+    }
+
+    // Update container position if different
+    if (position !== this.currentPosition) {
+      this.updatePosition(position);
+    }
+
+    const banner = this.createBanner({
+      message,
+      type,
+      dismissible,
+      action,
+      icon,
+      customIcon
+    });
+
+    // Add to container
+    if (this.currentPosition === 'top') {
+      this.container.appendChild(banner);
+    } else {
+      this.container.insertBefore(banner, this.container.firstChild);
+    }
+
+    this.banners.push(banner);
+
+    // Auto-dismiss if duration is set
+    if (duration > 0) {
+      setTimeout(() => {
+        this.removeBanner(banner);
+      }, duration);
+    }
+
+    return banner;
+  }
+
+  /**
+   * Create a banner element
+   * @param {Object} options - Banner options
+   * @returns {HTMLElement} Banner element
+   */
+  createBanner(options) {
+    const {
+      message = '',
+      type = 'info',
+      dismissible = true,
+      action = null,
+      icon = true,
+      customIcon = null
+    } = options;
+
+    const banner = document.createElement('div');
+    banner.className = `alert ${this.getTypeClasses(type)} alert-banner-item shadow-lg`;
+    banner.role = 'alert';
+    banner.setAttribute('aria-live', 'polite');
+    banner.setAttribute('aria-atomic', 'true');
+
+    // Build icon HTML
+    const iconHtml = icon 
+      ? this.getIconHtml(customIcon || this.getDefaultIcon(type), type)
+      : '';
+
+    // Build action button HTML
+    const actionHtml = action 
+      ? `<button class="alert-banner-action-btn btn-ghost" onclick="alertBanner.handleActionClick(event, this)" aria-label="${action.text}">${action.text}</button>`
+      : '';
+
+    // Build close button HTML
+    const closeHtml = dismissible 
+      ? `<button class="alert-banner-close-btn" onclick="alertBanner.removeBanner(this.closest('.alert-banner-item'))" aria-label="Dismiss alert">✕</button>`
+      : '';
+
+    banner.innerHTML = `
+      <div class="alert-banner-content">
+        <div class="alert-banner-message-wrapper">
+          ${iconHtml}
+          <span class="alert-banner-message">${this.escapeHtml(message)}</span>
+        </div>
+        <div class="alert-banner-actions">
+          ${actionHtml}
+          ${closeHtml}
+        </div>
+      </div>
+    `;
+
+    // Store action callback
+    if (action && action.onClick) {
+      banner._onAction = action.onClick;
+    }
+
+    return banner;
+  }
+
+  /**
+   * Get default icon path based on banner type
+   * @param {string} type - Banner type
+   * @returns {string} Icon path
+   */
+  getDefaultIcon(type) {
+    const icons = {
+      'success': '/icons/check.svg',
+      'error': '/icons/x-circle.svg',
+      'warning': '/icons/alert-triangle.svg',
+      'info': '/icons/info.svg'
+    };
+    return icons[type] || icons.info;
+  }
+
+  /**
+   * Generate icon HTML
+   * @param {string} iconPath - Path to icon SVG
+   * @param {string} type - Icon type for styling
+   * @returns {string} Icon HTML
+   */
+  getIconHtml(iconPath, type = 'info') {
+    return `<img src="${iconPath}" alt="${type} icon" class="alert-banner-icon" />`;
+  }
+
+  /**
+   * Remove a banner from the container
+   * @param {HTMLElement} banner - Banner element to remove
+   */
+  removeBanner(banner) {
+    if (!banner) return;
+
+    // Add removing class for animation
+    banner.classList.add('removing');
+
+    setTimeout(() => {
+      if (banner.parentElement) {
+        banner.parentElement.removeChild(banner);
+      }
+      this.banners = this.banners.filter(b => b !== banner);
+    }, 200);
+  }
+
+  /**
+   * Handle action button click
+   * @param {Event} event - Click event
+   * @param {HTMLElement} button - Button element
+   */
+  handleActionClick(event, button) {
+    const banner = button.closest('.alert-banner-item');
+    if (!banner || !banner._onAction) return;
+
+    banner._onAction();
+    this.removeBanner(banner);
+  }
+
+  /**
+   * Get type classes for styling
+   * @param {string} type - Banner type
+   * @returns {string} CSS classes
+   */
+  getTypeClasses(type) {
+    const classes = {
+      'success': 'alert-success',
+      'error': 'alert-error',
+      'warning': 'alert-warning',
+      'info': 'alert-info'
+    };
+    return classes[type] || classes.info;
+  }
+
+  /**
+   * Update banner position
+   * @param {string} position - Position: 'top', 'bottom'
+   */
+  updatePosition(position) {
+    const validPositions = ['top', 'bottom'];
+    if (!validPositions.includes(position)) {
+      console.warn(`Invalid banner position: ${position}. Using 'top'.`);
+      position = 'top';
+    }
+
+    // Remove all position classes
+    validPositions.forEach(p => {
+      this.container.classList.remove(`position-${p}`);
+    });
+
+    // Add new position class
+    this.container.classList.add(`position-${position}`);
+    this.currentPosition = position;
+    this.container.setAttribute('data-position', position);
+  }
+
+  /**
+   * Clear all banners
+   */
+  clearAll() {
+    this.banners.forEach(banner => {
+      if (banner.parentElement) {
+        banner.parentElement.removeChild(banner);
+      }
+    });
+    this.banners = [];
+  }
+}
+
+// Global alert banner instance
+const alertBanner = new AlertBanner();
+
+// Make it globally available
+window.showAlertBanner = (options) => {
+  return alertBanner.show(options);
+};
+
+// Expose helper functions for console testing
+window.alertBannerTest = {
+  /**
+   * Show test banners for all types
+   */
+  showAll: function() {
+    alertBanner.show({ message: 'Success! Your changes have been saved.', type: 'success' });
+    setTimeout(() => {
+      alertBanner.show({ message: 'Error! Something went wrong.', type: 'error' });
+    }, 500);
+    setTimeout(() => {
+      alertBanner.show({ message: 'Warning! Please review your settings.', type: 'warning' });
+    }, 1000);
+    setTimeout(() => {
+      alertBanner.show({ message: 'Info: New features are available.', type: 'info' });
+    }, 1500);
+  },
+
+  /**
+   * Show a specific type of banner
+   * @param {string} type - 'success', 'error', 'warning', 'info'
+   * @param {string} message - Custom message
+   */
+  show: function(type = 'success', message = null) {
+    const messages = {
+      'success': 'Operation completed successfully!',
+      'error': 'An error occurred!',
+      'warning': 'Please be careful!',
+      'info': 'Here is some information.'
+    };
+    return alertBanner.show({
+      message: message || messages[type],
+      type: type
+    });
+  },
+
+  /**
+   * Show banner with action button
+   * @param {string} type - Banner type
+   * @param {string} message - Banner message
+   */
+  showWithAction: function(type = 'info', message = null) {
+    const messages = {
+      'success': 'Item deleted successfully!',
+      'error': 'Connection failed!',
+      'warning': 'Your session will expire soon!',
+      'info': 'Update available!'
+    };
+    return alertBanner.show({
+      message: message || messages[type],
+      type: type,
+      action: {
+        text: 'Undo',
+        onClick: () => {
+          console.log('Action button clicked');
+        }
+      }
+    });
+  },
+
+  /**
+   * Test different positions
+   */
+  testPositions: function() {
+    alertBanner.show({
+      message: 'This banner is at the top',
+      type: 'info',
+      position: 'top'
+    });
+
+    setTimeout(() => {
+      alertBanner.show({
+        message: 'This banner is at the bottom',
+        type: 'success',
+        position: 'bottom'
+      });
+    }, 2000);
+  },
+
+  /**
+   * Test auto-dismiss
+   * @param {number} duration - Duration in milliseconds
+   */
+  testAutoDismiss: function(duration = 3000) {
+    return alertBanner.show({
+      message: `This banner will dismiss in ${duration}ms`,
+      type: 'info',
+      duration: duration
+    });
+  },
+
+  /**
+   * Test stacking multiple banners
+   */
+  testStacking: function() {
+    for (let i = 1; i <= 5; i++) {
+      setTimeout(() => {
+        alertBanner.show({
+          message: `Banner ${i} of 5`,
+          type: ['info', 'success', 'warning', 'error', 'info'][i - 1]
+        });
+      }, i * 500);
+    }
+  },
+
+  /**
+   * Clear all banners
+   */
+  clearAll: function() {
+    alertBanner.clearAll();
+    console.log('All banners cleared');
+  },
+
+  /**
+   * Get current banner position
+   */
+  getPosition: function() {
+    return alertBanner.currentPosition;
+  },
+
+  /**
+   * Set banner position
+   * @param {string} position - Position name
+   */
+  setPosition: function(position) {
+    alertBanner.updatePosition(position);
+    console.log(`Banner position set to: ${position}`);
+  },
+
+  /**
+   * Get all active banners count
+   */
+  getActiveCount: function() {
+    return alertBanner.banners.length;
+  },
+
+  /**
+   * Help text
+   */
+  help: function() {
+    console.log(`
+Alert Banner Testing Helper - Available Commands:
+
+  alertBannerTest.show(type, message)
+    Show a single banner
+    Types: 'success', 'error', 'warning', 'info'
+    Example: alertBannerTest.show('success', 'Custom message')
+
+  alertBannerTest.showAll()
+    Show all 4 banner types
+
+  alertBannerTest.showWithAction(type, message)
+    Show banner with action button
+    Example: alertBannerTest.showWithAction('info', 'Update available')
+
+  alertBannerTest.testPositions()
+    Test top and bottom positions
+
+  alertBannerTest.testAutoDismiss(duration)
+    Test auto-dismiss with custom duration (ms)
+    Example: alertBannerTest.testAutoDismiss(5000)
+
+  alertBannerTest.testStacking()
+    Show multiple stacked banners
+
+  alertBannerTest.clearAll()
+    Remove all active banners
+
+  alertBannerTest.setPosition(position)
+    Change banner position ('top' or 'bottom')
+
+  alertBannerTest.getPosition()
+    Get current banner position
+
+  alertBannerTest.getActiveCount()
+    Get number of active banners
+
+  alertBannerTest.help()
+    Show this help message
+    `);
+  }
+};
+
+// Print help message to console on page load
+if (typeof console !== 'undefined') {
+  console.log('%cAlert Banner loaded!', 'color: #4CAF50; font-weight: bold;');
+  console.log('Type `alertBannerTest.help()` to see all available test functions');
+}
+</script>

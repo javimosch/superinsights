@@ -1,0 +1,626 @@
+<!-- Toast Container - Reusable across the application -->
+<!-- Enhanced with icons, animations, positions, and improved design -->
+<div id="toast-container" class="fixed z-50 space-y-2 pointer-events-none" data-position="bottom-right">
+  <!-- Toasts will be dynamically inserted here -->
+</div>
+
+<style>
+  /* Toast positioning classes */
+  #toast-container {
+    bottom: 1rem;
+    right: 1rem;
+    top: auto;
+    left: auto;
+  }
+
+  #toast-container.position-top-right {
+    top: 1rem;
+    right: 1rem;
+    bottom: auto;
+    left: auto;
+  }
+
+  #toast-container.position-top-left {
+    top: 1rem;
+    left: 1rem;
+    bottom: auto;
+    right: auto;
+  }
+
+  #toast-container.position-bottom-right {
+    bottom: 1rem;
+    right: 1rem;
+    top: auto;
+    left: auto;
+  }
+
+  #toast-container.position-bottom-left {
+    bottom: 1rem;
+    left: 1rem;
+    top: auto;
+    right: auto;
+  }
+
+  #toast-container.position-top-center {
+    top: 1rem;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    transform: translateX(-50%);
+    max-width: 500px;
+  }
+
+  #toast-container.position-bottom-center {
+    bottom: 1rem;
+    left: 50%;
+    right: auto;
+    top: auto;
+    transform: translateX(-50%);
+    max-width: 500px;
+  }
+
+  /* Toast animations */
+  @keyframes toastSlideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes toastSlideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes toastSlideInTop {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes toastSlideInBottom {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes toastFadeOut {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+  }
+
+  /* Toast styles */
+  .toast-item {
+    @apply pointer-events-auto;
+    animation: toastSlideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #toast-container.position-top-left .toast-item {
+    animation: toastSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #toast-container.position-bottom-left .toast-item {
+    animation: toastSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #toast-container.position-top-center .toast-item,
+  #toast-container.position-top-right .toast-item {
+    animation: toastSlideInTop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #toast-container.position-bottom-center .toast-item,
+  #toast-container.position-bottom-right .toast-item {
+    animation: toastSlideInBottom 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .toast-item.removing {
+    animation: toastFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Icon styling */
+  .toast-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .toast-icon.success {
+    color: hsl(var(--color-success) / 1);
+  }
+
+  .toast-icon.error {
+    color: hsl(var(--color-error) / 1);
+  }
+
+  .toast-icon.warning {
+    color: hsl(var(--color-warning) / 1);
+  }
+
+  .toast-icon.info {
+    color: hsl(var(--color-info) / 1);
+  }
+
+  /* Toast content layout */
+  .toast-content {
+    @apply flex items-start gap-3 flex-1;
+  }
+
+  .toast-message {
+    @apply text-sm font-medium leading-relaxed;
+  }
+
+  .toast-actions {
+    @apply flex items-center gap-2 flex-shrink-0 ml-4;
+  }
+
+  .toast-action-btn {
+    @apply btn btn-xs btn-ghost;
+  }
+
+  .toast-close-btn {
+    @apply btn btn-xs btn-circle btn-ghost flex-shrink-0;
+  }
+</style>
+
+<script>
+/**
+ * Enhanced Toast notification system with icons, animations, and positions
+ */
+class ToastManager {
+  constructor(containerId = 'toast-container') {
+    this.container = document.getElementById(containerId);
+    this.toasts = [];
+    this.currentPosition = 'bottom-right';
+    this.updatePosition('bottom-right');
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, char => map[char]);
+  }
+
+  /**
+   * Show a toast notification
+   * @param {string|Object} messageOrOptions - Message string or full options object
+   * @param {string} type - Toast type: 'success', 'error', 'warning', 'info' (default: 'success')
+   * @param {number} duration - Auto-dismiss duration in ms (default: 4000, 0 = no auto-dismiss)
+   * @returns {HTMLElement} The toast element
+   */
+  show(messageOrOptions, type = 'success', duration = 4000) {
+    // Handle both old API (message, type, duration) and new API (options object)
+    const options = typeof messageOrOptions === 'object' 
+      ? messageOrOptions 
+      : { message: messageOrOptions, type, duration };
+
+    const {
+      message = '',
+      type: optType = 'success',
+      duration: optDuration = 4000,
+      icon = true,
+      customIcon = null,
+      action = null,
+      actionText = 'Undo',
+      onAction = null,
+      dismissible = true
+    } = options;
+
+    const finalType = optType || 'success';
+    const finalDuration = optDuration !== undefined ? optDuration : 4000;
+
+    const toast = this.createToast({
+      message,
+      type: finalType,
+      icon,
+      customIcon,
+      action,
+      actionText,
+      onAction,
+      dismissible
+    });
+
+    this.container.appendChild(toast);
+    this.toasts.push(toast);
+
+    // Auto-dismiss after duration (unless duration is 0)
+    if (finalDuration > 0) {
+      setTimeout(() => {
+        this.removeToast(toast);
+      }, finalDuration);
+    }
+
+    return toast;
+  }
+
+  /**
+   * Create a toast element
+   * @param {Object} options - Toast options
+   * @returns {HTMLElement} Toast element
+   */
+  createToast(options) {
+    const {
+      message = '',
+      type = 'success',
+      icon = true,
+      customIcon = null,
+      action = null,
+      actionText = 'Undo',
+      onAction = null,
+      dismissible = true
+    } = options;
+
+    const toast = document.createElement('div');
+    toast.className = `alert shadow-lg max-w-sm toast-item cursor-pointer ${this.getTypeClasses(type)}`;
+    toast.role = 'alert';
+    toast.setAttribute('aria-live', 'polite');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    // Close toast on click and stop propagation
+    toast.addEventListener('click', (e) => {
+      // Stop event propagation to prevent clicks below toast
+      e.stopPropagation();
+      
+      // Don't close if clicking on action button
+      if (!e.target.closest('.toast-action-btn') && !e.target.closest('.toast-close-btn')) {
+        this.removeToast(toast);
+      }
+    });
+
+    // Build icon HTML
+    const iconHtml = this.getIconHtml(customIcon || this.getDefaultIcon(type), type);
+
+    // Build action button HTML if needed
+    const actionHtml = action || onAction 
+      ? `<button class="toast-action-btn" onclick="toastManager.handleActionClick(event, this)" aria-label="${actionText}">${actionText}</button>`
+      : '';
+
+    // Build close button HTML
+    const closeHtml = dismissible 
+      ? `<button class="toast-close-btn" onclick="toastManager.removeToast(this.closest('.toast-item'))" aria-label="Dismiss notification">✕</button>`
+      : '';
+
+    toast.innerHTML = `
+      <div class="toast-content">
+        ${iconHtml}
+        <span class="toast-message">${this.escapeHtml(message)}</span>
+      </div>
+      <div class="toast-actions">
+        ${actionHtml}
+        ${closeHtml}
+      </div>
+    `;
+
+    // Store callbacks for action handling
+    if (onAction) {
+      toast._onAction = onAction;
+    }
+
+    return toast;
+  }
+
+  /**
+   * Get default icon path based on toast type
+   * @param {string} type - Toast type
+   * @returns {string} Icon path
+   */
+  getDefaultIcon(type) {
+    const icons = {
+      'success': '/icons/check.svg',
+      'error': '/icons/x-circle.svg',
+      'warning': '/icons/alert-triangle.svg',
+      'info': '/icons/info.svg'
+    };
+    return icons[type] || icons.info;
+  }
+
+  /**
+   * Generate icon HTML
+   * @param {string} iconPath - Path to icon SVG
+   * @param {string} type - Icon type for styling
+   * @returns {string} Icon HTML
+   */
+  getIconHtml(iconPath, type = 'info') {
+    return `<img src="${iconPath}" alt="${type} icon" class="toast-icon ${type}" />`;
+  }
+
+  /**
+   * Remove a toast from the container
+   * @param {HTMLElement} toast - Toast element to remove
+   */
+  removeToast(toast) {
+    if (!toast) return;
+
+    // Add removing class for animation
+    toast.classList.add('removing');
+
+    setTimeout(() => {
+      if (toast.parentElement) {
+        toast.parentElement.removeChild(toast);
+      }
+      this.toasts = this.toasts.filter(t => t !== toast);
+    }, 200);
+  }
+
+  /**
+   * Handle action button click
+   * @param {Event} event - Click event
+   * @param {HTMLElement} button - Button element
+   */
+  handleActionClick(event, button) {
+    const toast = button.closest('.toast-item');
+    if (!toast || !toast._onAction) return;
+
+    toast._onAction();
+    this.removeToast(toast);
+  }
+
+  /**
+   * Get type classes for styling
+   * @param {string} type - Toast type
+   * @returns {string} CSS classes
+   */
+  getTypeClasses(type) {
+    const classes = {
+      'success': 'alert-success',
+      'error': 'alert-error',
+      'warning': 'alert-warning',
+      'info': 'alert-info'
+    };
+    return classes[type] || classes.success;
+  }
+
+  /**
+   * Update toast position
+   * @param {string} position - Position: 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'top-center', 'bottom-center'
+   */
+  updatePosition(position) {
+    const validPositions = ['top-right', 'top-left', 'bottom-right', 'bottom-left', 'top-center', 'bottom-center'];
+    if (!validPositions.includes(position)) {
+      console.warn(`Invalid toast position: ${position}. Using 'top-right'.`);
+      position = 'top-right';
+    }
+
+    // Remove all position classes
+    validPositions.forEach(p => {
+      this.container.classList.remove(`position-${p}`);
+    });
+
+    // Add new position class
+    this.container.classList.add(`position-${position}`);
+    this.currentPosition = position;
+    this.container.setAttribute('data-position', position);
+  }
+
+  /**
+   * Clear all toasts
+   */
+  clearAll() {
+    this.toasts.forEach(toast => {
+      if (toast.parentElement) {
+        toast.parentElement.removeChild(toast);
+      }
+    });
+    this.toasts = [];
+  }
+}
+
+// Global toast manager instance
+const toastManager = new ToastManager();
+
+// Make it globally available with the old API
+window.showToast = (message, type = 'success', duration = 4000) => {
+  return toastManager.show(message, type, duration);
+};
+
+// Expose helper functions for console testing and debugging
+window.toastTest = {
+  /**
+   * Show test toasts for all types
+   */
+  showAll: function() {
+    toastManager.show('Success toast notification!', 'success', 0);
+    toastManager.show('Error toast notification!', 'error', 0);
+    toastManager.show('Warning toast notification!', 'warning', 0);
+    toastManager.show('Info toast notification!', 'info', 0);
+  },
+
+  /**
+   * Show a specific type of toast
+   * @param {string} type - 'success', 'error', 'warning', 'info'
+   * @param {string} message - Custom message
+   */
+  show: function(type = 'success', message = null) {
+    const messages = {
+      'success': 'This is a success notification!',
+      'error': 'This is an error notification!',
+      'warning': 'This is a warning notification!',
+      'info': 'This is an info notification!'
+    };
+    return toastManager.show(message || messages[type], type, 0);
+  },
+
+  /**
+   * Show a toast with action button
+   * @param {string} type - Toast type
+   * @param {string} message - Toast message
+   * @param {string} actionText - Action button text
+   */
+  showWithAction: function(type = 'success', message = null, actionText = 'Undo') {
+    const messages = {
+      'success': 'Item created successfully!',
+      'error': 'Operation failed!',
+      'warning': 'Please review your action!',
+      'info': 'New notification available!'
+    };
+    return toastManager.show({
+      message: message || messages[type],
+      type: type,
+      duration: 0,
+      actionText: actionText,
+      onAction: () => {
+        console.log(`${actionText} action triggered`);
+      }
+    });
+  },
+
+  /**
+   * Show a toast with custom icon
+   * @param {string} type - Toast type
+   * @param {string} customIconPath - Path to custom icon
+   */
+  showCustomIcon: function(type = 'success', customIconPath = '/icons/check.svg') {
+    return toastManager.show({
+      message: `Toast with custom icon: ${customIconPath}`,
+      type: type,
+      duration: 0,
+      customIcon: customIconPath
+    });
+  },
+
+  /**
+   * Test different positions
+   */
+  testPositions: function() {
+    const positions = ['top-right', 'top-left', 'bottom-right', 'bottom-left', 'top-center', 'bottom-center'];
+    positions.forEach((pos, index) => {
+      setTimeout(() => {
+        toastManager.updatePosition(pos);
+        toastManager.show(`Toast at ${pos}`, 'info', 0);
+      }, index * 500);
+    });
+  },
+
+  /**
+   * Test auto-dismiss with custom duration
+   * @param {number} duration - Duration in milliseconds
+   */
+  testAutoDismiss: function(duration = 2000) {
+    return toastManager.show(
+      `This toast will dismiss in ${duration}ms`,
+      'success',
+      duration
+    );
+  },
+
+  /**
+   * Clear all toasts
+   */
+  clearAll: function() {
+    toastManager.clearAll();
+    console.log('All toasts cleared');
+  },
+
+  /**
+   * Get current toast position
+   */
+  getPosition: function() {
+    return toastManager.currentPosition;
+  },
+
+  /**
+   * Set toast position
+   * @param {string} position - Position name
+   */
+  setPosition: function(position) {
+    toastManager.updatePosition(position);
+    console.log(`Toast position set to: ${position}`);
+  },
+
+  /**
+   * Get all active toasts count
+   */
+  getActiveCount: function() {
+    return toastManager.toasts.length;
+  },
+
+  /**
+   * Help text showing all available test functions
+   */
+  help: function() {
+    console.log(`
+Toast Testing Helper - Available Commands:
+
+  toastTest.show(type, message)
+    Show a single toast
+    Types: 'success', 'error', 'warning', 'info'
+    Example: toastTest.show('success', 'Custom message')
+
+  toastTest.showAll()
+    Show all 4 toast types at once
+
+  toastTest.showWithAction(type, message, actionText)
+    Show toast with action button
+    Example: toastTest.showWithAction('success', 'Item deleted', 'Undo')
+
+  toastTest.showCustomIcon(type, iconPath)
+    Show toast with custom icon
+    Example: toastTest.showCustomIcon('success', '/icons/check.svg')
+
+  toastTest.testPositions()
+    Cycle through all available positions
+
+  toastTest.testAutoDismiss(duration)
+    Test auto-dismiss with custom duration (ms)
+    Example: toastTest.testAutoDismiss(3000)
+
+  toastTest.clearAll()
+    Remove all active toasts
+
+  toastTest.setPosition(position)
+    Change toast position
+    Positions: 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'top-center', 'bottom-center'
+
+  toastTest.getPosition()
+    Get current toast position
+
+  toastTest.getActiveCount()
+    Get number of active toasts
+
+  toastTest.help()
+    Show this help message
+    `);
+  }
+};
+
+// Print help message to console on page load
+if (typeof console !== 'undefined') {
+  console.log('%cToast Testing Helper loaded!', 'color: #4CAF50; font-weight: bold;');
+  console.log('Type `toastTest.help()` to see all available test functions');
+}
+</script>

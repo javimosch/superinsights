@@ -1,0 +1,339 @@
+<!-- Confirm Modal - Reusable across the application -->
+<!-- Enhanced with type system, icons, animations, and improved accessibility -->
+<div id="confirm-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
+  <div class="modal-box">
+    <!-- Header with icon and close button -->
+    <div class="flex items-start justify-between gap-4 mb-6">
+      <div class="flex items-start gap-4 flex-1">
+        <!-- Icon section - shown based on type -->
+        <div id="confirm-modal-icon-container" class="flex-shrink-0 mt-1">
+          <!-- Icons will be dynamically injected here -->
+        </div>
+        
+        <!-- Title and optional subtitle -->
+        <div class="flex-1 min-w-0">
+          <h3 id="confirm-modal-title" class="font-bold text-xl leading-tight">Confirm Action</h3>
+          <p id="confirm-modal-subtitle" class="text-sm text-base-content/60 mt-1 hidden"></p>
+        </div>
+      </div>
+      
+      <!-- Close button in header -->
+      <button 
+        id="confirm-modal-close" 
+        class="btn btn-sm btn-circle btn-ghost flex-shrink-0" 
+        aria-label="Close modal"
+        onclick="confirmModal.hide()">
+        ✕
+      </button>
+    </div>
+
+    <!-- Message content -->
+    <div id="confirm-modal-message" class="py-4 text-base-content/80 leading-relaxed"></div>
+
+    <!-- Action buttons -->
+    <div class="modal-action justify-end gap-3 mt-8">
+      <button id="confirm-modal-cancel" class="btn btn-ghost" aria-label="Cancel action">Cancel</button>
+      <button id="confirm-modal-confirm" class="btn btn-primary" aria-label="Confirm action">Confirm</button>
+    </div>
+  </div>
+
+  <!-- Modal backdrop for closing on click outside -->
+  <form method="dialog" class="modal-backdrop">
+    <button onclick="confirmModal.hide()" aria-label="Close modal by clicking backdrop"></button>
+  </form>
+</div>
+
+<style>
+  /* Confirm modal animations */
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes modalFadeOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+  }
+
+  #confirm-modal.modal-open .modal-box {
+    animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  #confirm-modal.modal-closing .modal-box {
+    animation: modalFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Icon styling */
+  .confirm-modal-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+
+  .confirm-modal-icon.info {
+    color: hsl(var(--color-info) / 1);
+  }
+
+  .confirm-modal-icon.success {
+    color: hsl(var(--color-success) / 1);
+  }
+
+  .confirm-modal-icon.warning {
+    color: hsl(var(--color-warning) / 1);
+  }
+
+  .confirm-modal-icon.error {
+    color: hsl(var(--color-error) / 1);
+  }
+
+  /* Loading state styling */
+  .confirm-modal-loading .confirm-modal-btn-text {
+    display: none;
+  }
+
+  .confirm-modal-loading .confirm-modal-spinner {
+    display: inline-flex;
+  }
+
+  .confirm-modal-spinner {
+    display: none;
+  }
+</style>
+
+<script>
+// Confirm modal system with enhanced features
+class ConfirmModal {
+  constructor(modalId = 'confirm-modal') {
+    this.modal = document.getElementById(modalId);
+    this.titleEl = document.getElementById('confirm-modal-title');
+    this.subtitleEl = document.getElementById('confirm-modal-subtitle');
+    this.messageEl = document.getElementById('confirm-modal-message');
+    this.iconContainer = document.getElementById('confirm-modal-icon-container');
+    this.cancelBtn = document.getElementById('confirm-modal-cancel');
+    this.confirmBtn = document.getElementById('confirm-modal-confirm');
+    this.closeBtn = document.getElementById('confirm-modal-close');
+    this.currentCallback = null;
+    this.isLoading = false;
+    this.currentType = 'info';
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Close modal on cancel button click
+    this.cancelBtn.addEventListener('click', () => {
+      this.hide();
+    });
+
+    // Execute callback on confirm button click
+    this.confirmBtn.addEventListener('click', () => {
+      if (this.currentCallback && !this.isLoading) {
+        this.setLoading(true);
+        this.currentCallback()
+          .then(() => {
+            this.hide();
+          })
+          .catch((error) => {
+            // Keep modal open on error, optionally show error toast
+            if (window.showToast) {
+              const message = error?.message || 'An error occurred while processing your request';
+              window.showToast(message, 'error');
+            }
+          })
+          .finally(() => {
+            this.setLoading(false);
+          });
+      }
+    });
+
+    // Close modal on ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.modal.classList.contains('modal-open')) {
+        this.hide();
+      }
+    });
+
+    // Close modal on backdrop click
+    const backdrop = this.modal.querySelector('.modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          this.hide();
+        }
+      });
+    }
+  }
+
+  /**
+   * Show the confirm modal with customizable options
+   * @param {Object} options - Configuration options
+   * @param {string} options.title - Modal title
+   * @param {string} options.message - Main message text
+   * @param {string} options.subtitle - Optional subtitle text
+   * @param {string} options.type - Modal type: 'info', 'success', 'warning', 'error' (default: 'info')
+   * @param {boolean} options.icon - Show icon based on type (default: true)
+   * @param {string} options.customIcon - Custom icon HTML (overrides type-based icon)
+   * @param {string} options.confirmText - Confirm button text (default: 'Confirm')
+   * @param {string} options.cancelText - Cancel button text (default: 'Cancel')
+   * @param {string} options.confirmVariant - Confirm button variant: 'primary', 'success', 'warning', 'error' (default: 'primary')
+   * @param {Function} options.onConfirm - Promise-based callback function
+   * @param {boolean} options.isDanger - Highlight confirm button as danger/error
+   * @param {boolean} options.showCloseButton - Show close button in header (default: true)
+   */
+  show(options = {}) {
+    const {
+      title = 'Confirm Action',
+      message = 'Are you sure you want to proceed?',
+      subtitle = '',
+      type = 'info',
+      icon = true,
+      customIcon = null,
+      confirmText = 'Confirm',
+      cancelText = 'Cancel',
+      confirmVariant = 'primary',
+      onConfirm = () => Promise.resolve(),
+      isDanger = false,
+      showCloseButton = true
+    } = options;
+
+    // Set title and message
+    this.titleEl.textContent = title;
+    this.messageEl.textContent = message;
+
+    // Handle subtitle
+    if (subtitle) {
+      this.subtitleEl.textContent = subtitle;
+      this.subtitleEl.classList.remove('hidden');
+    } else {
+      this.subtitleEl.classList.add('hidden');
+    }
+
+    // Set button text and variants
+    this.confirmBtn.textContent = confirmText;
+    this.cancelBtn.textContent = cancelText;
+    this.currentCallback = onConfirm;
+    this.currentType = type;
+
+    // Update confirm button styling
+    this.confirmBtn.className = `btn btn-${isDanger ? 'error' : confirmVariant}`;
+
+    // Handle close button visibility
+    this.closeBtn.style.display = showCloseButton ? '' : 'none';
+
+    // Set loading state to false
+    this.setLoading(false);
+
+    // Handle icon
+    if (icon || customIcon) {
+      this.setIcon(customIcon || this.getDefaultIcon(type), type);
+    } else {
+      this.iconContainer.innerHTML = '';
+    }
+
+    // Show modal with animation
+    this.modal.classList.add('modal-open');
+    this.modal.classList.remove('modal-closing');
+  }
+
+  /**
+   * Get default icon HTML based on modal type
+   * @param {string} type - Modal type
+   * @returns {string} Icon HTML
+   */
+  getDefaultIcon(type) {
+    const icons = {
+      'info': '/icons/info.svg',
+      'success': '/icons/check.svg',
+      'warning': '/icons/alert-triangle.svg',
+      'error': '/icons/x-circle.svg'
+    };
+    return icons[type] || icons.info;
+  }
+
+  /**
+   * Set custom icon for the modal
+   * @param {string} iconPath - Path to icon SVG
+   * @param {string} type - Icon type for styling
+   */
+  setIcon(iconPath, type = 'info') {
+    const img = document.createElement('img');
+    img.src = iconPath;
+    img.alt = `${type} icon`;
+    img.className = `confirm-modal-icon ${type}`;
+    
+    this.iconContainer.innerHTML = '';
+    this.iconContainer.appendChild(img);
+  }
+
+  hide() {
+    // Add fade-out animation
+    this.modal.classList.add('modal-closing');
+    
+    setTimeout(() => {
+      this.modal.classList.remove('modal-open');
+      this.modal.classList.remove('modal-closing');
+      this.currentCallback = null;
+      this.setLoading(false);
+    }, 200);
+  }
+
+  /**
+   * Set loading state with spinner
+   * @param {boolean} loading - Whether modal is loading
+   */
+  setLoading(loading) {
+    this.isLoading = loading;
+    this.confirmBtn.disabled = loading;
+    this.cancelBtn.disabled = loading;
+
+    if (loading) {
+      const spinner = document.createElement('span');
+      spinner.className = 'loading loading-spinner loading-sm confirm-modal-spinner';
+      
+      const textSpan = document.createElement('span');
+      textSpan.className = 'confirm-modal-btn-text ml-2';
+      textSpan.textContent = this.confirmBtn.textContent;
+      
+      const container = document.createElement('span');
+      container.className = 'confirm-modal-loading flex items-center gap-2';
+      container.appendChild(spinner);
+      container.appendChild(textSpan);
+      
+      this.confirmBtn.innerHTML = '';
+      this.confirmBtn.appendChild(container);
+      this.confirmBtn.classList.add('confirm-modal-loading');
+    } else {
+      this.confirmBtn.classList.remove('confirm-modal-loading');
+      this.confirmBtn.innerHTML = this.confirmBtn.getAttribute('data-original-text') || 'Confirm';
+    }
+  }
+}
+
+// Global confirm modal instance
+const confirmModal = new ConfirmModal();
+
+// Store original button text for resetting
+confirmModal.confirmBtn.setAttribute('data-original-text', confirmModal.confirmBtn.textContent);
+
+// Make it globally available
+window.showConfirmModal = (options) => {
+  confirmModal.show(options);
+};
+
+// Export for use in other modules if needed
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = confirmModal;
+}
+</script>
