@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+
+    <main class="container mx-auto p-4 flex justify-center">
+      <div class="card bg-base-100 shadow-xl w-full max-w-xl">
+        <div class="card-body space-y-4">
+          <h1 class="card-title text-2xl">Join organization</h1>
+
+          <div class="text-sm text-base-content/70">
+            You are about to join <strong><%= org && org.name ? org.name : 'an organization' %></strong>.
+          </div>
+
+          <form action="/org/join/<%= org && org._id ? org._id.toString() : '' %>" method="POST">
+            <button type="submit" class="btn btn-primary w-full">Join</button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
