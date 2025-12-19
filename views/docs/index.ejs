@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+      /* Custom styles for markdown content */
+      .docs-content h1 { @apply text-3xl font-bold mb-6; }
+      .docs-content h2 { @apply text-2xl font-bold mb-4 mt-8; }
+      .docs-content h3 { @apply text-xl font-semibold mb-3 mt-6; }
+      .docs-content h4 { @apply text-lg font-semibold mb-2 mt-4; }
+      .docs-content p { @apply mb-4 leading-relaxed; }
+      .docs-content ul { @apply mb-4 ml-6 list-disc; }
+      .docs-content ol { @apply mb-4 ml-6 list-decimal; }
+      .docs-content li { @apply mb-2; }
+      .docs-content code { @apply bg-base-200 px-2 py-1 rounded text-sm font-mono; }
+      .docs-content pre { @apply bg-base-200 p-4 rounded-lg overflow-x-auto mb-4; }
+      .docs-content pre code { @apply bg-transparent p-0; }
+      .docs-content blockquote { @apply border-l-4 border-primary pl-4 italic text-base-content/80 mb-4; }
+      .docs-content table { @apply table table-zebra w-full mb-4; }
+      .docs-content th { @apply text-left font-semibold; }
+      .docs-content td { @apply py-2; }
+      .docs-content a { @apply text-primary hover:underline; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+
+    <main class="container mx-auto p-4 max-w-4xl">
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="text-3xl">📚</div>
+            <div>
+              <h1 class="text-2xl font-bold"><%= title %></h1>
+              <p class="text-sm text-base-content/70">SuperInsights Documentation</p>
+            </div>
+          </div>
+
+          <div class="docs-content prose prose-lg max-w-none">
+            <%- content %>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="flex flex-wrap gap-2">
+            <a href="/" class="btn btn-ghost btn-sm">← Back to Home</a>
+            <% if (section === 'sdk') { %>
+              <a href="/docs" class="btn btn-primary btn-sm">SDK Documentation</a>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
