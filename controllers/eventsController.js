@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -17,7 +18,7 @@ function getDateRange(timeframe) {
   return { timeframe: tf, start, end: now };
 }
 
-function buildMatch({ projectId, start, end, eventName }) {
+function buildMatch({ projectId, start, end, eventName, metadataMatch }) {
   const match = {
     projectId,
     timestamp: { $gte: start, $lte: end },
@@ -27,17 +28,21 @@ function buildMatch({ projectId, start, end, eventName }) {
     match.eventName = eventName;
   }
 
+  if (metadataMatch && typeof metadataMatch === 'object') {
+    Object.assign(match, metadataMatch);
+  }
+
   return match;
 }
 
-function buildTimedMatch({ projectId, start, end, eventName }) {
-  const match = buildMatch({ projectId, start, end, eventName });
+function buildTimedMatch({ projectId, start, end, eventName, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
   match.durationMs = { $ne: null, $exists: true };
   return match;
 }
 
-async function getTimedEventSummary({ projectId, start, end }) {
-  const match = buildTimedMatch({ projectId, start, end });
+async function getTimedEventSummary({ projectId, start, end, metadataMatch }) {
+  const match = buildTimedMatch({ projectId, start, end, metadataMatch });
 
   try {
     const rows = await Event.aggregate([
@@ -103,8 +108,8 @@ async function getTimedEventSummary({ projectId, start, end }) {
   }
 }
 
-async function getSingleEventDurationSummary({ projectId, start, end, eventName }) {
-  const match = buildTimedMatch({ projectId, start, end, eventName });
+async function getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }) {
+  const match = buildTimedMatch({ projectId, start, end, eventName, metadataMatch });
 
   try {
     const rows = await Event.aggregate([
@@ -164,8 +169,8 @@ async function getSingleEventDurationSummary({ projectId, start, end, eventName 
   }
 }
 
-async function getEventsByDay({ projectId, start, end, eventName }) {
-  const match = buildMatch({ projectId, start, end, eventName });
+async function getEventsByDay({ projectId, start, end, eventName, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
   const rows = await Event.aggregate([
     { $match: match },
@@ -187,14 +192,14 @@ async function getEventsByDay({ projectId, start, end, eventName }) {
   return rows || [];
 }
 
-async function getTotalEvents({ projectId, start, end, eventName }) {
-  const match = buildMatch({ projectId, start, end, eventName });
+async function getTotalEvents({ projectId, start, end, eventName, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
   const total = await Event.countDocuments(match);
   return total || 0;
 }
 
-async function getUniqueEventNames({ projectId, start, end }) {
-  const match = buildMatch({ projectId, start, end });
+async function getUniqueEventNames({ projectId, start, end, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, metadataMatch });
 
   const rows = await Event.aggregate([
     { $match: match },
@@ -206,8 +211,8 @@ async function getUniqueEventNames({ projectId, start, end }) {
   return (rows || []).map((r) => r.eventName).filter(Boolean);
 }
 
-async function getTopEvents({ projectId, start, end }) {
-  const match = buildMatch({ projectId, start, end });
+async function getTopEvents({ projectId, start, end, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, metadataMatch });
 
   const rows = await Event.aggregate([
     { $match: match },
@@ -220,8 +225,8 @@ async function getTopEvents({ projectId, start, end }) {
   return rows || [];
 }
 
-async function getEventPropertySchema({ projectId, eventName, start, end }) {
-  const match = buildMatch({ projectId, start, end, eventName });
+async function getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
   const rows = await Event.aggregate([
     { $match: match },
@@ -276,19 +281,23 @@ exports.getEventsAnalytics = async (req, res, next) => {
     const rawEventName = typeof req.query.eventName === 'string' ? req.query.eventName.trim() : '';
     const eventName = rawEventName ? rawEventName : undefined;
 
+    const segment = parseSegmentFilters(req);
+    const metadataMatch = buildEventMetadataMatch(segment);
+
     const params = {
       projectId,
       start,
       end,
       eventName,
+      metadataMatch,
     };
 
     const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents] = await Promise.all([
       getEventsByDay(params),
       getTotalEvents(params),
-      getUniqueEventNames({ projectId, start, end }),
-      getTopEvents({ projectId, start, end }),
-      getTimedEventSummary({ projectId, start, end }),
+      getUniqueEventNames({ projectId, start, end, metadataMatch }),
+      getTopEvents({ projectId, start, end, metadataMatch }),
+      getTimedEventSummary({ projectId, start, end, metadataMatch }),
     ]);
 
     return res.render('analytics/events', {
@@ -297,6 +306,7 @@ exports.getEventsAnalytics = async (req, res, next) => {
       projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       timeframe,
       eventName: eventName || '',
+      segment,
       eventsByDay: eventsByDay || [],
       totalEvents: totalEvents || 0,
       uniqueEventNames: uniqueEventNames || [],
@@ -327,13 +337,16 @@ exports.getEventDetail = async (req, res, next) => {
     const rawTimeframe = req.query.timeframe || '7d';
     const { timeframe, start, end } = getDateRange(rawTimeframe);
 
-    const match = buildMatch({ projectId, start, end, eventName });
+    const segment = parseSegmentFilters(req);
+    const metadataMatch = buildEventMetadataMatch(segment);
+
+    const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
     const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
       Event.find(match).sort({ timestamp: -1 }).limit(100),
-      getEventPropertySchema({ projectId, eventName, start, end }),
-      getEventsByDay({ projectId, start, end, eventName }),
-      getSingleEventDurationSummary({ projectId, start, end, eventName }),
+      getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
+      getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
+      getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
 
     return res.render('analytics/event-detail', {
@@ -342,6 +355,7 @@ exports.getEventDetail = async (req, res, next) => {
       projectBasePath: req.projectBasePath || `/projects/${req.project._id.toString()}`,
       eventName,
       timeframe,
+      segment,
       occurrences: occurrences || [],
       propertySchema: propertySchema || [],
       eventsByDay: eventsByDay || [],
