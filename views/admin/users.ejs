@@ -10,11 +10,80 @@
       href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
     />
     <%- include('../partials/error-tracking') %>
+    <%- include('../partials/toast-container') %>
+    <%- include('../partials/confirm-modal') %>
   </head>
   <body class="min-h-screen bg-base-200">
     <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
 
     <main class="container mx-auto p-4 space-y-8">
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h1 class="card-title text-2xl mb-2">Platform invites</h1>
+
+          <% if (successMessage) { %>
+          <div class="alert alert-success mb-4 text-sm"><%= successMessage %></div>
+          <% } %>
+
+          <% if (inviteLink) { %>
+          <div class="alert alert-info mb-4 text-sm">
+            <div class="w-full">
+              <div class="font-semibold">Invite link</div>
+              <div class="font-mono text-xs break-all mt-1"><%= inviteLink %></div>
+            </div>
+          </div>
+          <% } %>
+
+          <form action="/admin/users/platform-invite" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="form-control">
+              <label class="label" for="platformEmail"><span class="label-text">Email</span></label>
+              <input id="platformEmail" name="email" type="email" required class="input input-bordered w-full" />
+            </div>
+            <div class="form-control">
+              <label class="label" for="platformRole"><span class="label-text">Role</span></label>
+              <select id="platformRole" name="role" class="select select-bordered w-full">
+                <option value="user" selected>User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-control">
+              <button type="submit" class="btn btn-primary w-full">Create invite link</button>
+            </div>
+          </form>
+
+          <div class="mt-6">
+            <h2 class="text-lg font-semibold mb-2">Pending platform invites</h2>
+            <div class="overflow-x-auto">
+              <table class="table table-zebra w-full text-sm">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Expires</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (platformInvites && platformInvites.length) { %>
+                  <% platformInvites.forEach(function (inv) { %>
+                  <tr>
+                    <td><%= inv.email %></td>
+                    <td class="capitalize"><%= inv.role %></td>
+                    <td><%= inv.expiresAt ? new Date(inv.expiresAt).toISOString() : '' %></td>
+                  </tr>
+                  <% }) %>
+                  <% } else { %>
+                  <tr>
+                    <td colspan="3">No pending platform invites.</td>
+                  </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="card bg-base-100 shadow">
         <div class="card-body">
           <h1 class="card-title text-2xl mb-2">Invite user</h1>
@@ -97,6 +166,7 @@
                   <th>Email</th>
                   <th>Role</th>
                   <th>Created</th>
+                  <th class="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,11 +176,38 @@
                   <td><%= user.email %></td>
                   <td class="capitalize"><%= user.role %></td>
                   <td><%= user.createdAt.toISOString() %></td>
+                  <td class="text-right">
+                    <form action="/admin/users/set-role" method="POST" class="inline-flex items-center gap-2">
+                      <input type="hidden" name="userId" value="<%= user._id %>" />
+                      <select name="role" class="select select-bordered select-xs">
+                        <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+                        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                      </select>
+                      <button type="submit" class="btn btn-xs">Set role</button>
+                    </form>
+
+                    <form action="/admin/users/set-password" method="POST" class="inline-flex items-center gap-2 ml-2">
+                      <input type="hidden" name="userId" value="<%= user._id %>" />
+                      <input name="password" type="password" minlength="8" required class="input input-bordered input-xs" placeholder="New password" />
+                      <button type="submit" class="btn btn-xs btn-outline">Set password</button>
+                    </form>
+
+                    <button
+                      type="button"
+                      class="btn btn-xs btn-error btn-outline ml-2"
+                      onclick="confirmDeleteUser('<%= user._id %>', '<%= user.email %>')"
+                      title="Remove user"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
                 <% }) %>
                 <% } else { %>
                 <tr>
-                  <td colspan="3">No users yet.</td>
+                  <td colspan="4">No users yet.</td>
                 </tr>
                 <% } %>
               </tbody>
@@ -119,5 +216,49 @@
         </div>
       </section>
     </main>
+
+    <script>
+      // Function to confirm user deletion
+      function confirmDeleteUser(userId, userEmail) {
+        showConfirmModal({
+          title: 'Delete User',
+          message: `Are you sure you want to delete the user "${userEmail}"? This action cannot be undone.`,
+          confirmText: 'Delete User',
+          cancelText: 'Cancel',
+          onConfirm: () => deleteUser(userId)
+        });
+      }
+
+      // Function to delete user via AJAX
+      async function deleteUser(userId) {
+        try {
+          const response = await fetch('/admin/users/delete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              userId: userId
+            })
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            showToast('User deleted successfully.', 'success');
+            // Remove the row from the table
+            const row = document.querySelector(`button[onclick*="${userId}"]`).closest('tr');
+            if (row) {
+              row.remove();
+            }
+          } else {
+            showToast(result.message || 'Failed to delete user.', 'error');
+          }
+        } catch (error) {
+          console.error('Error deleting user:', error);
+          showToast('An error occurred while deleting the user.', 'error');
+        }
+      }
+    </script>
   </body>
 </html>

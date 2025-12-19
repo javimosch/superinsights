@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
+    />
+    <%- include('../partials/error-tracking') %>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">Platform admin</h1>
+        <p class="text-sm text-base-content/70 mt-1">Administrative tools for the entire platform.</p>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-xl mb-4">Tools</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a href="/admin/users" class="btn btn-outline justify-start">Platform users</a>
+            <a href="/admin/orgs" class="btn btn-outline justify-start">Organizations</a>
+            <a href="/admin/public-links" class="btn btn-outline justify-start">Public links</a>
+            <a href="/admin/logs" class="btn btn-outline justify-start">Logs</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
