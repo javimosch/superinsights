@@ -34,7 +34,7 @@ const AiAnalysisRunSchema = new mongoose.Schema(
     },
     timeframePreset: {
       type: String,
-      enum: ['24h', '7d', '30d', null],
+      enum: ['5m', '30m', '1h', '6h', '12h', '24h', '7d', '30d', '3m', '1y', null],
       default: null,
     },
     start: {
