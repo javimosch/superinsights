@@ -22,5 +22,6 @@ services:
       - ./views:/app/views
       - ./app.js:/app/app.js
       - ./index.js:/app/index.js
+      - ./middleware:/app/middleware
     restart: always
     pull_policy: always
