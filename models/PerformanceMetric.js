@@ -8,6 +8,10 @@ const PerformanceMetricSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    clientId: {
+      type: String,
+      index: true,
+    },
     metricType: {
       type: String,
       default: 'web_vitals_aggregate',
@@ -38,6 +42,9 @@ const PerformanceMetricSchema = new mongoose.Schema(
     connectionType: {
       type: String,
     },
+    properties: {
+      type: mongoose.Schema.Types.Mixed,
+    },
     timestamp: {
       type: Date,
       required: true,
@@ -52,5 +59,6 @@ const PerformanceMetricSchema = new mongoose.Schema(
 PerformanceMetricSchema.index({ projectId: 1, timestamp: 1 });
 PerformanceMetricSchema.index({ projectId: 1, deviceType: 1, timestamp: 1 });
 PerformanceMetricSchema.index({ projectId: 1, browser: 1, timestamp: 1 });
+PerformanceMetricSchema.index({ projectId: 1, clientId: 1, timestamp: 1 });
 
 module.exports = mongoose.model('PerformanceMetric', PerformanceMetricSchema);
