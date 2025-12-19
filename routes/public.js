@@ -6,6 +6,7 @@ const pageViewsController = require('../controllers/pageViewsController');
 const eventsController = require('../controllers/eventsController');
 const errorsController = require('../controllers/errorsController');
 const performanceController = require('../controllers/performanceController');
+const docsController = require('../controllers/docsController');
 
 const { ensurePublicProjectAccess } = require('../middleware/publicProjectAccess');
 const { createRateLimiter } = require('../middleware/rateLimit');
@@ -26,5 +27,9 @@ router.get('/:id/:token/errors', ensurePublicProjectAccess, errorsController.get
 router.get('/:id/:token/errors/:fingerprint', ensurePublicProjectAccess, errorsController.getErrorDetail);
 
 router.get('/:id/:token/performance', ensurePublicProjectAccess, performanceController.getPerformanceAnalytics);
+
+// Public docs routes (no authentication required)
+router.get('/docs', docsController.getDocs);
+router.get('/docs/:section', docsController.getDocs);
 
 module.exports = router;
