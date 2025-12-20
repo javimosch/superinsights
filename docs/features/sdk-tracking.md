@@ -58,6 +58,20 @@ Accepted headers (either works):
 - `Authorization: Bearer ${API_KEY}`
 - `X-API-Key: ${API_KEY}`
 
+```bash
+curl -X POST "${BASE_URL}/v1/events" \
+  -H "Authorization: Bearer ${API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "eventName": "checkout:submit",
+        "durationMs": 842,
+        "properties": {
+          "step": "payment",
+          "provider": "stripe"
+        }
+      }'
+```
+
 ### WebSocket (API key)
 
 When using `transport: 'ws'`, the SDK connects to:
@@ -69,6 +83,12 @@ Notes:
 - The browser WebSocket API does not allow setting `Authorization` / `X-API-Key` headers in a portable way, so the key is passed via a query parameter.
 - If you mount SuperInsights under a prefix, the prefix applies here too.
   - Example: `wss://your-domain/superinsights/v1/ws?apiKey=pk_...`
+
+```bash
+# This is a WebSocket connection, not a direct HTTP curl.
+# For testing WebSocket connections, a dedicated WebSocket client or browser developer tools are needed.
+# The URL to connect to would be: wss://${BASE_URL_WITHOUT_HTTP}/v1/ws?apiKey=${API_KEY}
+```
 
 ### Browser SDK methods
 
