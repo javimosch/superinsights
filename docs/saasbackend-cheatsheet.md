@@ -158,6 +158,62 @@ JSON configs:
 - `GET /api/json-configs/:slug` (public)
 - `GET/POST/PUT/DELETE /api/admin/json-configs/*` (basic auth)
 
+## Internal services & models (middleware mode)
+
+Use exposed services and models for programmatic access in your app:
+
+### Services
+
+Access via `saasbackend.services.<name>`:
+
+- **`assets`** – `getAssetById()`, `getAssetByKey()`, `listAssets()`, `getAssetBytesById()`, `getAssetBytesByKey()`
+- **`audit`** – Audit logging functions
+- **`email`** – `sendEmail()` and related
+- **`globalSettings`** – `getSettingValue()`, `getSettingValueJson()`, etc.
+- **`i18n`** – `getLocale()`, `getEntry()`, etc.
+- **`jsonConfigs`** – `getJsonConfigBySlug()`, etc.
+- **`storage`** – Object storage abstraction
+
+Example:
+
+```javascript
+const saasbackend = require('saasbackend');
+
+app.use(saasbackend.middleware({ mongodbUri: process.env.MONGODB_URI }));
+
+// Later in your route or service:
+const asset = await saasbackend.services.assets.getAssetById(assetId);
+const setting = await saasbackend.services.globalSettings.getSettingValue('key');
+```
+
+### Models
+
+Access via `saasbackend.models.<name>`:
+
+All MongoDB models are exposed:
+
+- **User, Organization, OrganizationMember, Invite** – User & org management
+- **Asset** – File uploads
+- **AuditEvent, ActivityLog, ActionEvent** – Logging
+- **Notification, EmailLog** – Notifications & email
+- **GlobalSetting, JsonConfig** – Configuration
+- **I18nLocale, I18nEntry** – Translations
+- **FormSubmission** – Form handling
+- **ErrorAggregate** – Error tracking
+- **StripeWebhookEvent, StripeCatalogItem** – Billing
+- **WaitingList** – Waiting list management
+
+Example:
+
+```javascript
+const { User, Asset, Organization } = saasbackend.models;
+
+// Query directly
+const users = await User.find({ email: 'test@example.com' });
+const assets = await Asset.find({ namespace: 'default' });
+const orgs = await Organization.findById(orgId).populate('members');
+```
+
 ## Canonical docs
 
 Prefer `docs/features/*` for detailed guides and copy/paste examples:
