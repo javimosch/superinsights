@@ -2,9 +2,7 @@
 
 ## What it is
 
-AI Analysis generates an LLM-written report (Markdown) for a project over a selected time range.
-
-It aggregates SuperInsights data (page views, events, timed events, errors, and performance web vitals), optionally applies an analysis preset, and sends the payload to an LLM via OpenRouter.
+AI Analysis generates an LLM-written report in Markdown, summarizing project data (page views, events, errors, performance) over a selected time range. It can apply custom or pre-defined analysis presets using an LLM via OpenRouter.
 
 ## Base URL / mount prefix
 
@@ -83,6 +81,14 @@ Built-in presets exist and use IDs like `builtin:traffic` (read-only).
 
 - `GET /ai-analysis/presets`
 
+Example:
+
+```bash
+curl -sS "${BASE_URL}/ai-analysis/presets" \
+  -H "Cookie: sid=${SID_COOKIE}" \
+  | jq
+```
+
 Response shape:
 
 ```json
@@ -105,10 +111,32 @@ Response shape:
 - `POST /ai-analysis/presets/:presetId/publish`
 - `POST /ai-analysis/presets/:presetId/unpublish`
 
+Example (create a new preset):
+
+```bash
+curl -X POST "${BASE_URL}/ai-analysis/presets" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sid=${SID_COOKIE}" \
+  -d '{
+        "name": "My Custom Preset",
+        "description": "Analyze user engagement and conversion funnels.",
+        "prompt": "Summarize key user engagement metrics and identify potential conversion bottlenecks.",
+        "visibility": "private"
+      }' \
+  | jq
+```
+
 #### AI-assisted presets
 
 - `POST /ai-analysis/presets/ai-generate` with `{ goal, visibility }`
 - `POST /ai-analysis/presets/:presetId/ai-refine` with `{ goal }`
+
+## Common errors / troubleshooting
+
+- **Missing or invalid OpenRouter API Key**: Ensure `OPENROUTER_API_KEY` is correctly set in your environment.
+- **LLM request failures**: Check server logs for network issues, OpenRouter service outages, or rate limit errors.
+- **Preset not found**: Verify that the `presetId` (for built-in or custom presets) is correct.
+- **No data for analysis**: If the selected time range has no relevant project data, the analysis might be empty or incomplete.
 
 ## Usage
 
