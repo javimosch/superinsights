@@ -22,15 +22,6 @@ Example: if you mount SuperInsights under `/superinsights`, then:
 
 ## Configuration
 
-### Server
-
-- `MONGODB_URI`
-  - Mongo connection string.
-  - Default: `mongodb://127.0.0.1:27017/superinsights`
-- `SESSION_SECRET`
-  - Session signing secret.
-  - Default is `change-me-in-production`.
-
 ### Browser SDK
 
 SDK config is passed to `SuperInsights.init(apiKey, config)`:
