@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
+
+    <div id="app">
+      <main class="container mx-auto p-4 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
+            <div>
+              <h1 class="text-2xl font-bold">Generate report</h1>
+              <p class="text-sm text-base-content/70">
+                Environment: <span class="capitalize">{{ project.environment }}</span>
+                • Role: <span class="capitalize"><%= currentProjectRole %></span>
+              </p>
+            </div>
+          </div>
+          <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
+        </div>
+
+        <section class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title text-xl">Report settings</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label" for="name"><span class="label-text">Name</span></label>
+                <input id="name" v-model="name" class="input input-bordered" placeholder="e.g. Weekly report" />
+              </div>
+
+              <div class="form-control">
+                <label class="label" for="format"><span class="label-text">Format</span></label>
+                <select id="format" v-model="format" class="select select-bordered">
+                  <option value="pdf">PDF</option>
+                  <option value="json">JSON (raw)</option>
+                </select>
+              </div>
+
+              <div class="form-control">
+                <label class="label" for="dataType"><span class="label-text">Data type</span></label>
+                <select id="dataType" v-model="dataType" class="select select-bordered">
+                  <option value="pageviews">Pageviews</option>
+                  <option value="events">Events</option>
+                  <option value="errors">Errors</option>
+                  <option value="performance">Performance</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
+
+              <div class="form-control">
+                <label class="label" for="timeframe"><span class="label-text">Timeframe</span></label>
+                <select id="timeframe" v-model="timeframe" class="select select-bordered">
+                  <option value="5m">Last 5 min</option>
+                  <option value="30m">Last 30 min</option>
+                  <option value="1h">Last 1 hour</option>
+                  <option value="6h">Last 6 hours</option>
+                  <option value="12h">Last 12 hours</option>
+                  <option value="24h">Last 24 hours</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="3m">Last 3 months</option>
+                  <option value="1y">Current year</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              <div v-if="timeframe === 'custom'" class="form-control">
+                <label class="label" for="startDate"><span class="label-text">Start</span></label>
+                <input id="startDate" type="datetime-local" v-model="startDate" class="input input-bordered" />
+              </div>
+
+              <div v-if="timeframe === 'custom'" class="form-control">
+                <label class="label" for="endDate"><span class="label-text">End</span></label>
+                <input id="endDate" type="datetime-local" v-model="endDate" class="input input-bordered" />
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h3 class="font-semibold">Filters</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label" for="clientId"><span class="label-text">clientId</span></label>
+                <input id="clientId" v-model="clientId" class="input input-bordered" placeholder="optional" />
+              </div>
+              <div class="form-control">
+                <label class="label" for="userId"><span class="label-text">userId</span></label>
+                <input id="userId" v-model="userId" class="input input-bordered" placeholder="optional" />
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text">Metadata (key/value pairs)</span></label>
+              <div class="space-y-2">
+                <div v-for="(row, idx) in metaPairs" :key="idx" class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`mk-${idx}`"><span class="label-text">Key</span></label>
+                    <input class="input input-bordered" :id="`mk-${idx}`" v-model="row.key" placeholder="e.g. module" />
+                  </div>
+                  <div class="form-control md:col-span-5">
+                    <label class="label" :for="`mv-${idx}`"><span class="label-text">Value</span></label>
+                    <input class="input input-bordered" :id="`mv-${idx}`" v-model="row.value" placeholder="e.g. checkout" />
+                  </div>
+                  <div class="md:col-span-2 flex gap-2">
+                    <button type="button" class="btn btn-outline w-full" @click="removeMetaPair(idx)">Remove</button>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline" @click="addMetaPair">Add metadata filter</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label"><span class="label-text">Use saved template</span></label>
+                <select class="select select-bordered" v-model="selectedTemplateId" @change="applyTemplate">
+                  <option value="">—</option>
+                  <% for (const t of templates || []) { %>
+                    <option value="<%= t._id %>"><%= t.name %></option>
+                  <% } %>
+                </select>
+              </div>
+
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <input type="checkbox" class="checkbox" v-model="includeAiInsights" />
+                  <span class="label-text">Include latest AI insights (if available)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                  <input type="checkbox" class="checkbox" v-model="saveTemplate" />
+                  <span class="label-text">Save filters as template</span>
+                </label>
+              </div>
+
+              <div v-if="saveTemplate" class="form-control">
+                <label class="label" for="templateName"><span class="label-text">Template name</span></label>
+                <input id="templateName" v-model="templateName" class="input input-bordered" placeholder="e.g. US traffic" />
+              </div>
+            </div>
+
+            <div v-if="error" class="alert alert-error"><span class="text-sm">{{ error }}</span></div>
+
+            <div class="flex gap-2">
+              <button class="btn btn-primary" type="button" :disabled="running" @click="generate">
+                <span v-if="running" class="loading loading-spinner loading-sm"></span>
+                <span v-else>Generate</span>
+              </button>
+              <a class="btn btn-ghost" href="<%= base %>/reports">Back</a>
+            </div>
+
+            <div v-if="createdReportId" class="alert alert-info">
+              <span class="text-sm">
+                Report created. <a class="link" :href="`${base}/reports/${createdReportId}`">Open report</a>
+              </span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const { createApp, ref } = Vue;
+
+      createApp({
+        setup() {
+          const project = ref(<%- JSON.stringify(project) %>);
+          const base = <%- JSON.stringify(base) %>;
+          const templates = ref(<%- JSON.stringify(templates || []) %>);
+
+          const name = ref('');
+          const format = ref('pdf');
+          const dataType = ref('pageviews');
+          const timeframe = ref('7d');
+          const startDate = ref('');
+          const endDate = ref('');
+
+          const clientId = ref('');
+          const userId = ref('');
+          const metaPairs = ref([]);
+
+          const selectedTemplateId = ref('');
+
+          const includeAiInsights = ref(false);
+
+          const saveTemplate = ref(false);
+          const templateName = ref('');
+
+          const running = ref(false);
+          const error = ref('');
+          const createdReportId = ref('');
+
+          function addMetaPair() {
+            metaPairs.value.push({ key: '', value: '' });
+          }
+
+          function removeMetaPair(idx) {
+            metaPairs.value.splice(idx, 1);
+          }
+
+          function applyTemplate() {
+            const tid = selectedTemplateId.value;
+            if (!tid) return;
+            const t = templates.value.find((x) => String(x._id) === String(tid));
+            if (!t || !t.filters) return;
+            clientId.value = t.filters.clientId || '';
+            userId.value = t.filters.userId || '';
+
+            const meta = (t.filters.meta && typeof t.filters.meta === 'object') ? t.filters.meta : {};
+            metaPairs.value = Object.entries(meta).map(([k, v]) => ({ key: k, value: String(v) }));
+          }
+
+          async function generate() {
+            running.value = true;
+            error.value = '';
+
+            try {
+              const meta = {};
+              for (const row of metaPairs.value || []) {
+                const k = row && row.key ? String(row.key).trim() : '';
+                const v = row && row.value ? String(row.value).trim() : '';
+                if (!k || !v) continue;
+                meta[k] = v;
+              }
+
+              const payload = {
+                name: name.value || 'Report',
+                dataType: dataType.value,
+                timeframe: timeframe.value,
+                startDate: startDate.value,
+                endDate: endDate.value,
+                format: format.value,
+                includeAiInsights: includeAiInsights.value,
+                clientId: clientId.value || undefined,
+                userId: userId.value || undefined,
+                meta: Object.keys(meta).length ? meta : undefined,
+              };
+
+              const resp = await fetch(`${base}/reports/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+
+              const json = await resp.json();
+              if (!resp.ok) {
+                error.value = (json && (json.details || json.error)) ? (json.details || json.error) : 'Failed to generate report';
+                return;
+              }
+
+              createdReportId.value = json.reportId;
+
+              if (saveTemplate.value && templateName.value) {
+                await fetch(`${base}/filter-templates`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    name: templateName.value,
+                    description: '',
+                    clientId: clientId.value || undefined,
+                    userId: userId.value || undefined,
+                    meta: Object.keys(meta).length ? meta : undefined,
+                  })
+                });
+              }
+
+              window.location.href = `${base}/reports/${encodeURIComponent(json.reportId)}`;
+            } catch (e) {
+              error.value = 'Failed to generate report';
+            } finally {
+              running.value = false;
+            }
+          }
+
+          return {
+            project,
+            base,
+            templates,
+            name,
+            format,
+            dataType,
+            timeframe,
+            startDate,
+            endDate,
+            clientId,
+            userId,
+            metaPairs,
+            selectedTemplateId,
+            includeAiInsights,
+            saveTemplate,
+            templateName,
+            running,
+            error,
+            createdReportId,
+            addMetaPair,
+            removeMetaPair,
+            applyTemplate,
+            generate,
+          };
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

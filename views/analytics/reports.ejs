@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" />
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
+
+    <main class="container mx-auto p-4 space-y-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl"><span><%= project.icon || '📊' %></span></div>
+          <div>
+            <h1 class="text-2xl font-bold">Reports</h1>
+            <p class="text-sm text-base-content/70">
+              Environment: <span class="capitalize"><%= project.environment %></span>
+              • Role: <span class="capitalize"><%= currentProjectRole %></span>
+            </p>
+          </div>
+        </div>
+        <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-base-content/70">Generated reports are stored for re-download.</div>
+        <% if (currentProjectRole === 'owner' || currentProjectRole === 'admin') { %>
+          <a href="<%= base %>/reports/new" class="btn btn-primary">Generate new report</a>
+        <% } %>
+      </div>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Format</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!reports || !reports.length) { %>
+                  <tr>
+                    <td colspan="6" class="text-center text-base-content/70 py-8">No reports yet.</td>
+                  </tr>
+                <% } else { %>
+                  <% for (const r of reports) { %>
+                    <tr>
+                      <td class="font-semibold"><a class="link" href="<%= base %>/reports/<%= r._id %>"><%= r.name %></a></td>
+                      <td class="capitalize"><%= r.dataType %></td>
+                      <td class="uppercase"><%= r.format %></td>
+                      <td>
+                        <span class="badge <%= r.status === 'completed' ? 'badge-success' : (r.status === 'failed' ? 'badge-error' : 'badge-warning') %>">
+                          <%= r.status %>
+                        </span>
+                      </td>
+                      <td><%= r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' %></td>
+                      <td class="text-right">
+                        <a href="<%= base %>/reports/<%= r._id %>" class="btn btn-ghost btn-sm">View</a>
+                        <% if (r.status === 'completed') { %>
+                          <a href="<%= base %>/reports/<%= r._id %>/download" class="btn btn-outline btn-sm">Download</a>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% } %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
