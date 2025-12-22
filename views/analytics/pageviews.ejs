@@ -169,26 +169,26 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createPageviewsApp, computed: pageviewsComputed, nextTick, onBeforeUnmount, onMounted, ref: pageviewsRef, watch } = Vue;
 
-      createApp({
+      createPageviewsApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = pageviewsRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
-          const timeframe = ref('<%= timeframe %>');
-          const deviceType = ref('<%= deviceType %>');
-          const urlPrefix = ref('<%= urlPrefix ? urlPrefix : "" %>');
+          const timeframe = pageviewsRef('<%= timeframe %>');
+          const deviceType = pageviewsRef('<%= deviceType %>');
+          const urlPrefix = pageviewsRef('<%= urlPrefix ? urlPrefix : "" %>');
 
-          const viewsByDay = ref(<%- JSON.stringify(viewsByDay || []) %>);
-          const topPages = ref(<%- JSON.stringify(topPages || []) %>);
+          const viewsByDay = pageviewsRef(<%- JSON.stringify(viewsByDay || []) %>);
+          const topPages = pageviewsRef(<%- JSON.stringify(topPages || []) %>);
 
           let chartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = pageviewsComputed(() => {
             if (timeframe.value === '5m') return 'Last 5 min';
             if (timeframe.value === '30m') return 'Last 30 min';
             if (timeframe.value === '1h') return 'Last 1 hour';

@@ -312,30 +312,30 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createPerformanceApp, computed: performanceComputed, nextTick, onBeforeUnmount, onMounted, ref: performanceRef, watch } = Vue;
 
-      createApp({
+      createPerformanceApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = performanceRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
-          const timeframe = ref('<%= timeframe %>');
-          const deviceType = ref('<%= deviceType %>');
-          const browser = ref('<%= browser %>');
+          const timeframe = performanceRef('<%= timeframe %>');
+          const deviceType = performanceRef('<%= deviceType %>');
+          const browser = performanceRef('<%= browser %>');
 
-          const segment = ref(<%- JSON.stringify(segment || {}) %>);
-          const metaPairs = ref(
+          const segment = performanceRef(<%- JSON.stringify(segment || {}) %>);
+          const metaPairs = performanceRef(
             segment.value && segment.value.meta && typeof segment.value.meta === 'object'
               ? Object.entries(segment.value.meta).map(([k, v]) => ({ key: String(k), value: String(v) }))
               : []
           );
 
-          const percentiles = ref(<%- JSON.stringify(percentiles || {}) %>);
-          const metricsByDay = ref(<%- JSON.stringify(metricsByDay || []) %>);
-          const performanceScore = ref(<%- JSON.stringify(performanceScore || { score: 0 }) %>);
+          const percentiles = performanceRef(<%- JSON.stringify(percentiles || {}) %>);
+          const metricsByDay = performanceRef(<%- JSON.stringify(metricsByDay || []) %>);
+          const performanceScore = performanceRef(<%- JSON.stringify(performanceScore || { score: 0 }) %>);
 
           const totalMeasurements = Number(<%= totalMeasurements %>) || 0;
           const completeMeasurements = Number(<%= completeMeasurements %>) || 0;
@@ -345,7 +345,7 @@
           let fidChartInstance = null;
           let ttfbChartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = performanceComputed(() => {
             if (timeframe.value === '5m') return 'Last 5 min';
             if (timeframe.value === '30m') return 'Last 30 min';
             if (timeframe.value === '1h') return 'Last 1 hour';
@@ -359,19 +359,19 @@
             return 'Last 7 days';
           });
 
-          const dataQualityPct = computed(() => {
+          const dataQualityPct = performanceComputed(() => {
             if (!totalMeasurements) return 0;
             return Math.round((completeMeasurements / totalMeasurements) * 100);
           });
 
-          const scoreBadgeClass = computed(() => {
+          const scoreBadgeClass = performanceComputed(() => {
             const score = Number(performanceScore.value?.score) || 0;
             if (score > 75) return 'badge-success';
             if (score >= 50) return 'badge-warning';
             return 'badge-error';
           });
 
-          const hasAnyPercentiles = computed(() => {
+          const hasAnyPercentiles = performanceComputed(() => {
             const p = percentiles.value || {};
             const keys = [
               'lcp_p50',
@@ -432,7 +432,7 @@
             return value.toFixed(3);
           }
 
-          const percentileRows = computed(() => {
+          const percentileRows = performanceComputed(() => {
             const p = percentiles.value || {};
 
             const lcpStatus = getMetricStatus(p.lcp_p75, 'lcp');

@@ -287,45 +287,45 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createEventDetailApp, computed: eventDetailComputed, nextTick, onBeforeUnmount, onMounted, ref: eventDetailRef, watch } = Vue;
 
-      createApp({
+      createEventDetailApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = eventDetailRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
 
-          const eventName = ref(<%- JSON.stringify(eventName) %>);
-          const timeframe = ref('<%= timeframe %>');
+          const eventName = eventDetailRef(<%- JSON.stringify(eventName) %>);
+          const timeframe = eventDetailRef('<%= timeframe %>');
 
-          const segment = ref(<%- JSON.stringify(segment || {}) %>);
-          const metaPairs = ref(
+          const segment = eventDetailRef(<%- JSON.stringify(segment || {}) %>);
+          const metaPairs = eventDetailRef(
             segment.value && segment.value.meta && typeof segment.value.meta === 'object'
               ? Object.entries(segment.value.meta).map(([k, v]) => ({ key: String(k), value: String(v) }))
               : []
           );
 
-          const occurrences = ref(<%- JSON.stringify(occurrences || []) %>);
-          const propertySchema = ref(<%- JSON.stringify(propertySchema || []) %>);
-          const eventsByDay = ref(<%- JSON.stringify(eventsByDay || []) %>);
-          const durationSummary = ref(<%- JSON.stringify(durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null }) %>);
+          const occurrences = eventDetailRef(<%- JSON.stringify(occurrences || []) %>);
+          const propertySchema = eventDetailRef(<%- JSON.stringify(propertySchema || []) %>);
+          const eventsByDay = eventDetailRef(<%- JSON.stringify(eventsByDay || []) %>);
+          const durationSummary = eventDetailRef(<%- JSON.stringify(durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null }) %>);
 
           let chartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = eventDetailComputed(() => {
             if (timeframe.value === '24h') return 'Last 24 hours';
             if (timeframe.value === '30d') return 'Last 30 days';
             return 'Last 7 days';
           });
 
-          const firstSeenLabel = computed(() => {
+          const firstSeenLabel = eventDetailComputed(() => {
             if (!occurrences.value.length) return '-';
             const last = occurrences.value[occurrences.value.length - 1];
             return formatTimestamp(last.timestamp);
           });
 
-          const lastSeenLabel = computed(() => {
+          const lastSeenLabel = eventDetailComputed(() => {
             if (!occurrences.value.length) return '-';
             const first = occurrences.value[0];
             return formatTimestamp(first.timestamp);

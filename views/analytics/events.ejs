@@ -248,34 +248,34 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createEventsApp, computed: eventsComputed, nextTick, onBeforeUnmount, onMounted, ref: eventsRef, watch } = Vue;
 
-      createApp({
+      createEventsApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = eventsRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
-          const timeframe = ref('<%= timeframe %>');
-          const eventName = ref('<%= eventName ? eventName : "" %>');
+          const timeframe = eventsRef('<%= timeframe %>');
+          const eventName = eventsRef('<%= eventName ? eventName : "" %>');
 
-          const segment = ref(<%- JSON.stringify(segment || {}) %>);
-          const metaPairs = ref(
+          const segment = eventsRef(<%- JSON.stringify(segment || {}) %>);
+          const metaPairs = eventsRef(
             segment.value && segment.value.meta && typeof segment.value.meta === 'object'
               ? Object.entries(segment.value.meta).map(([k, v]) => ({ key: String(k), value: String(v) }))
               : []
           );
 
-          const eventsByDay = ref(<%- JSON.stringify(eventsByDay || []) %>);
-          const topEvents = ref(<%- JSON.stringify(topEvents || []) %>);
-          const uniqueEventNames = ref(<%- JSON.stringify(uniqueEventNames || []) %>);
-          const timedEvents = ref(<%- JSON.stringify(timedEvents || []) %>);
+          const eventsByDay = eventsRef(<%- JSON.stringify(eventsByDay || []) %>);
+          const topEvents = eventsRef(<%- JSON.stringify(topEvents || []) %>);
+          const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
+          const timedEvents = eventsRef(<%- JSON.stringify(timedEvents || []) %>);
 
           let chartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = eventsComputed(() => {
             if (timeframe.value === '5m') return 'Last 5 min';
             if (timeframe.value === '30m') return 'Last 30 min';
             if (timeframe.value === '1h') return 'Last 1 hour';
@@ -289,7 +289,7 @@
             return 'Last 7 days';
           });
 
-          const days = computed(() => {
+          const days = eventsComputed(() => {
             if (timeframe.value === '5m') return 5 / (24 * 60);
             if (timeframe.value === '30m') return 30 / (24 * 60);
             if (timeframe.value === '1h') return 1 / 24;
@@ -303,7 +303,7 @@
             return 7;
           });
 
-          const avgEventsPerDay = computed(() => {
+          const avgEventsPerDay = eventsComputed(() => {
             const total = Number(<%= totalEvents %>) || 0;
             const d = days.value || 1;
             return (total / d).toFixed(2);

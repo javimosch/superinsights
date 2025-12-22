@@ -651,18 +651,18 @@
     </main>
 
     <script>
-      const { createApp, ref } = Vue;
+      const { createApp: createProjectsSettingsApp, ref: projectsSettingsRef } = Vue;
 
-      createApp({
+      createProjectsSettingsApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = projectsSettingsRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
-          const dropEventsConfig = ref(<%- JSON.stringify(dropEventsConfig || { enabled: false, mode: 'blacklist', filters: [] }) %>);
-          const dropEnabled = ref(Boolean(dropEventsConfig.value && dropEventsConfig.value.enabled));
-          const dropMode = ref((dropEventsConfig.value && dropEventsConfig.value.mode) || 'blacklist');
-          const dropFilters = ref(Array.isArray(dropEventsConfig.value && dropEventsConfig.value.filters) ? dropEventsConfig.value.filters : []);
-          const dropEventsCount = ref(<%- JSON.stringify(typeof dropEventsCount === 'number' ? dropEventsCount : 0) %>);
+          const dropEventsConfig = projectsSettingsRef(<%- JSON.stringify(dropEventsConfig || { enabled: false, mode: 'blacklist', filters: [] }) %>);
+          const dropEnabled = projectsSettingsRef(Boolean(dropEventsConfig.value && dropEventsConfig.value.enabled));
+          const dropMode = projectsSettingsRef((dropEventsConfig.value && dropEventsConfig.value.mode) || 'blacklist');
+          const dropFilters = projectsSettingsRef(Array.isArray(dropEventsConfig.value && dropEventsConfig.value.filters) ? dropEventsConfig.value.filters : []);
+          const dropEventsCount = projectsSettingsRef(<%- JSON.stringify(typeof dropEventsCount === 'number' ? dropEventsCount : 0) %>);
 
           if (!dropFilters.value.length) {
             dropFilters.value.push({ key: '', op: 'equals', value: '' });
@@ -672,10 +672,10 @@
             }
           }
 
-          const showSecret = ref(false);
-          const regenerateModal = ref(null);
-          const deleteModal = ref(null);
-          const clearDataModal = ref(null);
+          const showSecret = projectsSettingsRef(false);
+          const regenerateModal = projectsSettingsRef(null);
+          const deleteModal = projectsSettingsRef(null);
+          const clearDataModal = projectsSettingsRef(null);
 
           const canRegenerateKeys = ['owner'].includes(currentProjectRole);
           const canDelete = ['owner'].includes(currentProjectRole);

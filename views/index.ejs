@@ -60,11 +60,11 @@
     </main>
 
     <script>
-      const { createApp, ref } = Vue;
+      const { createApp: createIndexApp, ref: indexRef } = Vue;
 
-      createApp({
+      createIndexApp({
         setup() {
-          const count = ref(0);
+          const count = indexRef(0);
           const increment = () => {
             count.value += 1;
           };
