@@ -1,0 +1,486 @@
+<!-- Skeleton Loader - Customizable loading placeholders -->
+<!-- Enhanced with multiple patterns, animations, and state management -->
+<div id="skeleton-loader-root"></div>
+
+<style>
+  /* Skeleton animations */
+  @keyframes skeletonPulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes skeletonShimmer {
+    0% {
+      background-position: -468px 0;
+    }
+    100% {
+      background-position: 468px 0;
+    }
+  }
+
+  @keyframes skeletonWave {
+    0% {
+      transform: translateX(-100%);
+    }
+    50%, 100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .skeleton-item {
+    @apply bg-base-300 rounded;
+  }
+
+  .skeleton-item.animation-pulse {
+    animation: skeletonPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .skeleton-item.animation-shimmer {
+    background: linear-gradient(
+      to right,
+      hsl(var(--b3)) 0%,
+      hsl(var(--b2)) 20%,
+      hsl(var(--b3)) 40%,
+      hsl(var(--b3)) 100%
+    );
+    background-size: 800px 104px;
+    animation: skeletonShimmer 2s linear infinite;
+  }
+
+  .skeleton-item.animation-wave {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .skeleton-item.animation-wave::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    animation: skeletonWave 2s linear infinite;
+  }
+
+  /* Pattern-specific styles */
+  .skeleton-text {
+    @apply h-4 w-full mb-2;
+  }
+
+  .skeleton-text.short {
+    @apply w-3/4;
+  }
+
+  .skeleton-title {
+    @apply h-6 w-1/2 mb-4;
+  }
+
+  .skeleton-avatar {
+    @apply w-12 h-12 rounded-full;
+  }
+
+  .skeleton-image {
+    @apply w-full aspect-video;
+  }
+
+  .skeleton-button {
+    @apply h-10 w-24 rounded-btn;
+  }
+
+  /* Card pattern */
+  .skeleton-card {
+    @apply bg-base-100 rounded-box p-4 border border-base-300;
+  }
+
+  /* List pattern */
+  .skeleton-list-item {
+    @apply flex items-center gap-4 p-4 border-b border-base-300;
+  }
+
+  /* Table pattern */
+  .skeleton-table-row {
+    @apply flex gap-4 p-4 border-b border-base-300;
+  }
+
+  /* Grid pattern */
+  .skeleton-grid {
+    @apply grid gap-4;
+  }
+
+  .skeleton-grid.cols-2 {
+    @apply grid-cols-2;
+  }
+
+  .skeleton-grid.cols-3 {
+    @apply grid-cols-3;
+  }
+
+  .skeleton-grid.cols-4 {
+    @apply grid-cols-4;
+  }
+</style>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script>
+/**
+ * Skeleton Loader using Vue 3
+ * Customizable loading placeholders with multiple patterns
+ */
+const { createApp: createSkeletonLoaderApp, ref: skeletonLoaderRef, computed: skeletonLoaderComputed } = Vue;
+
+const SkeletonLoaderComponent = {
+  template: `
+    <div v-if="isVisible">
+      <!-- Text Pattern -->
+      <div v-if="pattern === 'text'" class="space-y-2">
+        <div 
+          v-for="i in count"
+          :key="i"
+          class="skeleton-item skeleton-text"
+          :class="['animation-' + animation, { 'short': i % 3 === 0 }]">
+        </div>
+      </div>
+
+      <!-- Card Pattern -->
+      <div v-else-if="pattern === 'card'" class="space-y-4">
+        <div 
+          v-for="i in count"
+          :key="i"
+          class="skeleton-card">
+          <div class="skeleton-item skeleton-image mb-4" :class="'animation-' + animation"></div>
+          <div class="skeleton-item skeleton-title" :class="'animation-' + animation"></div>
+          <div class="skeleton-item skeleton-text" :class="'animation-' + animation"></div>
+          <div class="skeleton-item skeleton-text short" :class="'animation-' + animation"></div>
+        </div>
+      </div>
+
+      <!-- Card Grid Pattern -->
+      <div v-else-if="pattern === 'card-grid'" class="skeleton-grid" :class="'cols-' + gridCols">
+        <div 
+          v-for="i in count"
+          :key="i"
+          class="skeleton-card">
+          <div class="skeleton-item skeleton-image mb-4" :class="'animation-' + animation"></div>
+          <div class="skeleton-item skeleton-title" :class="'animation-' + animation"></div>
+          <div class="skeleton-item skeleton-text" :class="'animation-' + animation"></div>
+        </div>
+      </div>
+
+      <!-- List Pattern -->
+      <div v-else-if="pattern === 'list'" class="space-y-0">
+        <div 
+          v-for="i in count"
+          :key="i"
+          class="skeleton-list-item">
+          <div class="skeleton-item skeleton-avatar" :class="'animation-' + animation"></div>
+          <div class="flex-1 space-y-2">
+            <div class="skeleton-item skeleton-text" :class="'animation-' + animation"></div>
+            <div class="skeleton-item skeleton-text short" :class="'animation-' + animation"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Pattern -->
+      <div v-else-if="pattern === 'table'" class="space-y-0">
+        <div 
+          v-for="i in count"
+          :key="i"
+          class="skeleton-table-row">
+          <div class="skeleton-item h-4 flex-1" :class="'animation-' + animation"></div>
+          <div class="skeleton-item h-4 flex-1" :class="'animation-' + animation"></div>
+          <div class="skeleton-item h-4 flex-1" :class="'animation-' + animation"></div>
+          <div class="skeleton-item h-4 w-20" :class="'animation-' + animation"></div>
+        </div>
+      </div>
+
+      <!-- Form Pattern -->
+      <div v-else-if="pattern === 'form'" class="space-y-4">
+        <div v-for="i in count" :key="i">
+          <div class="skeleton-item h-4 w-24 mb-2" :class="'animation-' + animation"></div>
+          <div class="skeleton-item h-10 w-full" :class="'animation-' + animation"></div>
+        </div>
+      </div>
+
+      <!-- Custom Pattern -->
+      <div v-else-if="pattern === 'custom'" v-html="customTemplate"></div>
+    </div>
+  `,
+
+  setup() {
+    const isVisible = skeletonLoaderRef(false);
+    const pattern = skeletonLoaderRef('text');
+    const count = skeletonLoaderRef(3);
+    const animation = skeletonLoaderRef('pulse');
+    const gridCols = skeletonLoaderRef(3);
+    const customTemplate = skeletonLoaderRef('');
+    const containerId = skeletonLoaderRef('');
+    const onReady = skeletonLoaderRef(null);
+
+    function show(options) {
+      pattern.value = options.pattern || 'text';
+      count.value = options.count || 3;
+      animation.value = options.animation || 'pulse';
+      gridCols.value = options.gridCols || 3;
+      customTemplate.value = options.customTemplate || '';
+      containerId.value = options.containerId || '';
+      onReady.value = options.onReady || null;
+
+      isVisible.value = true;
+
+      if (onReady.value) {
+        onReady.value(containerId.value);
+      }
+    }
+
+    function hide() {
+      isVisible.value = false;
+    }
+
+    return {
+      isVisible,
+      pattern,
+      count,
+      animation,
+      gridCols,
+      customTemplate,
+      show,
+      hide
+    };
+  }
+};
+
+// Global skeleton loader instance
+let skeletonLoaderApp = null;
+let skeletonLoaderInstance = null;
+
+const skeletonLoader = {
+  /**
+   * Show skeleton loader
+   */
+  show(options = {}) {
+    if (!skeletonLoaderApp) {
+      skeletonLoaderApp = createSkeletonLoaderApp(SkeletonLoaderComponent);
+      skeletonLoaderInstance = skeletonLoaderApp.mount('#skeleton-loader-root');
+    }
+
+    skeletonLoaderInstance.show(options);
+  },
+
+  /**
+   * Hide skeleton loader
+   */
+  hide() {
+    if (skeletonLoaderInstance) {
+      skeletonLoaderInstance.hide();
+    }
+  },
+
+  /**
+   * Show and auto-hide after delay
+   */
+  showWithDelay(options = {}, delay = 2000) {
+    this.show(options);
+    setTimeout(() => {
+      this.hide();
+    }, delay);
+  }
+};
+
+// Make globally available
+window.skeletonLoader = skeletonLoader;
+
+// Console test helpers
+window.skeletonTest = {
+  showText: function() {
+    skeletonLoader.show({
+      pattern: 'text',
+      count: 5,
+      animation: 'pulse'
+    });
+  },
+
+  showCard: function() {
+    skeletonLoader.show({
+      pattern: 'card',
+      count: 3,
+      animation: 'shimmer'
+    });
+  },
+
+  showCardGrid: function() {
+    skeletonLoader.show({
+      pattern: 'card-grid',
+      count: 6,
+      gridCols: 3,
+      animation: 'wave'
+    });
+  },
+
+  showList: function() {
+    skeletonLoader.show({
+      pattern: 'list',
+      count: 5,
+      animation: 'pulse'
+    });
+  },
+
+  showTable: function() {
+    skeletonLoader.show({
+      pattern: 'table',
+      count: 8,
+      animation: 'shimmer'
+    });
+  },
+
+  showForm: function() {
+    skeletonLoader.show({
+      pattern: 'form',
+      count: 4,
+      animation: 'pulse'
+    });
+  },
+
+  testAnimations: function() {
+    const animations = ['pulse', 'shimmer', 'wave'];
+    let index = 0;
+
+    const showNext = () => {
+      if (index >= animations.length) {
+        skeletonLoader.hide();
+        return;
+      }
+
+      skeletonLoader.show({
+        pattern: 'card',
+        count: 2,
+        animation: animations[index]
+      });
+
+      console.log(`Animation: ${animations[index]}`);
+      index++;
+      setTimeout(showNext, 3000);
+    };
+
+    showNext();
+  },
+
+  testPatterns: function() {
+    const patterns = ['text', 'card', 'list', 'table', 'form'];
+    let index = 0;
+
+    const showNext = () => {
+      if (index >= patterns.length) {
+        skeletonLoader.hide();
+        return;
+      }
+
+      skeletonLoader.show({
+        pattern: patterns[index],
+        count: 3,
+        animation: 'shimmer'
+      });
+
+      console.log(`Pattern: ${patterns[index]}`);
+      index++;
+      setTimeout(showNext, 3000);
+    };
+
+    showNext();
+  },
+
+  simulateDataLoad: function() {
+    console.log('Simulating data load...');
+    
+    skeletonLoader.show({
+      pattern: 'card-grid',
+      count: 6,
+      gridCols: 3,
+      animation: 'shimmer',
+      onReady: (containerId) => {
+        console.log('Loading data...');
+        
+        setTimeout(() => {
+          skeletonLoader.hide();
+          console.log('Data loaded! Skeleton hidden.');
+        }, 3000);
+      }
+    });
+  },
+
+  hide: function() {
+    skeletonLoader.hide();
+  },
+
+  help: function() {
+    console.log(`
+Skeleton Loader Testing Helper - Available Commands:
+
+  skeletonTest.showText()
+    Show text skeleton pattern
+
+  skeletonTest.showCard()
+    Show card skeleton pattern
+
+  skeletonTest.showCardGrid()
+    Show card grid skeleton pattern
+
+  skeletonTest.showList()
+    Show list skeleton pattern
+
+  skeletonTest.showTable()
+    Show table skeleton pattern
+
+  skeletonTest.showForm()
+    Show form skeleton pattern
+
+  skeletonTest.testAnimations()
+    Cycle through all animation types
+
+  skeletonTest.testPatterns()
+    Cycle through all pattern types
+
+  skeletonTest.simulateDataLoad()
+    Simulate data loading with skeleton
+
+  skeletonLoader.show(options)
+    Show custom skeleton
+
+  skeletonLoader.hide()
+    Hide skeleton
+
+  skeletonLoader.showWithDelay(options, delay)
+    Show and auto-hide after delay
+
+  skeletonTest.help()
+    Show this help message
+
+Available Patterns:
+  - text: Simple text lines
+  - card: Card with image and text
+  - card-grid: Grid of cards
+  - list: List items with avatars
+  - table: Table rows
+  - form: Form fields
+
+Available Animations:
+  - pulse: Opacity pulsing
+  - shimmer: Gradient shimmer
+  - wave: Wave effect
+    `);
+  }
+};
+
+console.log('%cSkeleton Loader loaded!', 'color: #4CAF50; font-weight: bold;');
+console.log('Type `skeletonTest.help()` to see all available test functions');
+</script>
