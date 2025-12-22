@@ -8,6 +8,8 @@ const errorsController = require('../controllers/errorsController');
 const performanceController = require('../controllers/performanceController');
  const dashboardController = require('../controllers/dashboardController');
 const aiAnalysisController = require('../controllers/aiAnalysisController');
+ const reportsRouter = require('./reports');
+ const filterTemplatesRouter = require('./filter-templates');
 const { ensureAuthenticated } = require('../middleware/auth');
  const { requireOrgSelected, requireOrgRoleAtLeast } = require('../middleware/orgContext');
 const {
@@ -177,5 +179,8 @@ router.get(
   ensureProjectAccess,
   aiAnalysisController.getAiAnalysisRunJson
 );
+
+ router.use('/:id/reports', ensureProjectAccess, reportsRouter);
+ router.use('/:id/filter-templates', ensureProjectAccess, filterTemplatesRouter);
 
 module.exports = router;
