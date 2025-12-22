@@ -276,28 +276,28 @@
     </main>
 
     <script>
-      const { createApp, computed, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createDashboardApp, computed: dashboardComputed, onBeforeUnmount, onMounted, ref: dashboardRef, watch } = Vue;
 
-      createApp({
+      createDashboardApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = dashboardRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const base = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
 
-          const timeframe = ref('<%= timeframe %>');
+          const timeframe = dashboardRef('<%= timeframe %>');
 
-          const pageViewsData = ref(<%- JSON.stringify(pageViews || {}) %>);
-          const eventsData = ref(<%- JSON.stringify(events || {}) %>);
-          const errorsData = ref(<%- JSON.stringify(errors || {}) %>);
-          const performanceData = ref(<%- JSON.stringify(performance || {}) %>);
+          const pageViewsData = dashboardRef(<%- JSON.stringify(pageViews || {}) %>);
+          const eventsData = dashboardRef(<%- JSON.stringify(events || {}) %>);
+          const errorsData = dashboardRef(<%- JSON.stringify(errors || {}) %>);
+          const performanceData = dashboardRef(<%- JSON.stringify(performance || {}) %>);
 
-          const autoRefreshEnabled = ref(true);
-          const refreshCountdown = ref(30);
+          const autoRefreshEnabled = dashboardRef(true);
+          const refreshCountdown = dashboardRef(30);
           let refreshInterval = null;
           let countdownInterval = null;
 
-          const fetchError = ref('');
+          const fetchError = dashboardRef('');
           let consecutiveFetchFailures = 0;
 
           let pageViewsChart = null;
@@ -305,17 +305,17 @@
           let errorsChart = null;
           let performanceChart = null;
 
-          const topEventLabel = computed(() => {
+          const topEventLabel = dashboardComputed(() => {
             const first = (eventsData.value && eventsData.value.topEvents && eventsData.value.topEvents[0]) || null;
             return first && first.eventName ? first.eventName : '—';
           });
 
-          const performanceScoreValue = computed(() => {
+          const performanceScoreValue = dashboardComputed(() => {
             const score = Number(performanceData.value?.performanceScore?.score) || 0;
             return score;
           });
 
-          const scoreBadgeClass = computed(() => {
+          const scoreBadgeClass = dashboardComputed(() => {
             const score = performanceScoreValue.value;
             if (score > 75) return 'badge-success';
             if (score >= 50) return 'badge-warning';

@@ -246,32 +246,32 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createErrorDetailApp, computed: errorDetailComputed, nextTick, onBeforeUnmount, onMounted, ref: errorDetailRef, watch } = Vue;
 
-      createApp({
+      createErrorDetailApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = errorDetailRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
-          const fingerprint = ref('<%= fingerprint %>');
-          const timeframe = ref('<%= timeframe %>');
+          const fingerprint = errorDetailRef('<%= fingerprint %>');
+          const timeframe = errorDetailRef('<%= timeframe %>');
 
-          const occurrences = ref(<%- JSON.stringify(occurrences || []) %>);
-          const errorsByDay = ref(<%- JSON.stringify(errorsByDay || []) %>);
-          const errorDetails = ref(<%- JSON.stringify(errorDetails || null) %>);
+          const occurrences = errorDetailRef(<%- JSON.stringify(occurrences || []) %>);
+          const errorsByDay = errorDetailRef(<%- JSON.stringify(errorsByDay || []) %>);
+          const errorDetails = errorDetailRef(<%- JSON.stringify(errorDetails || null) %>);
 
           let chartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = errorDetailComputed(() => {
             if (timeframe.value === '24h') return 'Last 24 hours';
             if (timeframe.value === '30d') return 'Last 30 days';
             return 'Last 7 days';
           });
 
-          const firstSeenLabel = computed(() => {
+          const firstSeenLabel = errorDetailComputed(() => {
             const raw = '<%= firstSeen ? firstSeen.toISOString() : "" %>';
             if (!raw) return '—';
             const d = new Date(raw);
@@ -279,7 +279,7 @@
             return d.toLocaleString();
           });
 
-          const lastSeenLabel = computed(() => {
+          const lastSeenLabel = errorDetailComputed(() => {
             const raw = '<%= lastSeen ? lastSeen.toISOString() : "" %>';
             if (!raw) return '—';
             const d = new Date(raw);
@@ -287,7 +287,7 @@
             return d.toLocaleString();
           });
 
-          const contextDisplay = computed(() => {
+          const contextDisplay = errorDetailComputed(() => {
             const ctx = errorDetails.value && errorDetails.value.context;
             if (!ctx) return '';
             try {

@@ -192,26 +192,26 @@
     </main>
 
     <script>
-      const { createApp, computed, nextTick, onBeforeUnmount, onMounted, ref, watch } = Vue;
+      const { createApp: createErrorsApp, computed: errorsComputed, nextTick, onBeforeUnmount, onMounted, ref: errorsRef, watch } = Vue;
 
-      createApp({
+      createErrorsApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = errorsRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
           const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
-          const timeframe = ref('<%= timeframe %>');
-          const browser = ref('<%= browser %>');
-          const errorType = ref('<%= errorType %>');
+          const timeframe = errorsRef('<%= timeframe %>');
+          const browser = errorsRef('<%= browser %>');
+          const errorType = errorsRef('<%= errorType %>');
 
-          const errorsByDay = ref(<%- JSON.stringify(errorsByDay || []) %>);
-          const groupedErrors = ref(<%- JSON.stringify(groupedErrors || []) %>);
+          const errorsByDay = errorsRef(<%- JSON.stringify(errorsByDay || []) %>);
+          const groupedErrors = errorsRef(<%- JSON.stringify(groupedErrors || []) %>);
 
           let chartInstance = null;
 
-          const timeframeLabel = computed(() => {
+          const timeframeLabel = errorsComputed(() => {
             if (timeframe.value === '5m') return 'Last 5 min';
             if (timeframe.value === '30m') return 'Last 30 min';
             if (timeframe.value === '1h') return 'Last 1 hour';
@@ -225,7 +225,7 @@
             return 'Last 7 days';
           });
 
-          const days = computed(() => {
+          const days = errorsComputed(() => {
             if (timeframe.value === '5m') return 5 / (24 * 60);
             if (timeframe.value === '30m') return 30 / (24 * 60);
             if (timeframe.value === '1h') return 1 / 24;
@@ -239,7 +239,7 @@
             return 7;
           });
 
-          const avgErrorsPerDay = computed(() => {
+          const avgErrorsPerDay = errorsComputed(() => {
             const total = Number(<%= totalErrors %>) || 0;
             const d = days.value || 1;
             return (total / d).toFixed(2);

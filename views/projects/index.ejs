@@ -108,14 +108,14 @@
     </main>
 
     <script>
-      const { createApp, computed, ref } = Vue;
+      const { createApp: createProjectsIndexApp, computed: projectsIndexComputed, ref: projectsIndexRef } = Vue;
 
-      createApp({
+      createProjectsIndexApp({
         setup() {
-          const searchQuery = ref('');
-          const projects = ref(<%- JSON.stringify(projects || []) %>);
+          const searchQuery = projectsIndexRef('');
+          const projects = projectsIndexRef(<%- JSON.stringify(projects || []) %>);
 
-          const filteredProjects = computed(() => {
+          const filteredProjects = projectsIndexComputed(() => {
             const q = searchQuery.value.toLowerCase().trim();
             if (!q) return projects.value;
             return projects.value.filter((p) => {

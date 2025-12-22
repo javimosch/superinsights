@@ -255,34 +255,34 @@
     </main>
 
     <script>
-      const { createApp, computed, onMounted, ref } = Vue;
+      const { createApp: createAiAnalysisApp, computed: aiAnalysisComputed, onMounted, ref: aiAnalysisRef } = Vue;
 
-      createApp({
+      createAiAnalysisApp({
         setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
+          const project = aiAnalysisRef(<%- JSON.stringify(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
           const base = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
 
-          const runs = ref(<%- JSON.stringify(runs || []) %>);
-          const selectedRunId = ref(<%- JSON.stringify(latestRun ? String(latestRun._id) : '') %>);
-          const markdown = ref(<%- JSON.stringify(latestRun && latestRun.resultMarkdown ? latestRun.resultMarkdown : '') %>);
+          const runs = aiAnalysisRef(<%- JSON.stringify(runs || []) %>);
+          const selectedRunId = aiAnalysisRef(<%- JSON.stringify(latestRun ? String(latestRun._id) : '') %>);
+          const markdown = aiAnalysisRef(<%- JSON.stringify(latestRun && latestRun.resultMarkdown ? latestRun.resultMarkdown : '') %>);
 
-          const presetId = ref('');
-          const presetGroups = ref({ builtins: [], mine: [], public: [] });
-          const presetGoal = ref('');
-          const presetAiRunning = ref(false);
+          const presetId = aiAnalysisRef('');
+          const presetGroups = aiAnalysisRef({ builtins: [], mine: [], public: [] });
+          const presetGoal = aiAnalysisRef('');
+          const presetAiRunning = aiAnalysisRef(false);
 
-          const mode = ref('preset');
-          const timeframe = ref('7d');
-          const start = ref('');
-          const end = ref('');
+          const mode = aiAnalysisRef('preset');
+          const timeframe = aiAnalysisRef('7d');
+          const start = aiAnalysisRef('');
+          const end = aiAnalysisRef('');
 
-          const metaPairs = ref([]);
+          const metaPairs = aiAnalysisRef([]);
 
-          const running = ref(false);
-          const error = ref('');
+          const running = aiAnalysisRef(false);
+          const error = aiAnalysisRef('');
 
-          const rendered = computed(() => {
+          const rendered = aiAnalysisComputed(() => {
             try {
               if (!markdown.value) return '';
               return marked.parse(markdown.value);
