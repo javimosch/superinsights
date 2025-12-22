@@ -35,6 +35,28 @@
         <% } %>
       </div>
 
+      <div class="flex flex-col md:flex-row md:items-end gap-3">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Status</span></label>
+          <select class="select select-bordered" onchange="window.location.href = this.value">
+            <option value="<%= base %>/reports?status=all&sort=<%= encodeURIComponent(listSort || 'created_desc') %>" <%= (listStatus || 'all') === 'all' ? 'selected' : '' %>>All</option>
+            <option value="<%= base %>/reports?status=pending&sort=<%= encodeURIComponent(listSort || 'created_desc') %>" <%= (listStatus || 'all') === 'pending' ? 'selected' : '' %>>Pending</option>
+            <option value="<%= base %>/reports?status=generating&sort=<%= encodeURIComponent(listSort || 'created_desc') %>" <%= (listStatus || 'all') === 'generating' ? 'selected' : '' %>>Generating</option>
+            <option value="<%= base %>/reports?status=completed&sort=<%= encodeURIComponent(listSort || 'created_desc') %>" <%= (listStatus || 'all') === 'completed' ? 'selected' : '' %>>Completed</option>
+            <option value="<%= base %>/reports?status=failed&sort=<%= encodeURIComponent(listSort || 'created_desc') %>" <%= (listStatus || 'all') === 'failed' ? 'selected' : '' %>>Failed</option>
+          </select>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Sort</span></label>
+          <select class="select select-bordered" onchange="window.location.href = this.value">
+            <option value="<%= base %>/reports?status=<%= encodeURIComponent(listStatus || 'all') %>&sort=created_desc" <%= (listSort || 'created_desc') === 'created_desc' ? 'selected' : '' %>>Created (newest)</option>
+            <option value="<%= base %>/reports?status=<%= encodeURIComponent(listStatus || 'all') %>&sort=created_asc" <%= (listSort || 'created_desc') === 'created_asc' ? 'selected' : '' %>>Created (oldest)</option>
+            <option value="<%= base %>/reports?status=<%= encodeURIComponent(listStatus || 'all') %>&sort=name_asc" <%= (listSort || 'created_desc') === 'name_asc' ? 'selected' : '' %>>Name</option>
+            <option value="<%= base %>/reports?status=<%= encodeURIComponent(listStatus || 'all') %>&sort=status_asc" <%= (listSort || 'created_desc') === 'status_asc' ? 'selected' : '' %>>Status</option>
+          </select>
+        </div>
+      </div>
+
       <section class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="overflow-x-auto">
@@ -46,13 +68,14 @@
                   <th>Format</th>
                   <th>Status</th>
                   <th>Created</th>
+                  <th>Gen time</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <% if (!reports || !reports.length) { %>
                   <tr>
-                    <td colspan="6" class="text-center text-base-content/70 py-8">No reports yet.</td>
+                    <td colspan="7" class="text-center text-base-content/70 py-8">No reports yet.</td>
                   </tr>
                 <% } else { %>
                   <% for (const r of reports) { %>
@@ -66,6 +89,7 @@
                         </span>
                       </td>
                       <td><%= r.createdAt ? new Date(r.createdAt).toLocaleString() : '—' %></td>
+                      <td><%= r.estimatedDurationMs ? `${Math.round(r.estimatedDurationMs / 1000)}s` : '—' %></td>
                       <td class="text-right">
                         <a href="<%= base %>/reports/<%= r._id %>" class="btn btn-ghost btn-sm">View</a>
                         <% if (r.status === 'completed') { %>

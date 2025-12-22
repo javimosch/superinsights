@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-base-200">
+    <%- include('../partials/navbar') %>
+    <%- include('../partials/breadcrumbs') %>
+
+    <% const base = projectBasePath || `/projects/${project._id}`; %>
+
+    <div id="app">
+      <main class="container mx-auto p-4 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
+            <div>
+              <h1 class="text-2xl font-bold">HTML report</h1>
+              <p class="text-sm text-base-content/70">
+                <span class="font-semibold"><%= report.name %></span>
+                • <span class="capitalize"><%= report.dataType %></span>
+              </p>
+            </div>
+          </div>
+          <%- include('../partials/analytics-subnav', { project, projectBasePath, currentSection }) %>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-base-content/70">
+            Generated: <%= report.generatedAt ? new Date(report.generatedAt).toLocaleString() : '—' %>
+          </div>
+          <div class="flex gap-2">
+            <a class="btn btn-ghost" href="<%= base %>/reports/<%= report._id %>">Back to status</a>
+            <a class="btn btn-primary" href="<%= base %>/reports/<%= report._id %>/download">Download</a>
+          </div>
+        </div>
+
+        <section class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title">Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="stat bg-base-200 rounded">
+                <div class="stat-title">Total count</div>
+                <div class="stat-value text-2xl">{{ context?.summary?.totalCount ?? 0 }}</div>
+              </div>
+              <div class="stat bg-base-200 rounded" v-if="context?.pageviews">
+                <div class="stat-title">Pageviews</div>
+                <div class="stat-value text-2xl">{{ context.pageviews.totalViews ?? 0 }}</div>
+              </div>
+              <div class="stat bg-base-200 rounded" v-if="context?.events">
+                <div class="stat-title">Events</div>
+                <div class="stat-value text-2xl">{{ context.events.totalEvents ?? 0 }}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="context?.pageviews" class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title">Pageviews</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <div class="font-semibold mb-2">Views by day</div>
+                <canvas id="pageviewsTrend" height="140"></canvas>
+              </div>
+              <div>
+                <div class="font-semibold mb-2">Top pages</div>
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>URL</th>
+                        <th class="text-right">Views</th>
+                        <th class="text-right">Unique</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(p, idx) in (context.pageviews.topPages || [])" :key="idx">
+                        <td class="font-mono text-xs">{{ p.url }}</td>
+                        <td class="text-right">{{ p.views }}</td>
+                        <td class="text-right">{{ p.uniqueVisitors }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="context?.events" class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title">Events</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <div class="font-semibold mb-2">Events by day</div>
+                <canvas id="eventsTrend" height="140"></canvas>
+              </div>
+              <div>
+                <div class="font-semibold mb-2">Top events</div>
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th class="text-right">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(e, idx) in (context.events.topEvents || [])" :key="idx">
+                        <td>{{ e.eventName }}</td>
+                        <td class="text-right">{{ e.count }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="context?.errors" class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title">Errors</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <div class="font-semibold mb-2">Errors by day</div>
+                <canvas id="errorsTrend" height="140"></canvas>
+              </div>
+              <div>
+                <div class="font-semibold mb-2">Top errors</div>
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th class="text-right">Count</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(e, idx) in (context.errors.topFingerprints || [])" :key="idx">
+                        <td class="text-xs">{{ e.errorType || 'Error' }}</td>
+                        <td class="text-right">{{ e.count }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="context?.performance" class="card bg-base-100 shadow">
+          <div class="card-body space-y-4">
+            <h2 class="card-title">Performance</h2>
+            <div class="text-sm text-base-content/70">Percentiles (p50/p75/p95)</div>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Metric</th>
+                    <th class="text-right">p50</th>
+                    <th class="text-right">p75</th>
+                    <th class="text-right">p95</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>LCP</td>
+                    <td class="text-right">{{ context.performance.percentiles?.lcp_p50 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.lcp_p75 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.lcp_p95 ?? '—' }}</td>
+                  </tr>
+                  <tr>
+                    <td>CLS</td>
+                    <td class="text-right">{{ context.performance.percentiles?.cls_p50 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.cls_p75 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.cls_p95 ?? '—' }}</td>
+                  </tr>
+                  <tr>
+                    <td>FID</td>
+                    <td class="text-right">{{ context.performance.percentiles?.fid_p50 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.fid_p75 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.fid_p95 ?? '—' }}</td>
+                  </tr>
+                  <tr>
+                    <td>TTFB</td>
+                    <td class="text-right">{{ context.performance.percentiles?.ttfb_p50 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.ttfb_p75 ?? '—' }}</td>
+                    <td class="text-right">{{ context.performance.percentiles?.ttfb_p95 ?? '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="context?.aiInsights?.markdown" class="card bg-base-100 shadow">
+          <div class="card-body space-y-2">
+            <h2 class="card-title">AI insights</h2>
+            <pre class="whitespace-pre-wrap text-sm">{{ context.aiInsights.markdown }}</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      window.reportHtmlConfig = {
+        project: <%- JSON.stringify(project) %>,
+        context: <%- JSON.stringify(context) %>,
+      };
+    </script>
+    <script src="/js/analytics/report-html.js" defer></script>
+  </body>
+  </html>
+

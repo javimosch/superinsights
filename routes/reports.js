@@ -10,6 +10,7 @@ router.get('/new', ensureProjectRole(['owner', 'admin']), reportController.getNe
 router.post('/generate', ensureProjectRole(['owner', 'admin']), reportController.postGenerateReport);
 
 router.get('/:reportId', ensureProjectRole(['owner', 'admin', 'viewer']), reportController.getReportDetailPage);
+router.get('/:reportId/view', ensureProjectRole(['owner', 'admin', 'viewer']), reportController.getReportHtmlView);
 router.get('/:reportId/status', ensureProjectRole(['owner', 'admin', 'viewer']), reportController.getReportStatus);
 router.get('/:reportId/download', ensureProjectRole(['owner', 'admin', 'viewer']), reportController.getReportDownload);
 router.post('/:reportId/delete', ensureProjectRole(['owner', 'admin']), reportController.postDeleteReport);

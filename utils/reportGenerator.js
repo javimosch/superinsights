@@ -275,7 +275,19 @@ async function getLatestAiInsights({ projectId }) {
     runId: String(run._id),
     createdAt: run.createdAt,
     markdown: String(run.resultMarkdown),
+    start: run.start,
+    end: run.end,
   };
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  if (!aStart || !aEnd || !bStart || !bEnd) return false;
+  const a0 = new Date(aStart).getTime();
+  const a1 = new Date(aEnd).getTime();
+  const b0 = new Date(bStart).getTime();
+  const b1 = new Date(bEnd).getTime();
+  if (!Number.isFinite(a0) || !Number.isFinite(a1) || !Number.isFinite(b0) || !Number.isFinite(b1)) return false;
+  return a0 <= b1 && b0 <= a1;
 }
 
 async function generateReportContext({ project, range, dataType, filters, includeAiInsights }) {
@@ -297,6 +309,18 @@ async function generateReportContext({ project, range, dataType, filters, includ
     need('performance') ? buildPerformanceAgg({ projectId, start: range.start, end: range.end, perfMatch: matchers.perfMatch }) : null,
     includeAiInsights ? getLatestAiInsights({ projectId }) : null,
   ]);
+
+  let aiInsightsScoped = aiInsights;
+  if (includeAiInsights) {
+    if (!aiInsights) {
+      aiInsightsScoped = { runId: null, createdAt: null, markdown: 'No analysis available for this period.' };
+    } else {
+      const ok = rangesOverlap(aiInsights.start, aiInsights.end, range.start, range.end);
+      if (!ok) {
+        aiInsightsScoped = { runId: aiInsights.runId, createdAt: aiInsights.createdAt, markdown: 'No analysis available for this period.' };
+      }
+    }
+  }
 
   const summary = {
     totalCount:
@@ -323,7 +347,7 @@ async function generateReportContext({ project, range, dataType, filters, includ
     events,
     errors,
     performance,
-    aiInsights,
+    aiInsights: aiInsightsScoped,
     filters: filters || {},
   };
 }

@@ -5,6 +5,8 @@ const REPORT_TIMEFRAMES = ['5m', '30m', '1h', '6h', '12h', '24h', '7d', '30d', '
 const REPORT_FORMATS = ['pdf', 'csv', 'json', 'html'];
 const REPORT_STATUSES = ['pending', 'generating', 'completed', 'failed'];
 
+const REPORT_STAGES = ['queued', 'aggregating', 'rendering', 'uploading'];
+
 const ReportSchema = new mongoose.Schema(
   {
     projectId: {
@@ -55,6 +57,11 @@ const ReportSchema = new mongoose.Schema(
       required: true,
       default: 'pdf',
     },
+    csvMode: {
+      type: String,
+      enum: ['aggregated', 'raw', null],
+      default: null,
+    },
     includeAiInsights: {
       type: Boolean,
       default: false,
@@ -69,6 +76,79 @@ const ReportSchema = new mongoose.Schema(
     statusMessage: {
       type: String,
       default: null,
+    },
+    contextSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    stages: {
+      type: [
+        {
+          stage: {
+            type: String,
+            enum: REPORT_STAGES,
+            required: true,
+          },
+          startedAt: {
+            type: Date,
+            default: null,
+          },
+          completedAt: {
+            type: Date,
+            default: null,
+          },
+          errorMessage: {
+            type: String,
+            default: null,
+          },
+        },
+      ],
+      default: [],
+    },
+    currentStage: {
+      type: String,
+      enum: [...REPORT_STAGES, null],
+      default: null,
+      index: true,
+    },
+    estimatedDurationMs: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    jobTimeoutAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    dedupHash: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    filterTemplateId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    charts: {
+      type: [
+        {
+          type: {
+            type: String,
+            default: null,
+          },
+          dataType: {
+            type: String,
+            default: null,
+          },
+          format: {
+            type: String,
+            default: null,
+          },
+        },
+      ],
+      default: [],
     },
     progress: {
       type: Number,
@@ -119,9 +199,13 @@ const ReportSchema = new mongoose.Schema(
   }
 );
 
+ReportSchema.index({ projectId: 1, status: 1, createdAt: -1 });
+ReportSchema.index({ projectId: 1, dedupHash: 1, status: 1 });
+
 ReportSchema.statics.REPORT_DATA_TYPES = REPORT_DATA_TYPES;
 ReportSchema.statics.REPORT_TIMEFRAMES = REPORT_TIMEFRAMES;
 ReportSchema.statics.REPORT_FORMATS = REPORT_FORMATS;
 ReportSchema.statics.REPORT_STATUSES = REPORT_STATUSES;
+ReportSchema.statics.REPORT_STAGES = REPORT_STAGES;
 
 module.exports = mongoose.model('Report', ReportSchema);
