@@ -24,6 +24,19 @@ const FilterTemplateSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
+    timeframe: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    startDate: {
+      type: Date,
+      default: null,
+    },
+    endDate: {
+      type: Date,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

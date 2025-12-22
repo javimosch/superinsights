@@ -63,11 +63,30 @@ function parseSegmentFilters(req) {
   const userId = normalizeString(q.userId != null ? q.userId : b.userId) ||
     normalizeString(q.user_id != null ? q.user_id : b.user_id);
 
+  const deviceType = normalizeString(q.deviceType != null ? q.deviceType : b.deviceType) ||
+    normalizeString(q.device_type != null ? q.device_type : b.device_type);
+
+  const browser = normalizeString(q.browser != null ? q.browser : b.browser);
+  const os = normalizeString(q.os != null ? q.os : b.os);
+
+  const utmSource = normalizeString(q.utmSource != null ? q.utmSource : b.utmSource) ||
+    normalizeString(q.utm_source != null ? q.utm_source : b.utm_source);
+  const utmMedium = normalizeString(q.utmMedium != null ? q.utmMedium : b.utmMedium) ||
+    normalizeString(q.utm_medium != null ? q.utm_medium : b.utm_medium);
+  const utmCampaign = normalizeString(q.utmCampaign != null ? q.utmCampaign : b.utmCampaign) ||
+    normalizeString(q.utm_campaign != null ? q.utm_campaign : b.utm_campaign);
+
   const meta = parseMetaFromRequest(req);
 
   return {
     clientId: clientId || null,
     userId: userId || null,
+    deviceType: deviceType || null,
+    browser: browser || null,
+    os: os || null,
+    utmSource: utmSource || null,
+    utmMedium: utmMedium || null,
+    utmCampaign: utmCampaign || null,
     meta,
   };
 }
@@ -106,9 +125,17 @@ function buildPerformanceMetadataMatch({ clientId, userId, meta }) {
   return match;
 }
 
-function buildPageViewMetadataMatch({ clientId }) {
+function buildPageViewMetadataMatch({ clientId, deviceType, browser, os, utmSource, utmMedium, utmCampaign }) {
   const match = {};
   if (clientId) match.clientId = clientId;
+
+  if (deviceType) match.deviceType = deviceType;
+  if (browser) match.browser = browser;
+  if (os) match.os = os;
+  if (utmSource) match.utmSource = utmSource;
+  if (utmMedium) match.utmMedium = utmMedium;
+  if (utmCampaign) match.utmCampaign = utmCampaign;
+
   return match;
 }
 

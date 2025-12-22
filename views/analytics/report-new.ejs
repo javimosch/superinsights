@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -18,11 +19,11 @@
       <main class="container mx-auto p-4 space-y-6">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="text-3xl"><span>{{ project.icon || '📊' }}</span></div>
+            <div class="text-3xl"><span><%= project.icon || '📊' %></span></div>
             <div>
               <h1 class="text-2xl font-bold">Generate report</h1>
               <p class="text-sm text-base-content/70">
-                Environment: <span class="capitalize">{{ project.environment }}</span>
+                Environment: <span class="capitalize"><%= project.environment %></span>
                 • Role: <span class="capitalize"><%= currentProjectRole %></span>
               </p>
             </div>
@@ -44,7 +45,17 @@
                 <label class="label" for="format"><span class="label-text">Format</span></label>
                 <select id="format" v-model="format" class="select select-bordered">
                   <option value="pdf">PDF</option>
+                  <option value="csv">CSV</option>
                   <option value="json">JSON (raw)</option>
+                  <option value="html">HTML (interactive)</option>
+                </select>
+              </div>
+
+              <div v-if="format === 'csv'" class="form-control">
+                <label class="label" for="csvMode"><span class="label-text">CSV mode</span></label>
+                <select id="csvMode" v-model="csvMode" class="select select-bordered">
+                  <option value="aggregated">Aggregated (recommended)</option>
+                  <option value="raw">Raw (large)</option>
                 </select>
               </div>
 
@@ -99,6 +110,38 @@
               <div class="form-control">
                 <label class="label" for="userId"><span class="label-text">userId</span></label>
                 <input id="userId" v-model="userId" class="input input-bordered" placeholder="optional" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label" for="deviceType"><span class="label-text">deviceType</span></label>
+                <select id="deviceType" v-model="deviceType" class="select select-bordered">
+                  <option value="">—</option>
+                  <option value="desktop">Desktop</option>
+                  <option value="mobile">Mobile</option>
+                  <option value="tablet">Tablet</option>
+                </select>
+              </div>
+              <div class="form-control">
+                <label class="label" for="browser"><span class="label-text">browser</span></label>
+                <input id="browser" v-model="browser" class="input input-bordered" placeholder="optional" />
+              </div>
+              <div class="form-control">
+                <label class="label" for="os"><span class="label-text">os</span></label>
+                <input id="os" v-model="os" class="input input-bordered" placeholder="optional" />
+              </div>
+              <div class="form-control">
+                <label class="label" for="utmSource"><span class="label-text">utmSource</span></label>
+                <input id="utmSource" v-model="utmSource" class="input input-bordered" placeholder="optional" />
+              </div>
+              <div class="form-control">
+                <label class="label" for="utmMedium"><span class="label-text">utmMedium</span></label>
+                <input id="utmMedium" v-model="utmMedium" class="input input-bordered" placeholder="optional" />
+              </div>
+              <div class="form-control">
+                <label class="label" for="utmCampaign"><span class="label-text">utmCampaign</span></label>
+                <input id="utmCampaign" v-model="utmCampaign" class="input input-bordered" placeholder="optional" />
               </div>
             </div>
 
@@ -178,145 +221,13 @@
     </div>
 
     <script>
-      const { createApp, ref } = Vue;
-
-      createApp({
-        setup() {
-          const project = ref(<%- JSON.stringify(project) %>);
-          const base = <%- JSON.stringify(base) %>;
-          const templates = ref(<%- JSON.stringify(templates || []) %>);
-
-          const name = ref('');
-          const format = ref('pdf');
-          const dataType = ref('pageviews');
-          const timeframe = ref('7d');
-          const startDate = ref('');
-          const endDate = ref('');
-
-          const clientId = ref('');
-          const userId = ref('');
-          const metaPairs = ref([]);
-
-          const selectedTemplateId = ref('');
-
-          const includeAiInsights = ref(false);
-
-          const saveTemplate = ref(false);
-          const templateName = ref('');
-
-          const running = ref(false);
-          const error = ref('');
-          const createdReportId = ref('');
-
-          function addMetaPair() {
-            metaPairs.value.push({ key: '', value: '' });
-          }
-
-          function removeMetaPair(idx) {
-            metaPairs.value.splice(idx, 1);
-          }
-
-          function applyTemplate() {
-            const tid = selectedTemplateId.value;
-            if (!tid) return;
-            const t = templates.value.find((x) => String(x._id) === String(tid));
-            if (!t || !t.filters) return;
-            clientId.value = t.filters.clientId || '';
-            userId.value = t.filters.userId || '';
-
-            const meta = (t.filters.meta && typeof t.filters.meta === 'object') ? t.filters.meta : {};
-            metaPairs.value = Object.entries(meta).map(([k, v]) => ({ key: k, value: String(v) }));
-          }
-
-          async function generate() {
-            running.value = true;
-            error.value = '';
-
-            try {
-              const meta = {};
-              for (const row of metaPairs.value || []) {
-                const k = row && row.key ? String(row.key).trim() : '';
-                const v = row && row.value ? String(row.value).trim() : '';
-                if (!k || !v) continue;
-                meta[k] = v;
-              }
-
-              const payload = {
-                name: name.value || 'Report',
-                dataType: dataType.value,
-                timeframe: timeframe.value,
-                startDate: startDate.value,
-                endDate: endDate.value,
-                format: format.value,
-                includeAiInsights: includeAiInsights.value,
-                clientId: clientId.value || undefined,
-                userId: userId.value || undefined,
-                meta: Object.keys(meta).length ? meta : undefined,
-              };
-
-              const resp = await fetch(`${base}/reports/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-              });
-
-              const json = await resp.json();
-              if (!resp.ok) {
-                error.value = (json && (json.details || json.error)) ? (json.details || json.error) : 'Failed to generate report';
-                return;
-              }
-
-              createdReportId.value = json.reportId;
-
-              if (saveTemplate.value && templateName.value) {
-                await fetch(`${base}/filter-templates`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    name: templateName.value,
-                    description: '',
-                    clientId: clientId.value || undefined,
-                    userId: userId.value || undefined,
-                    meta: Object.keys(meta).length ? meta : undefined,
-                  })
-                });
-              }
-
-              window.location.href = `${base}/reports/${encodeURIComponent(json.reportId)}`;
-            } catch (e) {
-              error.value = 'Failed to generate report';
-            } finally {
-              running.value = false;
-            }
-          }
-
-          return {
-            project,
-            base,
-            templates,
-            name,
-            format,
-            dataType,
-            timeframe,
-            startDate,
-            endDate,
-            clientId,
-            userId,
-            metaPairs,
-            selectedTemplateId,
-            includeAiInsights,
-            saveTemplate,
-            templateName,
-            running,
-            error,
-            createdReportId,
-            addMetaPair,
-            removeMetaPair,
-            applyTemplate,
-            generate,
-          };
-        },
-      }).mount('#app');
+      window.reportNewConfig = {
+        project: <%- JSON.stringify(project) %>,
+        base: <%- JSON.stringify(base) %>,
+        templates: <%- JSON.stringify(templates || []) %>,
+      };
     </script>
+    <script src="/js/analytics/report-new.js" defer></script>
   </body>
-</html>
+  </html>
+
