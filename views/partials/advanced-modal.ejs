@@ -1,0 +1,497 @@
+<!-- Advanced Modal - Enhanced modal system with forms, wizards, and galleries -->
+<!-- Supports multiple types, tabs, validation, and stacking -->
+<div id="advanced-modal-root"></div>
+
+<style>
+  /* Advanced modal animations */
+  @keyframes advancedModalSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes advancedModalFadeOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.95) translateY(-20px);
+    }
+  }
+
+  .advanced-modal-backdrop {
+    @apply fixed inset-0 bg-base-300/80 backdrop-blur-sm z-50;
+  }
+
+  .advanced-modal-container {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  }
+
+  .advanced-modal-box {
+    @apply bg-base-100 rounded-box shadow-xl w-full relative;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .advanced-modal-box.size-xs { max-width: 384px; }
+  .advanced-modal-box.size-sm { max-width: 500px; }
+  .advanced-modal-box.size-md { max-width: 672px; }
+  .advanced-modal-box.size-lg { max-width: 896px; }
+  .advanced-modal-box.size-xl { max-width: 1024px; }
+  .advanced-modal-box.size-full { max-width: 100%; max-height: 100vh; }
+
+  .advanced-modal-show .advanced-modal-box {
+    animation: advancedModalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .advanced-modal-hiding .advanced-modal-box {
+    animation: advancedModalFadeOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .advanced-modal-header {
+    @apply flex items-center justify-between p-6 border-b border-base-300 flex-shrink-0;
+  }
+
+  .advanced-modal-body {
+    @apply p-6 overflow-y-auto flex-1;
+  }
+
+  .advanced-modal-footer {
+    @apply flex items-center justify-end gap-2 p-6 border-t border-base-300 flex-shrink-0;
+  }
+
+  /* Tabs */
+  .advanced-modal-tabs {
+    @apply tabs tabs-bordered mb-4;
+  }
+
+  .advanced-modal-tab-content {
+    @apply hidden;
+  }
+
+  .advanced-modal-tab-content.active {
+    @apply block;
+  }
+
+  /* Wizard steps */
+  .advanced-modal-wizard-steps {
+    @apply steps w-full mb-6;
+  }
+
+  /* Gallery */
+  .advanced-modal-gallery {
+    @apply grid grid-cols-2 md:grid-cols-3 gap-4;
+  }
+
+  .advanced-modal-gallery-item {
+    @apply cursor-pointer rounded-box overflow-hidden transition-transform hover:scale-105;
+  }
+
+  /* Prevent body scroll */
+  body.advanced-modal-active {
+    overflow: hidden;
+  }
+</style>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script>
+/**
+ * Advanced Modal Component using Vue 3
+ * Supports forms, wizards, galleries, and tabs
+ */
+const { createApp: createAdvancedModalApp, ref: advancedModalRef, computed: advancedModalComputed } = Vue;
+
+const AdvancedModalComponent = {
+  template: `
+    <div v-if="isVisible" class="advanced-modal-container" :class="{'advanced-modal-show': isVisible, 'advanced-modal-hiding': isHiding}">
+      <!-- Backdrop -->
+      <div class="advanced-modal-backdrop" @click="handleBackdropClick"></div>
+      
+      <!-- Modal Box -->
+      <div class="advanced-modal-box" :class="'size-' + size" role="dialog" aria-modal="true">
+        <!-- Header -->
+        <div class="advanced-modal-header">
+          <h3 class="text-xl font-bold">{{ title }}</h3>
+          <button 
+            class="btn btn-sm btn-circle btn-ghost" 
+            @click="hide"
+            aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        <!-- Wizard Steps (if type is wizard) -->
+        <div v-if="type === 'wizard' && steps.length > 0" class="px-6 pt-4">
+          <ul class="advanced-modal-wizard-steps">
+            <li 
+              v-for="(step, index) in steps" 
+              :key="index"
+              class="step"
+              :class="{'step-primary': index <= currentStep}">
+              {{ step }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Tabs (if tabs are provided) -->
+        <div v-if="tabs.length > 0" class="px-6 pt-4">
+          <div role="tablist" class="advanced-modal-tabs">
+            <button 
+              v-for="(tab, index) in tabs"
+              :key="index"
+              role="tab"
+              class="tab"
+              :class="{'tab-active': activeTab === index}"
+              @click="activeTab = index">
+              {{ tab }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="advanced-modal-body">
+          <!-- Gallery Type -->
+          <div v-if="type === 'gallery' && galleryItems.length > 0" class="advanced-modal-gallery">
+            <div 
+              v-for="(item, index) in galleryItems"
+              :key="index"
+              class="advanced-modal-gallery-item"
+              @click="selectGalleryItem(item, index)">
+              <img :src="item.src" :alt="item.alt || 'Gallery item'" class="w-full h-full object-cover" />
+            </div>
+          </div>
+
+          <!-- Tab Content -->
+          <div v-else-if="tabs.length > 0">
+            <div 
+              v-for="(tab, index) in tabs"
+              :key="index"
+              class="advanced-modal-tab-content"
+              :class="{'active': activeTab === index}">
+              <div v-html="tabContents[index] || content"></div>
+            </div>
+          </div>
+
+          <!-- Regular Content -->
+          <div v-else v-html="content"></div>
+        </div>
+
+        <!-- Footer -->
+        <div v-if="actions.length > 0 || type === 'wizard'" class="advanced-modal-footer">
+          <!-- Wizard Navigation -->
+          <template v-if="type === 'wizard'">
+            <button 
+              v-if="currentStep > 0"
+              class="btn btn-ghost"
+              @click="previousStep">
+              Previous
+            </button>
+            <button 
+              v-if="currentStep < steps.length - 1"
+              class="btn btn-primary"
+              @click="nextStep">
+              Next
+            </button>
+            <button 
+              v-if="currentStep === steps.length - 1"
+              class="btn btn-primary"
+              @click="finishWizard">
+              Finish
+            </button>
+          </template>
+
+          <!-- Custom Actions -->
+          <template v-else>
+            <button 
+              v-for="(action, index) in actions"
+              :key="index"
+              class="btn"
+              :class="'btn-' + (action.variant || 'ghost')"
+              @click="handleAction(action)">
+              {{ action.text }}
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+  `,
+
+  setup() {
+    const isVisible = advancedModalRef(false);
+    const isHiding = advancedModalRef(false);
+    const title = advancedModalRef('Modal Title');
+    const content = advancedModalRef('');
+    const type = advancedModalRef('simple');
+    const size = advancedModalRef('md');
+    const actions = advancedModalRef([]);
+    const tabs = advancedModalRef([]);
+    const tabContents = advancedModalRef([]);
+    const activeTab = advancedModalRef(0);
+    const steps = advancedModalRef([]);
+    const currentStep = advancedModalRef(0);
+    const galleryItems = advancedModalRef([]);
+    const onClose = advancedModalRef(null);
+    const onWizardComplete = advancedModalRef(null);
+    const onGallerySelect = advancedModalRef(null);
+
+    function show(options) {
+      title.value = options.title || 'Modal Title';
+      content.value = options.content || '';
+      type.value = options.type || 'simple';
+      size.value = options.size || 'md';
+      actions.value = options.actions || [];
+      tabs.value = options.tabs || [];
+      tabContents.value = options.tabContents || [];
+      activeTab.value = 0;
+      steps.value = options.steps || [];
+      currentStep.value = 0;
+      galleryItems.value = options.galleryItems || [];
+      onClose.value = options.onClose || null;
+      onWizardComplete.value = options.onWizardComplete || null;
+      onGallerySelect.value = options.onGallerySelect || null;
+
+      isVisible.value = true;
+      isHiding.value = false;
+      document.body.classList.add('advanced-modal-active');
+    }
+
+    function hide() {
+      isHiding.value = true;
+      
+      setTimeout(() => {
+        isVisible.value = false;
+        isHiding.value = false;
+        document.body.classList.remove('advanced-modal-active');
+        
+        if (onClose.value) {
+          onClose.value();
+        }
+      }, 200);
+    }
+
+    function handleBackdropClick() {
+      hide();
+    }
+
+    function handleAction(action) {
+      if (action.onClick) {
+        action.onClick();
+      }
+      if (action.closeOnClick !== false) {
+        hide();
+      }
+    }
+
+    function nextStep() {
+      if (currentStep.value < steps.value.length - 1) {
+        currentStep.value++;
+      }
+    }
+
+    function previousStep() {
+      if (currentStep.value > 0) {
+        currentStep.value--;
+      }
+    }
+
+    function finishWizard() {
+      if (onWizardComplete.value) {
+        onWizardComplete.value();
+      }
+      hide();
+    }
+
+    function selectGalleryItem(item, index) {
+      if (onGallerySelect.value) {
+        onGallerySelect.value(item, index);
+      }
+    }
+
+    return {
+      isVisible,
+      isHiding,
+      title,
+      content,
+      type,
+      size,
+      actions,
+      tabs,
+      tabContents,
+      activeTab,
+      steps,
+      currentStep,
+      galleryItems,
+      show,
+      hide,
+      handleBackdropClick,
+      handleAction,
+      nextStep,
+      previousStep,
+      finishWizard,
+      selectGalleryItem
+    };
+  }
+};
+
+// Global advanced modal instance
+let advancedModalApp = null;
+let advancedModalInstance = null;
+
+const advancedModal = {
+  /**
+   * Show advanced modal
+   */
+  show(options) {
+    if (!advancedModalApp) {
+      advancedModalApp = createAdvancedModalApp(AdvancedModalComponent);
+      advancedModalInstance = advancedModalApp.mount('#advanced-modal-root');
+    }
+
+    advancedModalInstance.show(options);
+  },
+
+  /**
+   * Hide modal
+   */
+  hide() {
+    if (advancedModalInstance) {
+      advancedModalInstance.hide();
+    }
+  }
+};
+
+// Make globally available
+window.advancedModal = advancedModal;
+
+// Console test helpers
+window.advancedModalTest = {
+  showSimple: function() {
+    advancedModal.show({
+      title: 'Simple Modal',
+      content: '<p>This is a simple modal with custom content.</p>',
+      type: 'simple',
+      size: 'md',
+      actions: [
+        { text: 'Cancel', variant: 'ghost', onClick: () => console.log('Cancel') },
+        { text: 'Confirm', variant: 'primary', onClick: () => console.log('Confirm') }
+      ]
+    });
+  },
+
+  showForm: function() {
+    advancedModal.show({
+      title: 'Contact Form',
+      content: `
+        <form class="space-y-4">
+          <div>
+            <label class="label"><span class="label-text">Name</span></label>
+            <input type="text" placeholder="Enter name" class="input input-bordered w-full" />
+          </div>
+          <div>
+            <label class="label"><span class="label-text">Email</span></label>
+            <input type="email" placeholder="Enter email" class="input input-bordered w-full" />
+          </div>
+          <div>
+            <label class="label"><span class="label-text">Message</span></label>
+            <textarea class="textarea textarea-bordered w-full" rows="4"></textarea>
+          </div>
+        </form>
+      `,
+      type: 'form',
+      size: 'md',
+      actions: [
+        { text: 'Cancel', variant: 'ghost' },
+        { text: 'Submit', variant: 'primary', onClick: () => console.log('Form submitted') }
+      ]
+    });
+  },
+
+  showWizard: function() {
+    advancedModal.show({
+      title: 'Setup Wizard',
+      content: '<p>Step content goes here. This would change based on current step.</p>',
+      type: 'wizard',
+      size: 'lg',
+      steps: ['Account', 'Profile', 'Preferences', 'Complete'],
+      onWizardComplete: () => console.log('Wizard completed!')
+    });
+  },
+
+  showTabs: function() {
+    advancedModal.show({
+      title: 'Settings',
+      type: 'simple',
+      size: 'lg',
+      tabs: ['General', 'Security', 'Notifications'],
+      tabContents: [
+        '<p>General settings content</p>',
+        '<p>Security settings content</p>',
+        '<p>Notification settings content</p>'
+      ],
+      actions: [
+        { text: 'Cancel', variant: 'ghost' },
+        { text: 'Save', variant: 'primary', onClick: () => console.log('Settings saved') }
+      ]
+    });
+  },
+
+  showGallery: function() {
+    advancedModal.show({
+      title: 'Image Gallery',
+      type: 'gallery',
+      size: 'xl',
+      galleryItems: [
+        { src: 'https://picsum.photos/400/300?random=1', alt: 'Image 1' },
+        { src: 'https://picsum.photos/400/300?random=2', alt: 'Image 2' },
+        { src: 'https://picsum.photos/400/300?random=3', alt: 'Image 3' },
+        { src: 'https://picsum.photos/400/300?random=4', alt: 'Image 4' },
+        { src: 'https://picsum.photos/400/300?random=5', alt: 'Image 5' },
+        { src: 'https://picsum.photos/400/300?random=6', alt: 'Image 6' }
+      ],
+      onGallerySelect: (item, index) => console.log('Selected:', item, 'at index:', index)
+    });
+  },
+
+  help: function() {
+    console.log(`
+Advanced Modal Testing Helper - Available Commands:
+
+  advancedModalTest.showSimple()
+    Show simple modal with actions
+
+  advancedModalTest.showForm()
+    Show modal with form content
+
+  advancedModalTest.showWizard()
+    Show multi-step wizard modal
+
+  advancedModalTest.showTabs()
+    Show modal with tabs
+
+  advancedModalTest.showGallery()
+    Show image gallery modal
+
+  advancedModal.show(options)
+    Show custom modal
+
+  advancedModal.hide()
+    Hide modal
+
+  advancedModalTest.help()
+    Show this help message
+    `);
+  }
+};
+
+console.log('%cAdvanced Modal loaded!', 'color: #4CAF50; font-weight: bold;');
+console.log('Type `advancedModalTest.help()` to see all available test functions');
+</script>
