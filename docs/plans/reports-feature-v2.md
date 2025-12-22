@@ -1,0 +1,862 @@
+# Reports Feature V2 Specification
+
+**Based on implementation learnings + questions from `reports-feature-plan-questions.md`**
+
+---
+
+## Executive Summary
+
+This V2 spec refines the Reports feature after Phase 1 (MVP) implementation, addressing production readiness, user experience, and expanded format support. Focus remains on **no Redis/Bull** (in-process job processing) while adding **charts support in PDF** and **interactive HTML reports**.
+
+---
+
+## 1. Core Refinements vs V1
+
+### 1.1 Async Job Processing (No Queue Change)
+- **Decision**: Stick with `setTimeout`-based in-process scheduling (no Bull/Redis)
+- **Reasoning**: 
+  - Simpler for team maintenance
+  - Sufficient for typical report generation volumes (<30s per report)
+  - Can migrate to Bull in Phase 3 if scale demands
+- **Mitigation**:
+  - Add **job timeout** (5 minutes max per report generation)
+  - Implement **deduplication**: prevent identical concurrent reports (project + timeframe + filters + dataType + format)
+  - Add **progress persistence**: structured stages with timestamps
+  - Document as "suitable for ~100 concurrent users; scale to Bull for 1000+"
+
+### 1.2 Job Deduplication
+- Query for existing `Report.findOne({ projectId, timeframe, filters (stringified), dataType, format, status: 'pending' })`
+- If found: return existing reportId instead of creating new
+- Prevents runaway job queue for same parameters
+- User sees: "Report already generating, view progress here"
+
+### 1.3 Progress Tracking (Structured)
+Replace single `progress` integer with:
+```javascript
+stages: [
+  { stage: 'queued', startedAt: Date, completedAt: null },
+  { stage: 'aggregating', startedAt: Date, completedAt: null },
+  { stage: 'rendering', startedAt: Date, completedAt: null },
+  { stage: 'uploading', startedAt: Date, completedAt: null },
+]
+currentStage: 'aggregating'
+```
+- Client polls `/status` → gets current stage + ETA based on historical durations
+- Better UX than abstract percentage
+
+---
+
+## 2. Storage & Lifecycle Refinements
+
+### 2.1 Asset Lifecycle
+- **Creation**: Private asset on generation completion
+- **Download**: Increment `downloadCount`
+- **Soft Delete**: Mark `Report.deletedAt`; Asset remains (audit trail)
+- **Hard Purge** (Phase 3): Separate admin endpoint to purge assets >90 days old
+- **Automatic Cleanup**: Background job (cron) marks expired reports as deleted after 30 days (keeps Asset for recovery window)
+
+### 2.2 Public Sharing (Phase 2+)
+- Future: `Report.publicToken` + public download link
+- Not in V2, documented for future
+
+### 2.3 Expiration
+- Default: 30 days (Report + Asset remain in DB but flagged)
+- Configurable per project via Project settings (future)
+- After 30 days: Asset auto-marked for cleanup on next job run
+
+---
+
+## 3. Security & Access Control Refinements
+
+### 3.1 Role-Based Access (Refined)
+| Role | Generate | View | Download | Delete |
+|------|----------|------|----------|--------|
+| Owner | ✓ | ✓ | ✓ | ✓ |
+| Admin | ✓ | ✓ | ✓ | ✓ |
+| Viewer | ✗ | ✓ | ✓ | ✗ |
+
+- Remains as implemented
+- Platform admin: treated as Org owner (no special report permissions)
+
+### 3.2 Asset Security (Enhanced)
+- Verify Asset namespace = `${orgId}_${projectId}` on download
+- Prevent cross-org asset access via URL tampering
+- Rate limit downloads: max 10 per minute per user per project (DDoS prevention)
+
+---
+
+## 4. Data Filtering & Segment Expansion
+
+### 4.1 Supported Filters (Phase V2)
+Currently supported:
+- `clientId`, `userId`, `meta` (arbitrary key-value)
+
+**Enhanced for V2**:
+Add device/browser filters (via segment filter builders):
+- `deviceType` (desktop, mobile, tablet)
+- `browser` (Chrome, Firefox, Safari, etc.)
+- `os` (Windows, macOS, iOS, Android)
+- `utmSource`, `utmMedium`, `utmCampaign` (marketing attribution)
+
+Implementation: Extend `parseFiltersFromBody()` to accept these; pass to existing `buildPageViewMetadataMatch()`, etc.
+
+### 4.2 Filter Templates (Enhanced)
+- Template now includes: `filters`, `timeframe`, `name`, `description`
+- UI: Save current state as reusable template
+- Use case: "Weekly performance report by device type" → save, re-run weekly
+
+---
+
+## 5. Report Content Refinements
+
+### 5.1 PDF Layout (Full Spec Implementation)
+Implement complete layout as per V1 spec:
+- **Header**: Project name, icon, timeframe, environment badge
+- **Summary**: Total count, key metrics (views, events, errors, perf)
+- **Per-Section Content**:
+  - **PageViews**: Top 10 pages, device distribution (pie chart), session count trend (line chart)
+  - **Events**: Top 10 events, event duration distribution (bar chart), trend (line chart)
+  - **Errors**: Top 10 errors, browser/device breakdown (stacked bar), error trend (line chart)
+  - **Performance**: Percentile table (p50/p75/p95), Web Vitals trend (sparkline), metric distribution
+- **AI Insights**: Latest completed run's markdown, scoped to report timeframe if available
+- **Footer**: Generated by, timestamp, page numbers
+
+### 5.2 Static Charts in PDF (New for V2)
+Use **chart.js-image** or **sharp + canvas** to generate PNG sparklines/charts:
+- **Trend charts**: Line graph (count over time) → PNG → embed as `<img>`
+- **Distribution charts**: Bar/pie charts for top-N items
+- **Sparklines**: Tiny 100px wide trend lines for summary section
+- Size budget: max 20KB per chart to keep PDF <5MB
+
+Implementation:
+- Create `utils/reportCharts.js` → functions to generate PNG buffers
+- `generateTrendChart(data, width=400, height=200)` → PNG buffer
+- `generatePieChart(labels, values)` → PNG buffer
+- Pass PNG data URLs to PDF renderer
+
+### 5.3 AI Insights Scope
+- **Current V1**: Include latest completed AI run (any timeframe)
+- **Enhanced V2**: 
+  - If latest run's timeframe overlaps report timeframe: include
+  - Otherwise: show "No analysis available for this period"
+  - Allow user opt-out: uncheck "Include AI insights" when generating
+
+---
+
+## 6. Format Support Expansion
+
+### 6.1 PDF (Already Supported)
+- Enhance with charts (section 5.2)
+- Finalize layout per section 5.1
+
+### 6.2 CSV (New for V2)
+Two export options:
+1. **Aggregated Stats CSV**:
+   - Rows: metric definitions (totalViews, uniqueVisitors, topPage1, topPage2, etc.)
+   - Columns: date, value, dataType
+   - Use case: import to Excel for custom analysis
+
+2. **Raw Records CSV** (optional, large file warning):
+   - Rows: individual events/pageviews/errors (one per row)
+   - Columns: timestamp, type, details, properties
+   - Use case: bulk export for external BI tools
+   - Limit: warn if >100K records; offer aggregated-only
+
+Implementation:
+- Create `utils/reportCsvExporter.js`
+- Generate CSV string via `csv-stringify` or manual concatenation
+- Streaming download for large files
+
+### 6.3 HTML (New for V2, Interactive)
+Interactive web-based report:
+- Same layout as PDF
+- **Charts are interactive**: hover tooltips, click to zoom, export as PNG
+- Use **Chart.js** (client-side) to render charts from JSON context
+- Responsive design (mobile-friendly)
+- Features:
+  - Inline filtering (by device, browser, date range via sliders)
+  - Export as PDF (client-side via html2canvas)
+  - Table sorting/searching (for top-N items)
+
+Implementation:
+- Create `views/analytics/report-html.ejs`
+- Pass report context + Chart.js CDN links
+- Vue.js for interactivity (reuse from existing views)
+- Minimal backend work; mostly frontend
+
+### 6.4 JSON (Already Supported)
+- Keep as raw flattened data export
+- No changes needed
+
+---
+
+## 7. Report API & Routes (Updated)
+
+### 7.1 Routes (No Change)
+```
+GET    /projects/:id/reports                    → list (paginated, filterable)
+GET    /projects/:id/reports/new                → form page
+POST   /projects/:id/reports/generate           → async start (returns 202)
+GET    /projects/:id/reports/:reportId          → detail page
+GET    /projects/:id/reports/:reportId/status   → polling endpoint
+GET    /projects/:id/reports/:reportId/download → file download (pdf/csv/json/html)
+POST   /projects/:id/reports/:reportId/delete   → soft delete
+GET    /projects/:id/filter-templates           → list templates (JSON)
+POST   /projects/:id/filter-templates           → create template
+DELETE /projects/:id/filter-templates/:id       → delete template
+```
+
+### 7.2 Request/Response (Enhanced)
+
+**POST /projects/:id/reports/generate** (202 Accepted)
+```json
+{
+  "reportId": "507f...",
+  "status": "pending",
+  "pollingUrl": "/projects/507f.../reports/507f.../status",
+  "viewUrl": "/projects/507f.../reports/507f...",
+  "estimatedSeconds": 15
+}
+```
+
+**GET /projects/:id/reports/:reportId/status** (Polling)
+```json
+{
+  "reportId": "507f...",
+  "status": "generating",
+  "currentStage": "aggregating",
+  "stages": [
+    { "stage": "queued", "startedAt": "...", "completedAt": "..." },
+    { "stage": "aggregating", "startedAt": "...", "completedAt": null }
+  ],
+  "elapsedSeconds": 5,
+  "estimatedSecondsRemaining": 10,
+  "downloadUrl": null
+}
+```
+
+---
+
+## 8. UI/UX Enhancements (V2)
+
+### 8.1 Report Generation Form
+- Add device/browser/OS filters as checkboxes
+- Timeframe suggestions: "Last 7 days (default)", "Last 30 days", "Custom..."
+- Format selector: radio buttons with descriptions
+  - PDF: "Professional report with charts"
+  - CSV: "Spreadsheet-compatible data"
+  - HTML: "Interactive web report"
+- Template selector dropdown: "Load saved template..."
+- Preview: "View generated report in browser" (HTML format)
+
+### 8.2 Report List View
+- Add filter by status: All, Pending, Completed, Failed
+- Add sort: Created (newest first), Name, Status
+- Show generation time: "Generated in 12 seconds"
+- Download all formats button: "Download as PDF / CSV / JSON"
+
+### 8.3 Report Detail View
+- Display metadata: name, timeframe, filters, created by, file size
+- Show all stages with timestamps (not abstract progress %)
+- If completed: "Download as PDF / CSV / HTML / JSON"
+- If failed: show error message + "Retry generation"
+- If pending: show current stage + ETA
+
+### 8.4 Polling Experience
+- Client polls status every 2 seconds (not aggressive)
+- Display stage + elapsed time + ETA
+- Show "Generation in progress..." with spinner
+- On completion: auto-refresh page or show download buttons
+
+---
+
+## 9. Error Handling (Refined)
+
+| Scenario | V1 Response | V2 Enhancement |
+|----------|-----------|-----------------|
+| No data | 200 OK, empty report | 200 OK, "No data found" banner in report |
+| Timeout (>5min) | No timeout handling | Kill job, status='failed', message="Generation timeout" |
+| Large dataset | No limit | Warn if >1M records, offer sampled version |
+| Concurrent identical | Creates duplicate | Deduplicate, return existing reportId |
+| Asset upload fail | status='failed' | status='failed', attempt asset cleanup |
+| Download expired | 404 | 410 Gone, suggest regenerate |
+
+---
+
+## 10. Performance Targets (V2)
+
+| Scenario | Target | Note |
+|----------|--------|------|
+| 7d PageView aggregation | <3s | typical project |
+| 30d multi-type report | <8s | includes all 4 data types |
+| 1y report | <15s | sampling if >1M records |
+| PDF render + upload | <5s | pdfkit overhead |
+| HTML render | <1s | server-side, client renders charts |
+| CSV export (aggregated) | <5s | even for 1y data |
+| CSV export (raw, 100K rows) | <10s | streaming write |
+| Job queue dedup check | <100ms | simple query |
+
+---
+
+## 11. Database Schema Changes (For V2)
+
+### 11.1 Report Model (Extended)
+```javascript
+{
+  // Existing fields (V1)
+  projectId, createdBy, name, dataType, timeframe, startDate, endDate, 
+  filters, format, includeAiInsights, status, assetId, assetKey, fileSize,
+  expiresAt, downloadCount, deletedAt, timestamps
+  
+  // New fields (V2)
+  stages: [
+    { stage: String, startedAt: Date, completedAt: Date, errorMessage: String }
+  ],
+  currentStage: String,  // 'queued' | 'aggregating' | 'rendering' | 'uploading'
+  estimatedDurationMs: Number,  // historical average
+  jobTimeoutAt: Date,  // 5 minutes after start
+  filterTemplate: String,  // optional; link to template used
+  charts: [  // metadata about embedded charts
+    { type: String, dataType: String, format: String }  // e.g., { type: 'trend', dataType: 'pageviews', format: 'png' }
+  ]
+}
+```
+
+### 11.2 Indexes (V2)
+- `{ projectId: 1, status: 1, createdAt: -1 }` — list active reports
+- `{ projectId: 1, dataType: 1, timeframe: 1, filters: 1, format: 1, status: 1 }` — dedup check
+
+---
+
+## 12. Job Queue (In-Process, V2 Improvements)
+
+### 12.1 Deduplication Check
+```javascript
+async function deduplicateReport({ projectId, dataType, timeframe, filters, format }) {
+  const filterHash = crypto.createHash('sha256').update(JSON.stringify(filters)).digest('hex');
+  const existing = await Report.findOne({
+    projectId,
+    dataType,
+    timeframe,
+    filters,
+    format,
+    status: 'pending'
+  });
+  return existing ? existing._id : null;
+}
+```
+
+### 12.2 Job Timeout
+```javascript
+function enqueueReportGeneration({ reportId, project, orgId, actorUserId }) {
+  const timeout = setTimeout(() => {
+    runReportJob({ reportId, project, orgId, actorUserId }).catch(() => {});
+  }, 10);
+  
+  // Kill job after 5 minutes
+  setTimeout(() => {
+    clearTimeout(timeout);
+    Report.updateOne({ _id: reportId }, { 
+      status: 'failed', 
+      statusMessage: 'Generation timeout after 5 minutes',
+      currentStage: null
+    }).catch(() => {});
+  }, 5 * 60 * 1000);
+  
+  return timeout;
+}
+```
+
+### 12.3 Stage Tracking
+```javascript
+async function updateStage(reportId, stage, errorMsg = null) {
+  return Report.updateOne(
+    { _id: reportId },
+    {
+      $set: { currentStage: stage },
+      $push: {
+        stages: {
+          stage,
+          startedAt: new Date(),
+          completedAt: null,
+          errorMessage: errorMsg || null
+        }
+      }
+    }
+  );
+}
+
+async function completeStage(reportId, stage) {
+  return Report.updateOne(
+    { _id: reportId, 'stages.stage': stage, 'stages.completedAt': null },
+    { $set: { 'stages.$.completedAt': new Date() } }
+  );
+}
+```
+
+---
+
+## 13. Chart Generation (New for V2)
+
+### 13.1 Chart Library
+**Recommendation**: `chart.js-image` (lightweight, PNG output)
+
+Usage:
+```javascript
+const ChartJsImage = require('chartjs-to-image');
+
+const chart = new ChartJsImage();
+chart.setChartJs({
+  type: 'line',
+  data: {
+    labels: ['Jan', 'Feb', 'Mar'],
+    datasets: [{ label: 'Views', data: [100, 150, 120] }]
+  }
+});
+chart.setWidth(400).setHeight(200);
+const buffer = await chart.toBuffer();  // PNG buffer
+```
+
+### 13.2 Chart Generation in Aggregation
+In `reportGenerator.js`, generate charts alongside data:
+```javascript
+const trendData = viewsByDay.map(v => ({ date: v.date, count: v.count }));
+const trendChart = await generateTrendChart(trendData);  // PNG buffer
+
+return {
+  totalViews,
+  topPages,
+  viewsByDay,
+  trendChart: { png: trendChart, base64: trendChart.toString('base64') }
+};
+```
+
+### 13.3 PDF Embedding
+In `reportPdfRenderer.js`:
+```javascript
+if (context.pageviews && context.pageviews.trendChart) {
+  doc.addPage();
+  doc.image(context.pageviews.trendChart.png, 50, 50, { width: 500 });
+}
+```
+
+### 13.4 HTML Embedding
+In `views/analytics/report-html.ejs`:
+```ejs
+<canvas id="trendChart"></canvas>
+<script>
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: <%- JSON.stringify(context.pageviews.chartData) %>
+  });
+</script>
+```
+
+---
+
+## 14. CSV Export (New for V2)
+
+### 14.1 Aggregated Stats CSV
+```csv
+metric,value,dataType,timeframe
+totalViews,12543,pageviews,7d
+uniqueVisitors,2451,pageviews,7d
+topPage_1_url,/home,pageviews,7d
+topPage_1_views,542,pageviews,7d
+...
+```
+
+### 14.2 Raw Records CSV (Optional)
+```csv
+timestamp,dataType,detail,properties
+2025-12-20T12:34:56Z,pageview,/home,{"sessionId":"abc","browser":"Chrome"}
+2025-12-20T12:35:00Z,event,purchase,{"productId":"123","amount":"99.99"}
+...
+```
+
+Implementation: `utils/reportCsvExporter.js`
+- `generateAggregatedCsv(context)` → CSV string
+- `generateRawCsv(context, data)` → CSV string (streaming for large)
+
+---
+
+## 15. HTML Export (New for V2)
+
+### 15.1 Interactive Report View
+- Same layout as PDF
+- Charts rendered client-side via Chart.js
+- Filters: dropdown for device type, date range picker
+- Export as PDF: client-side html2canvas
+- Table interactions: sort, search, paginate
+
+### 15.2 Implementation
+- New route: `GET /projects/:id/reports/:reportId/view` (renders HTML)
+- Reuse existing view template structure
+- Pass report context as JSON to frontend
+- Vue.js for state management (filters, exports)
+
+---
+
+## 16. Implementation Phases (V2)
+
+### Phase 2a (Charts + PDF Polish)
+- [ ] Implement `reportCharts.js` (chart.js-image integration)
+- [ ] Embed charts in PDF rendering
+- [ ] Enhanced PDF layout (sections, headers, footers)
+- [ ] Expand filters (device, browser, os, utm)
+- [ ] Job timeout + deduplication
+- [ ] Structured stages tracking
+- Effort: 3-4 weeks (1 dev)
+
+### Phase 2b (CSV + HTML)
+- [ ] CSV exporter (aggregated + raw options)
+- [ ] HTML interactive report view
+- [ ] Client-side chart rendering (Chart.js)
+- [ ] Filter templates enhancement (timeframe + filters)
+- Effort: 2-3 weeks (1 dev)
+
+### Phase 3 (Production Hardening)
+- [ ] Redis + Bull job queue (if scale demands)
+- [ ] Automated cleanup cron job
+- [ ] Public sharing links (optional)
+- [ ] Report scheduling (daily/weekly generation)
+- [ ] Email delivery
+- [ ] Advanced filtering UI
+
+---
+
+## 17. Compatibility Notes
+
+- **No breaking changes** to V1 API/schema (backward compatible)
+- V1 reports continue to work; regenerate for new formats
+- Existing `/download` endpoint supports all formats (format param)
+- Migration: Auto-detect format on download if not stored
+
+---
+
+## 18. Success Metrics (V2)
+
+- [ ] <5s PDF generation for 30d data with charts
+- [ ] <8s CSV export for raw 100K records
+- [ ] <2s HTML interactive page load
+- [ ] 0 failed jobs (except timeout/network errors)
+- [ ] Zero cross-org asset access attempts
+- [ ] >90% report completion rate
+
+---
+
+---
+
+## 19. Codebase References & Implementation Patterns
+
+### Data Aggregation (MongoDB Patterns)
+
+#### Existing Percentile Calculations
+Reference: `controllers/performanceController.js`, `controllers/dashboardController.js`
+- **Operator**: `$percentile` (MongoDB 7.0+) with fallback
+- **Fallback**: `percentileFromSortedValues(sortedArray, p)` function
+- **Pattern**: Use `$percentile` with `p: [0.5, 0.75, 0.95]` for multi-percentile in one stage
+- **V2 Note**: Reuse `calculatePercentiles()` function from performanceController for consistency
+
+Example (existing):
+```javascript
+$group: {
+  _id: null,
+  lcp: { $percentile: { input: '$lcp', p: [0.5, 0.75, 0.95], method: 'approximate' } }
+}
+// Result: lcp_p50/p75/p95 via $arrayElemAt
+```
+
+#### Grouping & Aggregation Operators
+Reference: `controllers/pageViewsController.js`, `utils/reportGenerator.js`
+- **Group by date**: `{ $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }`
+- **Unique counts**: `{ $addToSet: '$clientId' }` then `{ $size: ... }`
+- **Top-N pattern**: `{ $group: { _id: '$field', count: { $sum: 1 } } }` → `{ $sort: { count: -1 } }` → `{ $limit: 10 }`
+- **Multiple queries**: Use `Promise.all()` to parallelize independent aggregations
+
+### Date/Time Utilities
+
+#### Date Range Parsing
+Reference: `utils/reportDateRange.js`, `controllers/pageViewsController.js`
+- **Reusable**: Both report and analytics use identical timeframe enum
+- **Supported**: '5m', '30m', '1h', '6h', '12h', '24h', '7d', '30d', '3m', '1y'
+- **Custom**: Parse ISO dates, validate start < end
+- **Pattern**:
+```javascript
+function getDateRange(timeframe) {
+  const now = new Date();
+  let start;
+  if (tf === '7d') start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // ...
+  return { timeframe: tf, start, end: now };
+}
+```
+
+#### Date Formatting (for PDF/CSV)
+Reference: `utils/reportPdfRenderer.js` → `formatDate(d)`
+- **Simple method**: `new Date(d).toLocaleString()` for human-readable output
+- **For CSV**: Use ISO format: `d.toISOString()`
+- **MongoDB**: `$dateToString: { format: '%Y-%m-%d' }` in aggregation
+
+### Segment Filters & Metadata
+
+#### Segment Filter Builders
+Reference: `utils/segmentFilters.js`
+- **Functions**: 
+  - `buildEventMetadataMatch(filters)` → builds `{ clientId, userId, ...meta }`
+  - `buildPageViewMetadataMatch(filters)` → adds device/browser/utm filters
+  - `buildErrorMetadataMatch(filters)` → device/browser/os breakdown
+  - `buildPerformanceMetadataMatch(filters)` → device/browser context
+
+- **V2 Enhancement**: Extend these to accept additional params (deviceType, browser, os, utmSource)
+- **Pattern**: Return MongoDB match object ready for `{ $match: ... }` pipeline stage
+
+### File Operations & Streaming
+
+#### Response Headers (for Downloads)
+Reference: `controllers/reportController.js` → `getReportDownload()`
+```javascript
+res.setHeader('Content-Type', contentType);
+res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+res.send(buffer);  // or res.stream(stream)
+```
+
+#### Buffer Handling
+- **PDF**: `pdfkit` streams to Buffer via chunks: `doc.on('data', chunk => chunks.push(chunk))`
+- **CSV**: Generate string, then `Buffer.from(csvString, 'utf8')`
+- **Size tracking**: `buffer.length` for file size metadata
+- **Content types**:
+  - PDF: `application/pdf`
+  - CSV: `text/csv`
+  - JSON: `application/json`
+  - HTML: `text/html`
+
+#### Asset Storage Integration
+Reference: `utils/reportJobQueue.js` → `uploadReportAsset()`
+- **Services**: `services.storage.objectStorage` (from saasbackend)
+- **Functions**:
+  - `putObject({ key, body, contentType })` → { provider, bucket, key }
+  - `generateKey(originalName, prefix)` → formatted key string
+- **Models**: `Asset.create()` with fields: key, namespace, visibility, contentType, sizeBytes, orgId
+- **Namespace pattern**: `${String(orgId)}_${String(projectId)}`
+- **Tags**: `['report']` for filtering
+
+### Async Job Processing
+
+#### setTimeout-Based Queue
+Reference: `utils/reportJobQueue.js` → `enqueueReportGeneration()`
+```javascript
+setTimeout(() => {
+  runReportJob({ reportId, project, orgId, actorUserId }).catch(() => {});
+}, 10);  // 10ms delay
+```
+
+#### Progress Tracking
+Reference: `utils/reportJobQueue.js` → `updateProgress()`
+- **Pattern**: `Report.updateOne({ _id: reportId }, { $set: { progress, statusMessage } })`
+- **V2 Enhancement**: Use structured `stages` array instead of single progress integer
+
+#### Error Handling in Jobs
+Reference: `utils/reportJobQueue.js` → `runReportJob()` catch block
+```javascript
+catch (err) {
+  const msg = err && err.message ? err.message : String(err);
+  await Report.updateOne(
+    { _id: reportId },
+    { $set: { status: 'failed', statusMessage: msg, progress: 100 } }
+  );
+}
+```
+
+### Logging & Audit Trails
+
+#### Audit Logger
+Reference: `utils/auditLogger.js`
+- **Pattern**: `logAudit(ACTION_CODES.REPORT_GENERATED, { userId, email, projectId, status, method, path, ip })`
+- **Action codes**: Defined in `utils/actionCodes.js` (add REPORT_GENERATED, REPORT_DOWNLOADED, REPORT_DELETED, REPORT_GENERATION_FAILED)
+- **Async**: Fire-and-forget with `.catch(() => {})` to avoid blocking response
+
+#### Structured Logging (Console)
+Reference: `utils/reportJobQueue.js`
+- **Pattern**: `console.log('[report_generation_completed]', { reportId, projectId, format, durationMs, fileSize })`
+- **Tags**: Use `[module_action]` format for grep-ability
+
+### PDF Rendering (pdfkit)
+
+#### Document Creation
+Reference: `utils/reportPdfRenderer.js` → `buildPdfBuffer()`
+```javascript
+const doc = new PDFDocument({ size: 'A4', margin: 48 });
+const chunks = [];
+doc.on('data', (c) => chunks.push(c));
+doc.on('end', () => resolve(Buffer.concat(chunks)));
+doc.on('error', (err) => reject(err));
+```
+
+#### Text & Layout
+- **Font**: `doc.font('Helvetica')`, `doc.font('Helvetica-Bold')`
+- **Font size**: `doc.fontSize(14)`
+- **Spacing**: `doc.moveDown(0.5)` for vertical space
+- **Text**: `doc.text(str)` or `doc.text(str, { continued: true, width: 500 })`
+- **Pages**: `doc.addPage()` for multi-page
+
+#### Embedding Images
+- **PNG charts**: `doc.image(buffer, x, y, { width: 500 })`
+- **Data URLs**: Convert to buffer first via base64 decode
+
+### Authentication & Access Control
+
+#### Middleware Stack
+Reference: `routes/reports.js`
+- **ensureProjectAccess**: Validates org membership + project access
+- **ensureProjectRole(roles)**: Restricts to owner|admin|viewer
+- **Pattern**:
+```javascript
+router.get('/', ensureProjectRole(['owner', 'admin', 'viewer']), reportController.getReportsPage);
+router.post('/generate', ensureProjectRole(['owner', 'admin']), reportController.postGenerateReport);
+```
+
+#### Session & User Extraction
+Reference: `controllers/reportController.js`
+- **User ID**: `req.session.user.id` (nullable, check before using)
+- **Email**: `req.session.user.email`
+- **Current org**: `req.currentOrg._id` (set by middleware)
+- **Current project**: `req.project` (set by `ensureProjectAccess`)
+- **User role**: `req.userProjectRole` (set by `ensureProjectRole`)
+
+### Database Patterns (Mongoose)
+
+#### Schema Indexing
+Reference: `models/Report.js`
+- **Single field**: `{ projectId: 1, timestamp: 1 }`
+- **Compound**: `{ projectId: 1, status: 1, createdAt: -1 }`
+- **For dedup**: `{ projectId: 1, dataType: 1, timeframe: 1, format: 1, status: 1 }`
+- **Performance**: Use indexes for queries on projectId, status, createdAt, deletedAt
+
+#### Soft Deletes
+Pattern: `deletedAt: null` in filters
+```javascript
+Report.find({ projectId, deletedAt: null })
+```
+
+#### Lean Queries
+- Use `.lean()` for read-only queries (faster, no document hydration)
+- Use full document when `.save()` is needed
+
+### View Engine (EJS)
+
+#### Template Structure
+Reference: `views/analytics/reports.ejs`, `views/analytics/report-new.ejs`
+- **Engine**: EJS (set in app.js: `app.set('view engine', 'ejs')`)
+- **Rendering**: `res.render('analytics/reports', { locals })`
+- **Include**: `<%- include('../partials/navbar') %>`
+- **Conditionals**: `<% if (condition) { %> ... <% } %>`
+- **Interpolation**: `<%= variable %>` (HTML-escaped), `<%- html %>` (unescaped)
+
+#### Vue.js Integration
+Reference: `views/analytics/report-new.ejs`
+- **CDN**: `https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js`
+- **App**: `const { createApp, ref } = Vue;`
+- **Instance**: `const app = createApp({ data() { return { form, errors, ... } } }); app.mount('#app')`
+- **Bindings**: `v-model`, `@click`, `@submit`, `:class`, `v-if`
+
+#### Common Components
+Reference: `views/partials/`
+- **navbar**: Top navigation
+- **breadcrumbs**: Navigation path (set via locals)
+- **analytics-subnav**: Dashboard/Reports/AI Analysis/etc tabs (updated in V2 to include Reports)
+
+### SaaSBackend Integration
+
+#### Models & Services Access
+Reference: `utils/saasbackend.js`
+```javascript
+const { getModel, services } = require('./utils/saasbackend');
+const Asset = getModel('Asset');  // Returns Mongoose model or direct import
+const objectStorage = services.storage.objectStorage;
+```
+
+#### Asset Model Fields
+Reference: `ref-saasbackend/src/models/Asset.js`
+- `key` (unique): namespaced file path
+- `namespace`: grouping (e.g., `${orgId}_${projectId}`)
+- `visibility`: 'public' or 'private'
+- `contentType`: MIME type
+- `sizeBytes`: file size
+- `status`: 'uploaded' or 'deleted'
+- `orgId`, `ownerUserId`: ownership
+- `tags`: array for filtering
+
+#### Object Storage Methods
+```javascript
+await objectStorage.putObject({ key, body, contentType });  // Upload
+await objectStorage.getObject({ key });  // Download → { body, contentType }
+await objectStorage.deleteObject({ key });  // Delete
+```
+
+### Performance Score Utility
+
+#### Performance Score Calculation
+Reference: `utils/performanceScore.js`
+- **Function**: `calculatePerformanceScore(percentiles)` → { score, lcpScore, clsScore, fidScore, ttfbScore }
+- **Basis**: Uses p75 percentiles (per Web Vitals guidelines)
+- **Scoring**: `lerpScore(value, goodMax, poorMin)` linear interpolation
+- **Thresholds**:
+  - LCP: good 2.5s, poor 4s
+  - CLS: good 0.1, poor 0.25
+  - FID: good 100ms, poor 300ms
+  - TTFB: good 800ms, poor 1800ms
+
+### Environment & Configuration
+
+#### Standard Variables
+Reference: app.js, config usage
+- `process.env.NODE_ENV`: 'production' or 'development'
+- `process.env.MONGODB_URI`: MongoDB connection string
+- `process.env.SESSION_SECRET`: Session encryption key
+- `process.env.UPLOAD_DIR`: Base directory for filesystem storage
+- `process.env.S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`: S3 config
+
+#### Optional Feature Flags
+Reference: `controllers/dashboardController.js` → `ENABLE_MONGO_PERCENTILE`
+- Pattern: `String(process.env.FLAG_NAME || '').toLowerCase() === 'true'`
+- For V2: Consider adding `ENABLE_REPORT_CHARTS`, `ENABLE_REPORT_CSV`, `ENABLE_REPORT_HTML`
+
+### Testing & Validation
+
+#### String Sanitization
+Reference: `controllers/reportController.js` → `safeStr(value, maxLen)`
+```javascript
+function safeStr(v, maxLen) {
+  const s = v == null ? '' : String(v);
+  if (!maxLen) return s;
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+```
+
+#### Filter Validation
+Reference: `utils/segmentFilters.js` → `normalizeMetaKey(v)`
+- Check for null/empty
+- Reject if starts with `$` (MongoDB injection)
+- Reject if contains null bytes
+- Validate key format: alphanumeric + underscore/dot/dash only
+
+### Code Organization Conventions
+
+#### Module Exports
+- Controllers: Named function exports
+- Utils: Object with named functions
+- Models: Single Mongoose model export
+- Routes: Single Express router export
+
+#### Error Objects
+- `error.message`: Human-readable message
+- `error.code`: Constant (e.g., 'INVALID_PARAMS', 'RATE_LIMIT')
+- `error.details`: Optional object with more info
+
+---
+
+**Version**: V2 (2025-12-20)
+**Status**: Planning/Design
+**Next**: Implementation kickoff for Phase 2a
+
