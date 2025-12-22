@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { marked } = require('marked');
 
 const docsController = {
   getDocs: async (req, res) => {
     try {
+      const { marked } = await import('marked');
       const section = req.params.section || 'sdk';
 
       let content = '';
