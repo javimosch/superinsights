@@ -1,0 +1,485 @@
+<!-- Popover System - Context-aware tooltips and popovers -->
+<!-- Enhanced with smart positioning, rich content, and multiple trigger types -->
+<div id="popover-system-root"></div>
+
+<style>
+  /* Popover animations */
+  @keyframes popoverFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes popoverFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .popover-container {
+    @apply fixed z-50 pointer-events-none;
+  }
+
+  .popover-box {
+    @apply bg-base-100 rounded-box shadow-xl border border-base-300 p-3 pointer-events-auto;
+    animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .popover-box.hiding {
+    animation: popoverFadeOut 0.15s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  /* Popover types */
+  .popover-box.type-info {
+    @apply border-info bg-info/10;
+  }
+
+  .popover-box.type-success {
+    @apply border-success bg-success/10;
+  }
+
+  .popover-box.type-warning {
+    @apply border-warning bg-warning/10;
+  }
+
+  .popover-box.type-error {
+    @apply border-error bg-error/10;
+  }
+
+  /* Arrow */
+  .popover-arrow {
+    @apply absolute w-3 h-3 bg-base-100 border-base-300 transform rotate-45;
+  }
+
+  .popover-box.position-top .popover-arrow {
+    @apply bottom-[-6px] left-1/2 -translate-x-1/2 border-b border-r;
+  }
+
+  .popover-box.position-bottom .popover-arrow {
+    @apply top-[-6px] left-1/2 -translate-x-1/2 border-t border-l;
+  }
+
+  .popover-box.position-left .popover-arrow {
+    @apply right-[-6px] top-1/2 -translate-y-1/2 border-r border-t;
+  }
+
+  .popover-box.position-right .popover-arrow {
+    @apply left-[-6px] top-1/2 -translate-y-1/2 border-l border-b;
+  }
+
+  /* Content */
+  .popover-content {
+    @apply text-sm relative z-10;
+  }
+
+  .popover-title {
+    @apply font-semibold mb-1;
+  }
+
+  .popover-description {
+    @apply text-base-content/80;
+  }
+
+  .popover-icon {
+    @apply w-5 h-5 flex-shrink-0;
+  }
+</style>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+<script>
+/**
+ * Popover System using Vue 3
+ * Smart positioning tooltips and popovers
+ */
+const { createApp: createPopoverSystemApp, ref: popoverRef, reactive, nextTick } = Vue;
+
+const PopoverSystemComponent = {
+  template: `
+    <div>
+      <div 
+        v-for="popover in popovers"
+        :key="popover.id"
+        class="popover-container"
+        :style="popover.style">
+        <div 
+          class="popover-box"
+          :class="[
+            'position-' + popover.position,
+            'type-' + popover.type,
+            { 'hiding': popover.hiding }
+          ]"
+          :style="{ maxWidth: popover.maxWidth }"
+          @mouseenter="handlePopoverEnter(popover)"
+          @mouseleave="handlePopoverLeave(popover)">
+          
+          <!-- Arrow -->
+          <div v-if="popover.arrow" class="popover-arrow"></div>
+          
+          <!-- Content -->
+          <div class="popover-content">
+            <div v-if="popover.title || popover.icon" class="flex items-start gap-2 mb-2">
+              <img v-if="popover.icon" :src="popover.icon" class="popover-icon" />
+              <div v-if="popover.title" class="popover-title">{{ popover.title }}</div>
+            </div>
+            <div class="popover-description" v-html="popover.content"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+
+  setup() {
+    const popovers = popoverRef([]);
+    let popoverId = 0;
+
+    function show(triggerElement, options) {
+      const id = ++popoverId;
+      const {
+        content = '',
+        title = '',
+        icon = null,
+        position = 'top',
+        type = 'default',
+        arrow = true,
+        maxWidth = '300px',
+        offset = 8,
+        trigger = 'hover',
+        delay = 0
+      } = options;
+
+      const popover = reactive({
+        id,
+        content,
+        title,
+        icon,
+        position,
+        type,
+        arrow,
+        maxWidth,
+        offset,
+        trigger,
+        triggerElement,
+        style: {},
+        hiding: false,
+        hoverTimeout: null
+      });
+
+      // Calculate position
+      nextTick(() => {
+        const rect = triggerElement.getBoundingClientRect();
+        const pos = calculatePosition(rect, position, offset);
+        popover.style = pos;
+      });
+
+      if (delay > 0) {
+        setTimeout(() => {
+          popovers.value.push(popover);
+        }, delay);
+      } else {
+        popovers.value.push(popover);
+      }
+
+      return id;
+    }
+
+    function hide(id) {
+      const index = popovers.value.findIndex(p => p.id === id);
+      if (index > -1) {
+        popovers.value[index].hiding = true;
+        setTimeout(() => {
+          popovers.value.splice(index, 1);
+        }, 150);
+      }
+    }
+
+    function hideAll() {
+      popovers.value.forEach(p => {
+        p.hiding = true;
+      });
+      setTimeout(() => {
+        popovers.value = [];
+      }, 150);
+    }
+
+    function calculatePosition(triggerRect, position, offset) {
+      let top, left;
+
+      switch (position) {
+        case 'top':
+          top = triggerRect.top - offset;
+          left = triggerRect.left + triggerRect.width / 2;
+          return {
+            top: `${top}px`,
+            left: `${left}px`,
+            transform: 'translate(-50%, -100%)'
+          };
+        
+        case 'bottom':
+          top = triggerRect.bottom + offset;
+          left = triggerRect.left + triggerRect.width / 2;
+          return {
+            top: `${top}px`,
+            left: `${left}px`,
+            transform: 'translateX(-50%)'
+          };
+        
+        case 'left':
+          top = triggerRect.top + triggerRect.height / 2;
+          left = triggerRect.left - offset;
+          return {
+            top: `${top}px`,
+            left: `${left}px`,
+            transform: 'translate(-100%, -50%)'
+          };
+        
+        case 'right':
+          top = triggerRect.top + triggerRect.height / 2;
+          left = triggerRect.right + offset;
+          return {
+            top: `${top}px`,
+            left: `${left}px`,
+            transform: 'translateY(-50%)'
+          };
+        
+        default:
+          return {};
+      }
+    }
+
+    function handlePopoverEnter(popover) {
+      if (popover.trigger === 'hover' && popover.hoverTimeout) {
+        clearTimeout(popover.hoverTimeout);
+        popover.hoverTimeout = null;
+      }
+    }
+
+    function handlePopoverLeave(popover) {
+      if (popover.trigger === 'hover') {
+        popover.hoverTimeout = setTimeout(() => {
+          hide(popover.id);
+        }, 200);
+      }
+    }
+
+    return {
+      popovers,
+      show,
+      hide,
+      hideAll,
+      handlePopoverEnter,
+      handlePopoverLeave
+    };
+  }
+};
+
+// Global popover system instance
+let popoverSystemApp = null;
+let popoverSystemInstance = null;
+
+const popoverSystem = {
+  /**
+   * Attach popover to element
+   */
+  attach(element, options) {
+    if (!popoverSystemApp) {
+      popoverSystemApp = createPopoverSystemApp(PopoverSystemComponent);
+      popoverSystemInstance = popoverSystemApp.mount('#popover-system-root');
+    }
+
+    const trigger = options.trigger || 'hover';
+    let popoverId = null;
+    let hoverTimeout = null;
+
+    if (trigger === 'hover') {
+      element.addEventListener('mouseenter', () => {
+        clearTimeout(hoverTimeout);
+        popoverId = popoverSystemInstance.show(element, options);
+      });
+
+      element.addEventListener('mouseleave', () => {
+        hoverTimeout = setTimeout(() => {
+          if (popoverId) {
+            popoverSystemInstance.hide(popoverId);
+            popoverId = null;
+          }
+        }, 200);
+      });
+    } else if (trigger === 'click') {
+      element.addEventListener('click', () => {
+        if (popoverId) {
+          popoverSystemInstance.hide(popoverId);
+          popoverId = null;
+        } else {
+          popoverId = popoverSystemInstance.show(element, options);
+        }
+      });
+    } else if (trigger === 'focus') {
+      element.addEventListener('focus', () => {
+        popoverId = popoverSystemInstance.show(element, options);
+      });
+
+      element.addEventListener('blur', () => {
+        if (popoverId) {
+          popoverSystemInstance.hide(popoverId);
+          popoverId = null;
+        }
+      });
+    }
+  },
+
+  /**
+   * Show popover manually
+   */
+  show(element, options) {
+    if (!popoverSystemApp) {
+      popoverSystemApp = createPopoverSystemApp(PopoverSystemComponent);
+      popoverSystemInstance = popoverSystemApp.mount('#popover-system-root');
+    }
+
+    return popoverSystemInstance.show(element, options);
+  },
+
+  /**
+   * Hide specific popover
+   */
+  hide(id) {
+    if (popoverSystemInstance) {
+      popoverSystemInstance.hide(id);
+    }
+  },
+
+  /**
+   * Hide all popovers
+   */
+  hideAll() {
+    if (popoverSystemInstance) {
+      popoverSystemInstance.hideAll();
+    }
+  }
+};
+
+// Make globally available
+window.popoverSystem = popoverSystem;
+
+// Console test helpers
+window.popoverTest = {
+  attachToButton: function() {
+    const button = document.createElement('button');
+    button.className = 'btn btn-primary';
+    button.textContent = 'Hover me';
+    button.style.position = 'fixed';
+    button.style.top = '50%';
+    button.style.left = '50%';
+    button.style.transform = 'translate(-50%, -50%)';
+    document.body.appendChild(button);
+
+    popoverSystem.attach(button, {
+      content: 'This is a helpful tooltip!',
+      title: 'Tooltip',
+      icon: '/icons/info.svg',
+      position: 'top',
+      type: 'info',
+      trigger: 'hover'
+    });
+
+    console.log('Button created with popover. Hover over it!');
+  },
+
+  testPositions: function() {
+    const positions = ['top', 'bottom', 'left', 'right'];
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.top = '50%';
+    container.style.left = '50%';
+    container.style.transform = 'translate(-50%, -50%)';
+    container.style.display = 'flex';
+    container.style.gap = '1rem';
+    document.body.appendChild(container);
+
+    positions.forEach(pos => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm';
+      btn.textContent = pos;
+      container.appendChild(btn);
+
+      popoverSystem.attach(btn, {
+        content: `Popover positioned at ${pos}`,
+        position: pos,
+        type: 'info'
+      });
+    });
+
+    console.log('Test buttons created. Hover over them!');
+  },
+
+  testTypes: function() {
+    const types = ['default', 'info', 'success', 'warning', 'error'];
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.top = '50%';
+    container.style.left = '50%';
+    container.style.transform = 'translate(-50%, -50%)';
+    container.style.display = 'flex';
+    container.style.gap = '1rem';
+    document.body.appendChild(container);
+
+    types.forEach(type => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-sm';
+      btn.textContent = type;
+      container.appendChild(btn);
+
+      popoverSystem.attach(btn, {
+        content: `This is a ${type} popover`,
+        title: type.charAt(0).toUpperCase() + type.slice(1),
+        type: type,
+        position: 'top'
+      });
+    });
+
+    console.log('Type test buttons created. Hover over them!');
+  },
+
+  help: function() {
+    console.log(`
+Popover System Testing Helper - Available Commands:
+
+  popoverTest.attachToButton()
+    Create a test button with popover
+
+  popoverTest.testPositions()
+    Test all position options
+
+  popoverTest.testTypes()
+    Test all popover types
+
+  popoverSystem.attach(element, options)
+    Attach popover to an element
+
+  popoverSystem.show(element, options)
+    Show popover manually
+
+  popoverSystem.hide(id)
+    Hide specific popover
+
+  popoverSystem.hideAll()
+    Hide all popovers
+
+  popoverTest.help()
+    Show this help message
+    `);
+  }
+};
+
+console.log('%cPopover System loaded!', 'color: #4CAF50; font-weight: bold;');
+console.log('Type `popoverTest.help()` to see all available test functions');
+</script>
