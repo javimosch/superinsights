@@ -8,7 +8,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon --verbose --ignore data index.js",
+    "dev": "nodemon --verbose --ignore data --ignore uploads index.js",
     "promote-admin": "node scripts/promote-admin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -23,6 +23,7 @@
     "mongoose": "^8.5.0",
     "morgan": "^1.10.0",
     "openai": "^4.0.0",
+    "pdfkit": "^0.17.2",
     "saasbackend": "^1.2.3",
     "ws": "^8.18.3"
   },
