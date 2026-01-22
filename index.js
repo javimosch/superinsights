@@ -1,4 +1,11 @@
-require('dotenv').config();
+const envPath = process.env.ENV_FILE || '.env';
+
+require('dotenv').config({ path: envPath });
+
+console.log('Loading environment variables from:', envPath,{
+  adminUsername: process.env.ADMIN_USERNAME,
+  adminPassword: process.env.ADMIN_PASSWORD,
+});
 
 const app = require('./app');
 const { connectDB } = require('./config/db');
