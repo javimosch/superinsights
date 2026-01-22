@@ -225,18 +225,45 @@ async function getUniqueEventNames({ projectId, start, end, metadataMatch }) {
   return (rows || []).map((r) => r.eventName).filter(Boolean);
 }
 
-async function getTopEvents({ projectId, start, end, metadataMatch }) {
-  const match = buildMatch({ projectId, start, end, metadataMatch });
+async function getTopEvents({ projectId, start, end, metadataMatch, eventName }) {
+  const match = buildMatch({ projectId, start, end, metadataMatch, eventName });
 
   const rows = await Event.aggregate([
     { $match: match },
-    { $group: { _id: '$eventName', count: { $sum: 1 } } },
-    { $sort: { count: -1 } },
+    { $group: { _id: '$eventName', count: { $sum: 1 }, mostRecentTimestamp: { $max: '$timestamp' } } },
+    { $sort: { count: -1, mostRecentTimestamp: -1 } },
     { $limit: 10 },
-    { $project: { _id: 0, eventName: '$_id', count: 1 } },
+    { $project: { _id: 0, eventName: '$_id', count: 1, mostRecentTimestamp: 1 } },
   ]);
 
   return rows || [];
+}
+
+async function getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, limit, page }) {
+  const match = buildMatch({ projectId, start, end, metadataMatch, eventName });
+  const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 50);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const skip = (safePage - 1) * safeLimit;
+
+  const [rows, total] = await Promise.all([
+    Event.find(match)
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(safeLimit)
+      .select({ eventName: 1, timestamp: 1, sessionId: 1, durationMs: 1, properties: 1 })
+      .lean(),
+    Event.countDocuments(match),
+  ]);
+
+  return {
+    rows: rows || [],
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total: total || 0,
+      totalPages: total ? Math.ceil(total / safeLimit) : 0,
+    },
+  };
 }
 
 async function getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }) {
@@ -310,9 +337,21 @@ exports.getEventsAnalytics = async (req, res, next) => {
       getEventsByDay(params),
       getTotalEvents(params),
       getUniqueEventNames({ projectId, start, end, metadataMatch }),
-      getTopEvents({ projectId, start, end, metadataMatch }),
+      getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getTimedEventSummary({ projectId, start, end, metadataMatch }),
     ]);
+
+    const recentPage = req.query.recentPage;
+    const recentLimit = req.query.recentLimit;
+    const recentOccurrences = await getRecentOccurrences({
+      projectId,
+      start,
+      end,
+      metadataMatch,
+      eventName,
+      page: recentPage,
+      limit: recentLimit,
+    });
 
     const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
@@ -327,6 +366,8 @@ exports.getEventsAnalytics = async (req, res, next) => {
       totalEvents: totalEvents || 0,
       uniqueEventNames: uniqueEventNames || [],
       topEvents: topEvents || [],
+      recentOccurrences: recentOccurrences.rows || [],
+      recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
       timedEvents: timedEvents || [],
       currentSection: 'events',
       currentUser: (req.session && req.session.user) || null,
@@ -338,6 +379,42 @@ exports.getEventsAnalytics = async (req, res, next) => {
         { label: req.project.name, href: `/projects/${req.project._id}/dashboard` },
         { label: 'Events', href: `/projects/${req.project._id}/events` }
       ]
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.getEventsLiveJson = async (req, res, next) => {
+  try {
+    if (!req.project || !req.project._id) {
+      return res.status(400).json({ error: 'Project not found' });
+    }
+
+    const projectId = req.project._id;
+
+    const rawTimeframe = req.query.timeframe || '7d';
+    const { timeframe, start, end } = getDateRange(rawTimeframe);
+
+    const rawEventName = typeof req.query.eventName === 'string' ? req.query.eventName.trim() : '';
+    const eventName = rawEventName ? rawEventName : undefined;
+
+    const segment = parseSegmentFilters(req);
+    const metadataMatch = buildEventMetadataMatch(segment);
+
+    const recentPage = req.query.recentPage;
+    const recentLimit = req.query.recentLimit;
+
+    const [topEvents, recentOccurrences] = await Promise.all([
+      getTopEvents({ projectId, start, end, metadataMatch, eventName }),
+      getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, page: recentPage, limit: recentLimit }),
+    ]);
+
+    return res.json({
+      timeframe,
+      topEvents: topEvents || [],
+      recentOccurrences: recentOccurrences.rows || [],
+      recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
     });
   } catch (err) {
     return next(err);
