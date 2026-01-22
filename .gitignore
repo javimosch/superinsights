@@ -4,3 +4,4 @@ uploads
 node_modules
 .env
 ref-*
+*.log
