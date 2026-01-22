@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-12-19T19:41:04.722Z",
+  "updatedAt": "2026-01-22T08:15:46.709Z",
   "actions": {
     "AUTH_REGISTER_SUCCESS": {
       "count": 1,
@@ -17,13 +17,13 @@
       "lastPath": "/auth/register"
     },
     "AUTH_LOGIN_SUCCESS": {
-      "count": 22,
+      "count": 23,
       "firstSeenAt": "2025-12-13T07:47:41.873Z",
-      "lastSeenAt": "2025-12-19T19:40:40.264Z",
-      "avgIntervalMs": 26722780.523809522,
+      "lastSeenAt": "2026-01-22T08:15:45.709Z",
+      "avgIntervalMs": 157167447.0909091,
       "minIntervalMs": 4614,
-      "maxIntervalMs": 393710964,
-      "intervalsCount": 21,
+      "maxIntervalMs": 2896505445,
+      "intervalsCount": 22,
       "lastUserId": "693d1a1474004a93dd8413ed",
       "lastEmail": "arancibiajav@gmail.com",
       "lastStatus": 302,
