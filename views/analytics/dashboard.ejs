@@ -10,7 +10,6 @@
       href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   </head>
   <body class="min-h-screen bg-base-200">
@@ -276,7 +275,14 @@
     </main>
 
     <script>
-      const { createApp: createDashboardApp, computed: dashboardComputed, onBeforeUnmount, onMounted, ref: dashboardRef, watch } = Vue;
+      const {
+        createApp: createDashboardApp,
+        computed: dashboardComputed,
+        onBeforeUnmount: dashboardOnBeforeUnmount,
+        onMounted: dashboardOnMounted,
+        ref: dashboardRef,
+        watch,
+      } = Vue;
 
       createDashboardApp({
         setup() {
@@ -610,14 +616,14 @@
             window.location.href = query ? `${dash}?${query}` : dash;
           }
 
-          onMounted(() => {
+          dashboardOnMounted(() => {
             renderCharts();
             if (autoRefreshEnabled.value) {
               startAutoRefresh();
             }
           });
 
-          onBeforeUnmount(() => {
+          dashboardOnBeforeUnmount(() => {
             stopAutoRefresh();
             destroyCharts();
           });
