@@ -133,6 +133,12 @@ router.get(
 );
 
 router.get(
+  '/:id/events/live.json',
+  ensureProjectAccess,
+  eventsController.getEventsLiveJson
+);
+
+router.get(
   '/:id/events/:eventName',
   ensureProjectAccess,
   eventsController.getEventDetail

@@ -174,6 +174,7 @@
               <thead>
                 <tr>
                   <th>Event name</th>
+                  <th>Most recent</th>
                   <th class="text-right">Count</th>
                   <th class="text-right">Actions</th>
                 </tr>
@@ -182,6 +183,9 @@
                 <tr v-for="row in topEvents" :key="row.eventName">
                   <td class="max-w-[520px]">
                     <div class="truncate" :title="row.eventName">{{ row.eventName }}</div>
+                  </td>
+                  <td class="whitespace-nowrap">
+                    {{ formatRelativeTime(row.mostRecentTimestamp) }}
                   </td>
                   <td class="text-right">{{ row.count }}</td>
                   <td class="text-right">
@@ -195,6 +199,92 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+            <div>
+              <h2 class="card-title text-xl">Recent activity</h2>
+              <div class="text-sm text-base-content/60">Last {{ recentPagination.limit }} occurrences</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn btn-outline btn-sm" @click="refreshLive(true)" :disabled="liveLoading">
+                Refresh
+              </button>
+              <div class="text-xs text-base-content/60" v-if="liveLastUpdated">
+                Updated {{ formatRelativeTime(liveLastUpdated) }}
+              </div>
+            </div>
+          </div>
+
+          <div v-if="liveError" class="alert alert-warning">
+            <span>{{ liveError }}</span>
+          </div>
+
+          <div v-if="!recentOccurrences.length" class="py-6 text-center text-base-content/70">
+            No recent activity.
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Event</th>
+                  <th>Session</th>
+                  <th class="text-right">Duration (ms)</th>
+                  <th>Properties</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in recentOccurrences" :key="row._id">
+                  <td class="whitespace-nowrap" :title="formatTimestamp(row.timestamp)">
+                    {{ formatRelativeTime(row.timestamp) }}
+                  </td>
+                  <td class="max-w-[420px]">
+                    <a class="link link-hover" :href="`/projects/${project._id}/events/${encodeURIComponent(row.eventName)}`">
+                      <span class="truncate" :title="row.eventName">{{ row.eventName }}</span>
+                    </a>
+                  </td>
+                  <td class="font-mono max-w-[240px]">
+                    <div class="truncate" :title="row.sessionId || ''">
+                      {{ (row.sessionId || '').slice(0, 12) }}
+                    </div>
+                  </td>
+                  <td class="text-right">{{ formatMs(row.durationMs) }}</td>
+                  <td class="max-w-[620px]">
+                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex items-center justify-between" v-if="recentPagination.totalPages > 1">
+            <div class="text-sm text-base-content/70">
+              Page {{ recentPagination.page }} / {{ recentPagination.totalPages }}
+            </div>
+            <div class="join">
+              <button
+                type="button"
+                class="btn btn-sm join-item"
+                @click="changeRecentPage(recentPagination.page - 1)"
+                :disabled="recentPagination.page <= 1 || liveLoading"
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm join-item"
+                @click="changeRecentPage(recentPagination.page + 1)"
+                :disabled="recentPagination.page >= recentPagination.totalPages || liveLoading"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -269,8 +359,15 @@
 
           const eventsByDay = eventsRef(<%- JSON.stringify(eventsByDay || []) %>);
           const topEvents = eventsRef(<%- JSON.stringify(topEvents || []) %>);
+          const recentOccurrences = eventsRef(<%- JSON.stringify(recentOccurrences || []) %>);
+          const recentPagination = eventsRef(<%- JSON.stringify(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
           const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
           const timedEvents = eventsRef(<%- JSON.stringify(timedEvents || []) %>);
+
+          const liveLoading = eventsRef(false);
+          const liveError = eventsRef('');
+          const liveLastUpdated = eventsRef(null);
+          let liveIntervalId = null;
 
           let chartInstance = null;
 
@@ -329,6 +426,53 @@
             const base = `${basePath}/events`;
             const query = params.toString();
             window.location.href = query ? `${base}?${query}` : base;
+          }
+
+          function buildLiveParams(overrides = {}) {
+            const params = new URLSearchParams();
+            if (timeframe.value) params.set('timeframe', timeframe.value);
+            if (eventName.value && eventName.value.trim()) params.set('eventName', eventName.value.trim());
+
+            const meta = {};
+            for (const row of metaPairs.value || []) {
+              const k = row && row.key ? String(row.key).trim() : '';
+              const v = row && row.value ? String(row.value).trim() : '';
+              if (!k || !v) continue;
+              meta[k] = v;
+            }
+            if (Object.keys(meta).length) params.set('meta', JSON.stringify(meta));
+
+            const page = overrides.page || recentPagination.value.page || 1;
+            const limit = overrides.limit || recentPagination.value.limit || 10;
+            params.set('recentPage', String(page));
+            params.set('recentLimit', String(limit));
+            return params;
+          }
+
+          async function refreshLive(resetPage) {
+            liveLoading.value = true;
+            liveError.value = '';
+            try {
+              const params = buildLiveParams({ page: resetPage ? 1 : undefined });
+              const url = `${basePath}/events/live.json?${params.toString()}`;
+              const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+              if (!resp.ok) throw new Error(`Request failed: ${resp.status}`);
+              const data = await resp.json();
+              topEvents.value = Array.isArray(data.topEvents) ? data.topEvents : [];
+              recentOccurrences.value = Array.isArray(data.recentOccurrences) ? data.recentOccurrences : [];
+              recentPagination.value = data.recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
+              liveLastUpdated.value = new Date().toISOString();
+            } catch (e) {
+              liveError.value = e && e.message ? e.message : 'Failed to refresh';
+            } finally {
+              liveLoading.value = false;
+            }
+          }
+
+          function changeRecentPage(newPage) {
+            const page = Math.max(1, Number(newPage) || 1);
+            recentPagination.value = { ...(recentPagination.value || {}), page };
+            refreshLive(false);
           }
 
           function addMetaPair() {
@@ -395,7 +539,15 @@
 
           onMounted(() => {
             renderChart();
+
+            liveIntervalId = setInterval(() => {
+              refreshLive(false);
+            }, 30000);
           });
+
+          watch([timeframe, eventName, metaPairs], () => {
+            refreshLive(true);
+          }, { deep: true });
 
           function formatMs(value) {
             if (value === null || value === undefined) return '—';
@@ -409,7 +561,38 @@
               chartInstance.destroy();
               chartInstance = null;
             }
+
+            if (liveIntervalId) {
+              clearInterval(liveIntervalId);
+              liveIntervalId = null;
+            }
           });
+
+          function formatTimestamp(date) {
+            if (!date) return '';
+            try {
+              return new Date(date).toLocaleString();
+            } catch (e) {
+              return String(date);
+            }
+          }
+
+          function formatRelativeTime(date) {
+            if (!date) return '—';
+            const d = new Date(date);
+            const ts = d.getTime();
+            if (!Number.isFinite(ts)) return '—';
+            const diffMs = Date.now() - ts;
+            const diffSec = Math.floor(diffMs / 1000);
+            if (diffSec < 5) return 'just now';
+            if (diffSec < 60) return `${diffSec}s ago`;
+            const diffMin = Math.floor(diffSec / 60);
+            if (diffMin < 60) return `${diffMin}m ago`;
+            const diffHr = Math.floor(diffMin / 60);
+            if (diffHr < 24) return `${diffHr}h ago`;
+            const diffDay = Math.floor(diffHr / 24);
+            return `${diffDay}d ago`;
+          }
 
           return {
             project,
@@ -420,6 +603,8 @@
             metaPairs,
             eventsByDay,
             topEvents,
+            recentOccurrences,
+            recentPagination,
             timedEvents,
             uniqueEventNames,
             timeframeLabel,
@@ -427,6 +612,13 @@
             applyFilters,
             addMetaPair,
             removeMetaPair,
+            refreshLive,
+            changeRecentPage,
+            liveLoading,
+            liveError,
+            liveLastUpdated,
+            formatTimestamp,
+            formatRelativeTime,
             formatMs,
           };
         },

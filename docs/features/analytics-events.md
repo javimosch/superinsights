@@ -18,11 +18,38 @@ Example:
 
 - `GET /projects/:id/events`
 - `GET /projects/:id/events/:eventName`
+- `GET /projects/:id/events/live.json`
 
 Query parameters (list page):
 
 - `timeframe` (string, default `7d`)
 - `eventName` (string, optional filter)
+- `recentPage` (number, optional, default `1`)
+- `recentLimit` (number, optional, default `10`)
+- `meta` (stringified JSON object, optional)
+
+The list page includes:
+
+- Top events with a `mostRecentTimestamp` value per event.
+- A recent activity list of occurrences (paginated, newest first).
+
+### Live JSON (session)
+
+- `GET /projects/:id/events/live.json`
+
+Query parameters:
+
+- `timeframe` (string, default `7d`)
+- `eventName` (string, optional filter)
+- `recentPage` (number, default `1`)
+- `recentLimit` (number, default `10`)
+- `meta` (stringified JSON object, optional)
+
+Response JSON fields:
+
+- `topEvents`: array of `{ eventName, count, mostRecentTimestamp }`
+- `recentOccurrences`: array of occurrences sorted by `timestamp` desc
+- `recentPagination`: `{ page, limit, total, totalPages }`
 
 Example:
 
