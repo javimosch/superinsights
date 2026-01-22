@@ -98,7 +98,7 @@
  * Popover System Component using Vue 3
  * Supports tooltips, dropdowns, and contextual menus
  */
-const { createApp: createPopoverSystemApp, ref: popoverRef, reactive, nextTick } = Vue;
+const { createApp: createPopoverSystemApp, ref: popoverRef, reactive } = Vue;
 
 const PopoverSystemComponent = {
   template: `
@@ -172,7 +172,7 @@ const PopoverSystemComponent = {
       });
 
       // Calculate position
-      nextTick(() => {
+      Vue.nextTick(() => {
         const rect = triggerElement.getBoundingClientRect();
         const pos = calculatePosition(rect, position, offset);
         popover.style = pos;
