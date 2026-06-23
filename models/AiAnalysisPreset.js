@@ -10,7 +10,6 @@ const AiAnalysisPresetSchema = new mongoose.Schema(
     ownerUserId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index: true,
     },
     ownerEmail: {
       type: String,
@@ -19,7 +18,6 @@ const AiAnalysisPresetSchema = new mongoose.Schema(
       type: String,
       enum: [VISIBILITY.PRIVATE, VISIBILITY.PUBLIC],
       default: VISIBILITY.PRIVATE,
-      index: true,
     },
     name: {
       type: String,

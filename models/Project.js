@@ -22,12 +22,10 @@ const ProjectSchema = new mongoose.Schema(
     publicApiKey: {
       type: String,
       unique: true,
-      index: true,
     },
     secretApiKey: {
       type: String,
       unique: true,
-      index: true,
     },
     dataRetentionDays: {
       type: Number,
