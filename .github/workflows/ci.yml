@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The unit suite covers dependency-free, security-critical modules
+      # (escapeRegExp, validateSecrets, the ingestion rate limiter), so it runs
+      # without `npm ci`. A full `npm ci` is intentionally NOT run here: the app
+      # depends on the private `saasbackend` package, which isn't on the public
+      # registry. Integration tests for ingestion/auth need that package + a test
+      # MongoDB and are tracked as a follow-up (service container + registry auth).
+      - name: Unit tests
+        run: node --test

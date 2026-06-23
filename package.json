@@ -10,7 +10,10 @@
     "start": "node index.js",
     "dev": "nodemon --verbose --ignore data --ignore uploads index.js",
     "promote-admin": "node scripts/promote-admin.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.17 <21"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

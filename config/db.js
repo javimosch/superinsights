@@ -36,13 +36,11 @@ mongoose.connection.on('error', (err) =>
   console.error('[mongo] connection error', err && err.message ? err.message : err)
 );
 
-process.on('SIGINT', async () => {
-  try {
-    await mongoose.connection.close();
-  } catch (_) {
-    /* best effort on shutdown */
-  }
-  process.exit(0);
-});
+// Signal handling and process exit are owned by index.js (graceful shutdown),
+// which calls closeDB() as part of draining. Keeping a SIGINT handler here too
+// would race that path and exit before the HTTP/WS servers finish.
+async function closeDB() {
+  await mongoose.connection.close();
+}
 
-module.exports = { connectDB, isDbConnected };
+module.exports = { connectDB, isDbConnected, closeDB };
