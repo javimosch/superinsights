@@ -13,6 +13,7 @@ const app = require('./app');
 const { connectDB, closeDB } = require('./config/db');
 const http = require('http');
 const { attachWsIngestionServer } = require('./utils/wsIngestionServer');
+const { installAutoDrain } = require('./utils/ingestSpool');
 
 const PORT = process.env.PORT || 3000;
 const SHUTDOWN_TIMEOUT_MS = 10000;
@@ -73,6 +74,9 @@ process.on('uncaughtException', (err) => {
 (async () => {
   try {
     await connectDB();
+
+    // Flush any spooled ingestion payloads when the DB connects/reconnects.
+    installAutoDrain();
 
     server = http.createServer(app);
     wss = attachWsIngestionServer(server);
