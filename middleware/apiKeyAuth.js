@@ -4,6 +4,11 @@ async function validateApiKey(req, res, next) {
   try {
     const authHeader = req.header('Authorization');
     const headerKey = req.header('X-API-Key') || req.header('x-api-key');
+    // navigator.sendBeacon (used by the SDK to flush on page unload) cannot set
+    // request headers, so the public key is also accepted as a query parameter.
+    // The key is public by design (embedded in client HTML), so this exposes
+    // nothing new. The WS ingestion path already authenticates the same way.
+    const queryKey = req.query && (req.query.apiKey || req.query.api_key);
 
     let apiKey = null;
 
@@ -11,6 +16,8 @@ async function validateApiKey(req, res, next) {
       apiKey = authHeader.slice(7).trim();
     } else if (headerKey) {
       apiKey = headerKey.trim();
+    } else if (queryKey) {
+      apiKey = String(queryKey).trim();
     }
 
     if (!apiKey) {

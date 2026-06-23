@@ -565,7 +565,10 @@
     }
 
     if (useBeacon) {
-      var ok = _sendBeacon(endpoint, payloadStr);
+      // sendBeacon can't set the Authorization header, so pass the (public) key
+      // as a query param; the server accepts it there for beacon flushes.
+      var beaconUrl = endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + 'apiKey=' + encodeURIComponent(_apiKey);
+      var ok = _sendBeacon(beaconUrl, payloadStr);
       if (ok) return;
     }
 
