@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Changelog December 2025 - superinsights</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body { font-family: 'Inter', system-ui, sans-serif; background-color: #0a0a0b; color: #e2e8f0; }
+      h1, h2, h3 { font-family: 'Geist', system-ui, sans-serif; }
+      .tab-btn { transition: all 0.2s ease; }
+      .tab-btn.active { background-color: #1a1a1d; border-color: #3b82f6; color: #fff; }
+      .tab-content { display: none; animation: fadeIn 0.3s ease; }
+      .tab-content.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      .feature-card { background: linear-gradient(135deg, #1a1a1d 0%, #151517 100%); border: 1px solid #262629; transition: all 0.3s ease; }
+      .feature-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    </style>
+  </head>
+  <body class="bg-[#0a0a0b] min-h-screen">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <header class="mb-16">
+        <a href="changelog.html" class="text-blue-400 hover:text-blue-300 text-sm mb-6 inline-block transition-colors">&larr; Back to Changelog</a>
+        <h1 class="text-5xl font-bold text-white mt-4 tracking-tight">Changelog</h1>
+        <p class="text-slate-400 mt-3 text-lg">December 2025</p>
+        
+        <!-- Tabs -->
+        <div class="flex gap-2 mt-8">
+          <button onclick="switchTab('product')" id="tab-product" class="tab-btn active px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 font-medium text-sm hover:border-slate-600">
+            Product
+          </button>
+          <button onclick="switchTab('technical')" id="tab-technical" class="tab-btn px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 font-medium text-sm hover:border-slate-600">
+            Technical
+          </button>
+        </div>
+      </header>
+
+      <!-- Product Changelog -->
+      <div id="content-product" class="tab-content active">
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">⚡</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Real-time Data Updates</h3>
+              <p class="text-slate-400 leading-relaxed">Added WebSocket endpoint for live BTC price and slot updates every second. Replaced REST polling with persistent WebSocket connections for faster, more reliable data.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">📊</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Multi-Market Support</h3>
+              <p class="text-slate-400 leading-relaxed">Extended data collection to support multiple timeframes (15m, 5m, 1h) simultaneously. Added URL-driven navigation for different market views.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">💾</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Performance & Storage</h3>
+              <p class="text-slate-400 leading-relaxed">Implemented GZip compression and SQLite history storage for faster responses. Added connection pooling to eliminate database overhead.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">🔍</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Chart Improvements</h3>
+              <p class="text-slate-400 leading-relaxed">Added zoom modal with full data support, interval controls, and smart downsampling for smooth performance. Implemented localStorage caching for faster chart loading.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">🐛</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Bug Fixes</h3>
+              <p class="text-slate-400 leading-relaxed">Fixed redirect loops, improved data isolation between timeframes, resolved WebSocket connection issues, and added official-beat endpoint support.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Changelog -->
+      <div id="content-technical" class="tab-content">
+        <div class="space-y-8">
+
+        <section>
+          <h2 class="text-2xl font-semibold text-brand-400 mb-4 flex items-center gap-2">
+            <span>🚀</span> Features
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Add new partials section to navbar</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Introduce Vue 3-based skeleton loader component</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Implement advanced modal and popover systems</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Add new SVG icons for chevron-left, more-horizontal, sort-asc, and sort-desc</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Add comprehensive Reports feature documentation</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Add report generation and viewing capabilities</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Implement reporting functionality and filter templates</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>feat: Implement report generation and management</li>
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>feat: Introduce GEMINI workflows and documentation assistant flow</li>
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>feat: Add script to change user passwords via API and document behavior rules</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add breadcrumbs to admin pages</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Set currentOrgId in session after accepting invite</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add new SVG icons for application usage</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add new partial views for UI components</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement dynamic breadcrumbs for analytics pages</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add organization settings and user management</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add org logs and public links pages</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add documentation routes and controller</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement platform admin features</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add organization context and routing</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement Redis integration plan</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Expand timeframe presets in AiAnalysisRun model</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add more timeframe options to analytics views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add functionality to clear project data</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add 'base' variable to analytics views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add support for multiple filter operations in ingestion drop settings</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add drop events settings and report endpoints to projects router</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add project-level data ingestion drop settings</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement event ingestion drop settings and reporting</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add Vue 3 CDN script and onBeforeUnmount to error-detail</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add clientId field to PerformanceMetric and ingestion controller</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add segmentFilters utility for parsing and building metadata matches</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Integrate metadata filtering for performance analytics</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Add metadata filtering to analytics</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement metadata filtering for AI analysis</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>feat: Implement WebSocket ingestion and refactor CORS handling</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add configurable session domain and sameSite attribute</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add initial README and project setup instructions</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add compose.coolify.yml for Superinsights deployment</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add MIT license file</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Refactor documentation page with improved layout and content</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add SaasBackend integration cheatsheet</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add saasbackend cheatsheet to documentation and update nav order</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add extensive documentation for SuperInsights features and setup</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add package.json for todo-app example</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Redirect authenticated users from home to projects</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Enhance audit logging with new AuditEvent model and fields</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add validation for durationMs in event ingestion</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add invites route for accepting invites</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add `projectBasePath` and `currentSection` to analytics render contexts</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add public links admin controller</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Implement timed event analytics and duration summaries</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add AI analysis routes and presets</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add timing and async tracking capabilities to SuperInsights SDK</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add manage.js script for deployment and management tasks</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add navbar partial for site navigation</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add analytics subnavigation partial</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add error tracking partial view</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add Todo App example</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Add accept-invite.ejs view</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Implement public project access and admin panel for public links</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>feat: Implement AI-powered analytics and preset management</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Update currentUser and currentProjectRole retrieval in getDashboard</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Integrate DaisyUI CSS across multiple views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add script to promote users to admin role</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Integrate connect-mongo for session storage and add debug auth logging</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Integrate logging for user authentication and project actions</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add logs page with filtering and display functionality</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add audit log page and controller</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Refactor auto-refresh logic using v-model and watch in dashboard</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add unhandled rejection and uncaught exception handlers</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add request error logging for 4xx and 5xx responses</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add analytics routes for dashboard, events, errors, and performance</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Update navigation links to include dashboard and other analytics views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add indexes to PerformanceMetricSchema for improved query performance</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add errorType field to Error model and SDK capture</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add performance, events, and errors analytics controllers</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add SDK snippet and analytics link to project settings</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add SuperInsights browser SDK</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add metricType to PerformanceMetric and default value</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Implement page views analytics dashboard</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>feat: Add .commitlintrc.json configuration</li>
+            <li><span class="text-slate-500 text-sm mr-3">[12/12]</span>feat: Implement ingestion API for pageviews, events, errors, and performance metrics</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+            <span>📚</span> Documentation
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>docs: Add documentation for internal services and models in middleware mode</li>
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>docs: Add cURL example for SDK event tracking and clarify WebSocket connection</li>
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>docs: Add feature specification for Reports</li>
+            <li><span class="text-slate-500 text-sm mr-3">[20/12]</span>docs: Improve feature documentation for AI Analysis and External App Integration</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>docs: Add troubleshooting section for dropped events in SDK tracking</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>docs: Add documentation for WebSocket transport</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>docs: Add more examples for tracking and timing events</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>docs: Clarify deployment base path and saasbackend mount</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>docs: Add external app integration documentation</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-amber-400 mb-4 flex items-center gap-2">
+            <span>🚜</span> Refactor
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>refactor: Use dynamic import for marked in docsController</li>
+            <li><span class="text-slate-500 text-sm mr-3">[22/12]</span>refactor: Alias Vue functions for clarity and to avoid naming conflicts</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>refactor: Update user management page title and remove unused role data</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>refactor: Improve project access middleware to consider user role</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>refactor: Improve organization context and project routing</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>refactor: Fetch OpenAI API key from global settings or environment variable</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Update compose.coolify.yml to use specific volume mounts</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Update promote-admin.js to use API calls</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Update Dockerfile to copy all files and change entrypoint</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Extract navigation bar to partial and update logs view</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Consolidate navigation and update routing in analytics views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>refactor: Integrate SaaS backend and refactor project/auth logic</li>
+            <li><span class="text-slate-500 text-sm mr-3">[17/12]</span>refactor: Improve user access and role checks in Project model</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>refactor: Extract performance score calculation to utility file</li>
+            <li><span class="text-slate-500 text-sm mr-3">[12/12]</span>refactor: Centralize project environment definitions and simplify controller logic</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-slate-400 mb-4 flex items-center gap-2">
+            <span>⚙️</span> Miscellaneous Tasks
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>chore: Update .gitignore to ignore all files within data directory</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>chore: Bump marked version to 17.0.1</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>chore: Update Dockerfile and compose.coolify.yml including new volume mapping for /middleware</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>chore: Bump saasbackend dependency to version 1.2.3</li>
+            <li><span class="text-slate-500 text-sm mr-3">[19/12]</span>chore: Add 'data' to .gitignore and reorder 'ref-*</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>chore: Remove audit log functionality</li>
+            <li><span class="text-slate-500 text-sm mr-3">[18/12]</span>chore: Update dependencies and add openai and saasbackend</li>
+            <li><span class="text-slate-500 text-sm mr-3">[17/12]</span>chore: Add DaisyUI CSS to analytics views</li>
+            <li><span class="text-slate-500 text-sm mr-3">[13/12]</span>chore: Add .nodemonignore to ignore data/ directory</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-purple-400 mb-4 flex items-center gap-2">
+            <span>💼</span> Other
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[11/12]</span>Project management</li>
+          </ul>
+        </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('content-' + tab).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+      }
+    </script>
+  </body>
+</html>
