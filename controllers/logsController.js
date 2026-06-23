@@ -1,4 +1,8 @@
 const RawLogEvent = require('../models/RawLogEvent');
+const { escapeRegExp } = require('../utils/escapeRegExp');
+
+// Cap free-text search length to bound regex scan cost.
+const MAX_CONTAINS_LEN = 200;
 
 function parsePositiveInt(value, fallback) {
   const n = Number(value);
@@ -32,7 +36,7 @@ function buildFilter(query) {
   }
 
   if (query.contains && String(query.contains).trim()) {
-    const q = String(query.contains).trim();
+    const q = escapeRegExp(String(query.contains).trim().slice(0, MAX_CONTAINS_LEN));
     filter.$or = [
       { errorMessage: { $regex: q, $options: 'i' } },
       { errorStack: { $regex: q, $options: 'i' } },

@@ -17,6 +17,7 @@ const orgRouter = require('./routes/org');
 const docsController = require('./controllers/docsController');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 const { loadUserOrgs, exposeOrgContextToViews } = require('./middleware/orgContext');
+const { isDbConnected } = require('./config/db');
 
 const app = express();
 
@@ -35,6 +36,25 @@ if (trustProxyEnabled) {
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Health probes — declared before any body parsing, CORS, session or DB-backed
+// middleware so they stay cheap and answer even under load. They must never
+// touch the database (a readiness check that queries Mongo would hang exactly
+// when Mongo is down).
+//
+// /healthz  = liveness: the process is up. Always 200.
+// /readyz   = readiness: can we serve real, DB-backed traffic? 503 when the
+//             Mongoose connection is not in the `connected` state, which lets
+//             Docker/Coolify detect an up-but-brain-dead process and restart it.
+app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok' }));
+
+app.get('/readyz', (req, res) => {
+  const ready = isDbConnected();
+  return res.status(ready ? 200 : 503).json({
+    status: ready ? 'ready' : 'unavailable',
+    db: ready ? 'connected' : 'disconnected',
+  });
+});
 
 // Core middleware
 app.use(express.json());

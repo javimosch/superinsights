@@ -2,10 +2,12 @@ const envPath = process.env.ENV_FILE || '.env';
 
 require('dotenv').config({ path: envPath });
 
-console.log('Loading environment variables from:', envPath,{
-  adminUsername: process.env.ADMIN_USERNAME,
-  adminPassword: process.env.ADMIN_PASSWORD,
-});
+console.log('Loading environment variables from:', envPath);
+
+// Refuse to boot in production with missing/default secrets. Runs before
+// requiring ./app, since app.js reads SESSION_SECRET at module load.
+const { assertProductionSecrets } = require('./config/validateSecrets');
+assertProductionSecrets();
 
 const app = require('./app');
 const { connectDB } = require('./config/db');
