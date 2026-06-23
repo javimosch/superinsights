@@ -1,8 +1,5 @@
 const PageView = require('../models/PageView');
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const { escapeRegExp } = require('../utils/escapeRegExp');
 
 function getDateRange(timeframe) {
   const now = new Date();
