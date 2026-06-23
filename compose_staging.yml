@@ -9,14 +9,45 @@ services:
     working_dir: /app
     expose:
       - "3000"
+    # Config is delivered as env vars (host files read by compose, never mounted
+    # into the container). Order matters: .env.staging overrides .env for shared
+    # keys, while .env supplies its unique keys (OPENROUTER_API_KEY,
+    # SAASBACKEND_ENCRYPTION_KEY) — matching the previous dotenv behavior.
     env_file:
+      - ./.env
       - ./.env.staging
     command: ["node", "index.js"]
     networks:
       - coolify-shared
+    # Mount only code + writable data, NOT the whole repo. This keeps .env/.git
+    # out of the container (they were previously readable at /app/.env via the
+    # `./:/app` mount).
     volumes:
-      - ./:/app
+      - ./app.js:/app/app.js
+      - ./index.js:/app/index.js
+      - ./package.json:/app/package.json
+      - ./config:/app/config
+      - ./controllers:/app/controllers
+      - ./middleware:/app/middleware
+      - ./models:/app/models
+      - ./public:/app/public
+      - ./routes:/app/routes
+      - ./utils:/app/utils
+      - ./views:/app/views
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./uploads:/app/uploads
       - /app/node_modules
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://127.0.0.1:3000/readyz',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     restart: always
     pull_policy: always
 
