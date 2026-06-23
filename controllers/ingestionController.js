@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const PageView = require('../models/PageView');
 const Event = require('../models/Event');
 const ErrorModel = require('../models/Error');
@@ -7,6 +8,42 @@ const {
   shouldDropEventItem,
   incrementDropCounter,
 } = require('../utils/ingestionDropSettings');
+const { appendToSpool } = require('../utils/ingestSpool');
+
+function isDbUnavailable(err) {
+  if (mongoose.connection.readyState !== 1) return true;
+  const name = (err && err.name) || '';
+  const msg = (err && err.message) || '';
+  return (
+    name === 'MongooseServerSelectionError' ||
+    name === 'MongoNetworkError' ||
+    /buffering timed out/i.test(msg)
+  );
+}
+
+// When the DB is unavailable, durably spool the payload instead of dropping it,
+// and return 202 (accepted). We deliberately do NOT signal a retry: the spool is
+// flushed to Mongo on reconnect, so asking the client to retry would duplicate
+// the spooled copy. Any non-DB error falls through to the normal error handler.
+async function spoolOnOutage(err, res, next, channel, docs) {
+  if (isDbUnavailable(err)) {
+    try {
+      const plain = (docs || []).map((d) =>
+        d && typeof d.toObject === 'function' ? d.toObject() : d
+      );
+      await appendToSpool(channel, plain);
+      res.set('Retry-After', '5');
+      return res.status(202).json({
+        success: true,
+        spooled: plain.length,
+        note: 'Database unavailable; payload spooled and will be flushed on recovery',
+      });
+    } catch (spoolErr) {
+      console.error('[ingest] spool write failed', spoolErr && spoolErr.message);
+    }
+  }
+  return next(err);
+}
 
 function parseTimestamp(value) {
   if (value === undefined || value === null) {
@@ -50,6 +87,7 @@ function validateBulkPayload(items, maxBulkSize = 100) {
 }
 
 async function postPageViews(req, res, next) {
+  let docs = [];
   try {
     const body = req.body;
     const items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [body];
@@ -59,7 +97,7 @@ async function postPageViews(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
-    const docs = items.map((item) => {
+    docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
       }
@@ -99,11 +137,12 @@ async function postPageViews(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: err.message });
     }
 
-    return next(err);
+    return spoolOnOutage(err, res, next, 'pageviews', docs);
   }
 }
 
 async function postEvents(req, res, next) {
+  let docs = [];
   try {
     const body = req.body;
     const items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [body];
@@ -134,7 +173,7 @@ async function postEvents(req, res, next) {
       return res.status(201).json({ success: true, count: 0, dropped: droppedCount });
     }
 
-    const docs = keptItems.map((item) => {
+    docs = keptItems.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
       }
@@ -173,11 +212,12 @@ async function postEvents(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: err.message });
     }
 
-    return next(err);
+    return spoolOnOutage(err, res, next, 'events', docs);
   }
 }
 
 async function postErrors(req, res, next) {
+  let docs = [];
   try {
     const body = req.body;
     const items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [body];
@@ -187,7 +227,7 @@ async function postErrors(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
-    const docs = items.map((item) => {
+    docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
       }
@@ -230,11 +270,12 @@ async function postErrors(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: err.message });
     }
 
-    return next(err);
+    return spoolOnOutage(err, res, next, 'errors', docs);
   }
 }
 
 async function postPerformanceMetrics(req, res, next) {
+  let docs = [];
   try {
     const body = req.body;
     const items = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [body];
@@ -244,7 +285,7 @@ async function postPerformanceMetrics(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
-    const docs = items.map((item) => {
+    docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
       }
@@ -288,7 +329,7 @@ async function postPerformanceMetrics(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: err.message });
     }
 
-    return next(err);
+    return spoolOnOutage(err, res, next, 'performance', docs);
   }
 }
 
