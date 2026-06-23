@@ -33,6 +33,17 @@ if (trustProxyEnabled) {
   app.set('trust proxy', 1);
 }
 
+// Allowlist for *credentialed* cross-origin requests (the authenticated
+// dashboard/admin APIs). Anonymous, credential-less cross-origin traffic — the
+// SDK hitting /v1 ingestion from arbitrary customer sites — is always allowed
+// via `*`, but never with credentials. Set CORS_ALLOWED_ORIGINS
+// (comma-separated) when the dashboard is served from a different origin than
+// the API; default is no credentialed cross-origin access (safe).
+const corsAllowlist = String(process.env.CORS_ALLOWED_ORIGINS || process.env.PUBLIC_URL || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 // View engine setup
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -56,19 +67,23 @@ app.get('/readyz', (req, res) => {
   });
 });
 
-// Core middleware
-app.use(express.json());
+// Core middleware. Explicit body-size limit (was the implicit 100kb default) so
+// it's intentional and tunable; ingestion enforces a tighter cap of its own.
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
   const origin = req.header('Origin');
-  if (origin) {
+  if (origin && corsAllowlist.includes(origin)) {
+    // Trusted origin: allow credentialed (cookie/session) cross-origin access.
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Vary', 'Origin');
   } else {
+    // Everyone else (including SDK ingestion): open, but never with credentials.
     res.header('Access-Control-Allow-Origin', '*');
   }
-  
+
   res.header(
     'Access-Control-Allow-Methods',
     'GET, POST, PUT, PATCH, DELETE, OPTIONS'
