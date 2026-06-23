@@ -74,13 +74,19 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
   const origin = req.header('Origin');
-  if (origin && corsAllowlist.includes(origin)) {
-    // Trusted origin: allow credentialed (cookie/session) cross-origin access.
+  // Ingestion endpoints are embedded via the SDK on arbitrary customer domains
+  // and flushed with navigator.sendBeacon, which FORCES credentials mode
+  // 'include' — so the response must echo the specific Origin (not '*') with
+  // credentials allowed, or the browser blocks it at preflight. These routes
+  // carry no cookie-based auth (auth is the public API key) and return no
+  // sensitive data, so reflecting any origin is safe here. All other routes
+  // (dashboard/admin) keep the strict allowlist.
+  const isIngestion = req.path === '/v1' || req.path.indexOf('/v1/') === 0;
+  if (origin && (isIngestion || corsAllowlist.includes(origin))) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Vary', 'Origin');
   } else {
-    // Everyone else (including SDK ingestion): open, but never with credentials.
     res.header('Access-Control-Allow-Origin', '*');
   }
 
