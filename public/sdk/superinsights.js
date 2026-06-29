@@ -999,6 +999,145 @@
     }
   }
 
+  function _setupAutocapture() {
+    // autocapture is opt-in, disabled by default
+    var ac = _config.autocapture;
+    if (!ac || !ac.enabled) return;
+
+    var selectors = ac.selectors;
+    if (!selectors || !selectors.length) return;
+
+    var debounceMs = (typeof ac.debounceMs === 'number') ? ac.debounceMs : 500;
+    var maxTextLen = (typeof ac.maxTextLength === 'number') ? ac.maxTextLength : 120;
+    var ignoreSel = ac.ignoreSelector || '[data-si-ignore], .si-ignore';
+
+    // Build selector list: "button,a,[role=button],input[type=submit]" etc.
+    var selectorStr = selectors.map(function (s) { return String(s).trim(); }).filter(Boolean).join(',');
+    if (!selectorStr) return;
+
+    // Cache for debounce (element -> timestamp)
+    var debounceCache = {};
+    var debounceCleanTimer = null;
+
+    function cleanDebounceCache() {
+      var now = Date.now();
+      for (var key in debounceCache) {
+        if (debounceCache.hasOwnProperty(key) && now - debounceCache[key] > debounceMs * 2) {
+          delete debounceCache[key];
+        }
+      }
+      var count = 0;
+      for (var k in debounceCache) { count++; }
+      if (count === 0 && debounceCleanTimer) {
+        global.clearInterval(debounceCleanTimer);
+        debounceCleanTimer = null;
+      }
+    }
+
+    function getClickContext(el) {
+      var context = {};
+      try {
+        context.tag = (el.tagName || '').toLowerCase();
+        context.id = el.id || '';
+        context.className = (el.className || '').split(' ').filter(Boolean)[0] || '';
+
+        // text content (trimmed, truncated)
+        var txt = (el.textContent || el.innerText || '').replace(/\s+/g, ' ').trim();
+        if (txt.length > maxTextLen) txt = txt.substring(0, maxTextLen) + '...';
+        context.text = txt;
+
+        // href for anchors
+        if (context.tag === 'a' && el.href) {
+          context.href = el.href;
+        }
+
+        // naive selector: tag#id.class or tag:nth-child
+        if (context.id) {
+          context.selector = context.tag + '#' + context.id;
+        } else if (context.className) {
+          context.selector = context.tag + '.' + context.className;
+        } else {
+          // find nth-child path
+          var parent = el.parentElement;
+          if (parent) {
+            var siblings = Array.prototype.filter.call(parent.children, function (c) { return c.tagName === el.tagName; });
+            var idx = siblings.indexOf(el) + 1;
+            context.selector = context.tag + ':nth-of-type(' + idx + ')';
+          } else {
+            context.selector = context.tag;
+          }
+        }
+
+        // viewport position
+        var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+        if (rect) {
+          context.rect = { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) };
+        }
+      } catch (e) {
+        _log('SuperInsights autocapture context error', e);
+      }
+      return context;
+    }
+
+    function isIgnored(el) {
+      try {
+        if (el.hasAttribute && el.hasAttribute('data-si-opt-out')) return true;
+        if (el.closest && ignoreSel) {
+          var closest = el.closest(ignoreSel);
+          if (closest) return true;
+        }
+      } catch (e) { /* ignore */ }
+      return false;
+    }
+
+    var clickHandler = function (evt) {
+      try {
+        if (!_enabled) return;
+
+        var target = evt && evt.target;
+        if (!target) return;
+
+        // Skip password fields
+        if (target.type === 'password') return;
+
+        // Find the matching element (target itself or closest ancestor matching selector)
+        var el = target.matches && target.matches(selectorStr)
+          ? target
+          : (target.closest ? target.closest(selectorStr) : null);
+        if (!el) return;
+
+        // Check opt-out
+        if (isIgnored(el)) return;
+
+        // Debounce
+        var now = Date.now();
+        var dk = (el.id || '') + '_' + (el.className || '') + '_' + (el.tagName || '');
+        var last = debounceCache[dk];
+        if (last && (now - last) < debounceMs) return;
+        debounceCache[dk] = now;
+
+        // Start debounce cache cleaner
+        if (!debounceCleanTimer) {
+          debounceCleanTimer = global.setInterval(cleanDebounceCache, debounceMs * 2);
+        }
+
+        var context = getClickContext(el);
+        _log('SuperInsights autocapture click', context);
+
+        trackEvent('$click', context);
+      } catch (e) {
+        _log('SuperInsights autocapture error', e);
+      }
+    };
+
+    try {
+      global.document.addEventListener('click', clickHandler, { capture: true, passive: true });
+      _log('SuperInsights autocapture active', { selectors: selectorStr });
+    } catch (e) {
+      _log('SuperInsights autocapture setup failed', e);
+    }
+  }
+
   function _attachListeners() {
     try {
       global.addEventListener('error', function (evt) {
@@ -1062,6 +1201,7 @@
 
       _patchHistoryAPI();
       _attachListeners();
+      _setupAutocapture();
       _startFlushTimer();
 
       if (_config.transport === 'ws') {
