@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Changelog June 2026 - superinsights</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      body { font-family: 'Inter', system-ui, sans-serif; background-color: #0a0a0b; color: #e2e8f0; }
+      body { font-family: 'Geist', system-ui, sans-serif; background-color: #050505; color: #e2e8f0; }
       h1, h2, h3 { font-family: 'Geist', system-ui, sans-serif; }
       .tab-btn { transition: all 0.2s ease; }
       .tab-btn.active { background-color: #1a1a1d; border-color: #3b82f6; color: #fff; }
@@ -18,12 +18,12 @@
       .feature-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
     </style>
   </head>
-  <body class="bg-[#0a0a0b] min-h-screen">
-    <div class="max-w-5xl mx-auto px-6 py-16">
+  <body class="bg-[#050505] min-h-screen">
+    <div class="max-w-5xl mx-auto px-6 py-24">
       <header class="mb-16">
-        <a href="changelog.html" class="text-blue-400 hover:text-blue-300 text-sm mb-6 inline-block transition-colors">&larr; Back to Changelog</a>
+        <a href="changelog.html" class="inline-flex items-center gap-1 text-sm text-white/30 hover:text-white/70 text-sm mb-6 inline-block transition-colors"><span class="text-xs">&larr; Back tolarr;</span> Back to Changelog <span class="text-[10px]">→</span></a>
         <h1 class="text-5xl font-bold text-white mt-4 tracking-tight">Changelog</h1>
-        <p class="text-slate-400 mt-3 text-lg">June 2026</p>
+        <p class="text-white/40 mt-3 text-lg">June 2026</p>
         
         <!-- Tabs -->
         <div class="flex gap-2 mt-8">
@@ -107,6 +107,11 @@
             <span>📚</span> Documentation
           </h2>
           <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/06]</span>docs: rename saasbackend → @intranefr/superbackend across all docs</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/06]</span>docs: facelift documentation page matching landing aesthetics</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/06]</span>docs: redesign landing with high-end agency aesthetics</li>
+            <li><span class="text-slate-500 text-sm mr-3">[29/06]</span>docs: generate changelogs for Dec 2025, Jan 2026, Feb 2026 with product summaries</li>
+            <li><span class="text-slate-500 text-sm mr-3">[29/06]</span>docs: update landing page with autocapture/geolocation features, regenerate June changelog</li>
             <li><span class="text-slate-500 text-sm mr-3">[23/06]</span>docs: add changelog static site (Dec 2025 – Jun 2026)</li>
           </ul>
         </section>
