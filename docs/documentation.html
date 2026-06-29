@@ -1,426 +1,389 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SuperInsights Documentation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-      /* Minimal, self-contained Markdown styling (Tailwind Typography plugin is not available via CDN). */
-      #content {
-        color: hsl(var(--bc));
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation — SuperInsights</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: { sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'] } } },
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    ::selection { background: rgba(99,102,241,0.25); }
+    .reveal { opacity: 0; transform: translateY(24px); transition: all 0.7s cubic-bezier(0.32,0.72,0,1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .fluid-island {
+      position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 40;
+      background: rgba(5,5,5,0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 9999px;
+      padding: 0.5rem 1rem;
+      transition: all 0.6s cubic-bezier(0.32,0.72,0,1);
+    }
+    .fluid-island:hover { border-color: rgba(255,255,255,0.15); background: rgba(5,5,5,0.85); }
+    .doc-sidebar { position: sticky; top: 5rem; }
+    .double-bezel {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 1.5rem; padding: 1.5px;
+      transition: all 0.4s cubic-bezier(0.32,0.72,0,1);
+    }
+    .double-bezel-inner {
+      background: rgba(10,10,12,0.9); border-radius: calc(1.5rem - 1.5px);
+      padding: 1.25rem; box-shadow: inset 0 1px 1px rgba(255,255,255,0.06);
+    }
+    .search-input {
+      width: 100%; padding: 0.625rem 0.875rem;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0.75rem; color: #fff; font-size: 0.8125rem;
+      outline: none; transition: all 0.3s cubic-bezier(0.32,0.72,0,1);
+    }
+    .search-input:focus { border-color: rgba(99,102,241,0.4); background: rgba(255,255,255,0.06); }
+    .search-input::placeholder { color: rgba(255,255,255,0.25); }
+    .nav-link { display: block; padding: 0.4rem 0.75rem; border-radius: 0.5rem; font-size: 0.8125rem; color: rgba(255,255,255,0.45); transition: all 0.2s; text-decoration: none; }
+    .nav-link:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+    .nav-link.active { color: #818cf8; background: rgba(99,102,241,0.1); font-weight: 500; }
+    .nav-section { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.2); padding: 0.75rem 0.75rem 0.35rem; font-weight: 500; }
+    .view-source-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem;
+      border-radius: 9999px; font-size: 0.75rem; font-weight: 500;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.5); text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.32,0.72,0,1);
+    }
+    .view-source-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); }
 
-      #content :is(h1, h2, h3, h4) {
-        scroll-margin-top: 5rem;
-      }
+    /* Markdown content styling */
+    #content { color: rgba(255,255,255,0.8); line-height: 1.7; font-size: 0.9375rem; }
+    #content h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1rem; color: #fff; letter-spacing: -0.02em; }
+    #content h2 { font-size: 1.375rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.06); letter-spacing: -0.01em; }
+    #content h3 { font-size: 1.125rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: #fff; }
+    #content h4 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 0.35rem; color: rgba(255,255,255,0.9); }
+    #content :is(h1,h2,h3,h4) { scroll-margin-top: 5rem; }
+    #content p { margin: 0.75rem 0; }
+    #content :is(ul,ol) { margin: 0.75rem 0; padding-left: 1.25rem; }
+    #content li { margin: 0.25rem 0; }
+    #content a { color: #818cf8; text-decoration: underline; text-underline-offset: 2px; transition: opacity 0.2s; }
+    #content a:hover { opacity: 0.8; }
+    #content code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.85em; background: rgba(255,255,255,0.06); padding: 0.15rem 0.4rem; border-radius: 0.35rem; color: #a5b4fc;
+    }
+    #content pre {
+      margin: 1rem 0; padding: 1rem; border-radius: 1rem;
+      background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); overflow-x: auto;
+    }
+    #content pre code { background: transparent; padding: 0; color: inherit; }
+    #content blockquote {
+      margin: 1rem 0; padding: 0.75rem 1rem; border-left: 3px solid rgba(99,102,241,0.4);
+      background: rgba(99,102,241,0.04); border-radius: 0 0.5rem 0.5rem 0; color: rgba(255,255,255,0.6);
+    }
+    #content hr { margin: 1.5rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.06); }
+    #content table { width: 100%; margin: 1rem 0; border-collapse: collapse; display: block; overflow-x: auto; font-size: 0.875rem; }
+    #content :is(th,td) { border: 1px solid rgba(255,255,255,0.06); padding: 0.5rem 0.75rem; vertical-align: top; }
+    #content th { background: rgba(255,255,255,0.03); font-weight: 600; color: rgba(255,255,255,0.7); }
+    #content img { max-width: 100%; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.06); }
+    #content .heading-anchor { text-decoration: none; opacity: 0; margin-left: 0.35rem; font-weight: 400; color: rgba(255,255,255,0.3); }
+    #content :is(h1,h2,h3,h4):hover .heading-anchor { opacity: 1; }
 
-      #content h1 {
-        font-size: 1.875rem;
-        line-height: 2.25rem;
-        font-weight: 700;
-        margin: 0 0 1rem;
-      }
-      #content h2 {
-        font-size: 1.5rem;
-        line-height: 2rem;
-        font-weight: 700;
-        margin: 2rem 0 0.75rem;
-        padding-bottom: 0.35rem;
-        border-bottom: 1px solid hsl(var(--bc) / 0.15);
-      }
-      #content h3 {
-        font-size: 1.25rem;
-        line-height: 1.75rem;
-        font-weight: 700;
-        margin: 1.5rem 0 0.5rem;
-      }
-      #content h4 {
-        font-size: 1.125rem;
-        line-height: 1.75rem;
-        font-weight: 700;
-        margin: 1.25rem 0 0.35rem;
-      }
+    @media (max-width: 768px) {
+      .fluid-island { width: calc(100% - 2rem); border-radius: 9999px; }
+      .doc-sidebar { position: static; }
+    }
+  </style>
+</head>
+<body class="bg-[#050505] text-white font-sans min-h-screen">
+  <div class="relative" style="background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.08), transparent), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(139,92,246,0.04), transparent);">
 
-      #content p {
-        margin: 0.75rem 0;
-      }
-
-      #content :is(ul, ol) {
-        margin: 0.75rem 0;
-        padding-left: 1.25rem;
-      }
-
-      #content li {
-        margin: 0.25rem 0;
-      }
-
-      #content a {
-        color: hsl(var(--p));
-        text-decoration: underline;
-        text-underline-offset: 2px;
-      }
-
-      #content a:hover {
-        opacity: 0.9;
-      }
-
-      #content :is(code, kbd) {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-          "Courier New", monospace;
-        font-size: 0.9em;
-        background: hsl(var(--b2));
-        padding: 0.15rem 0.35rem;
-        border-radius: 0.35rem;
-      }
-
-      #content pre {
-        margin: 1rem 0;
-        padding: 0.9rem;
-        border-radius: 0.75rem;
-        background: hsl(var(--b2));
-        border: 1px solid hsl(var(--bc) / 0.12);
-        overflow: auto;
-      }
-
-      #content pre code {
-        background: transparent;
-        padding: 0;
-      }
-
-      #content blockquote {
-        margin: 1rem 0;
-        padding: 0.75rem 1rem;
-        border-left: 4px solid hsl(var(--p));
-        background: hsl(var(--b2));
-        border-radius: 0.5rem;
-      }
-
-      #content hr {
-        margin: 1.5rem 0;
-        border-color: hsl(var(--bc) / 0.15);
-      }
-
-      #content table {
-        width: 100%;
-        margin: 1rem 0;
-        border-collapse: collapse;
-        display: block;
-        overflow-x: auto;
-      }
-
-      #content :is(th, td) {
-        border: 1px solid hsl(var(--bc) / 0.12);
-        padding: 0.5rem 0.65rem;
-        vertical-align: top;
-      }
-
-      #content th {
-        background: hsl(var(--b2));
-        font-weight: 700;
-      }
-
-      #content img {
-        max-width: 100%;
-        border-radius: 0.75rem;
-        border: 1px solid hsl(var(--bc) / 0.12);
-      }
-
-      #content .heading-anchor {
-        text-decoration: none;
-        opacity: 0;
-        margin-left: 0.35rem;
-        font-weight: 400;
-        color: hsl(var(--bc) / 0.65);
-      }
-
-      #content :is(h1, h2, h3, h4):hover .heading-anchor {
-        opacity: 1;
-      }
-    </style>
-  </head>
-  <body class="min-h-screen bg-base-200">
-    <div class="navbar bg-base-100 shadow">
-      <div class="navbar-start">
-        <a class="btn btn-ghost text-xl" href="./index.html">SuperInsights</a>
-      </div>
-      <div class="navbar-center hidden md:flex">
-        <div class="text-sm text-base-content/70">Documentation</div>
-      </div>
-      <div class="navbar-end">
-        <a class="btn btn-primary" href="./documentation.html">Docs</a>
-      </div>
-    </div>
-
-    <main class="container mx-auto p-4 grid gap-4 md:grid-cols-12">
-      <aside class="md:col-span-3">
-        <div class="card bg-base-100 shadow">
-          <div class="card-body p-4">
-            <div class="form-control">
-              <label class="label" for="search">
-                <span class="label-text">Search</span>
-              </label>
-              <input id="search" class="input input-bordered" placeholder="Search docs..." />
-            </div>
-
-            <div class="divider my-3"></div>
-
-            <nav>
-              <ul id="nav" class="menu bg-base-100 rounded-box"></ul>
-            </nav>
-          </div>
+    <!-- Fluid Island Nav -->
+    <nav class="fluid-island" role="navigation">
+      <div class="flex items-center justify-between gap-6">
+        <a href="./index.html" class="flex items-center gap-2 font-semibold text-sm tracking-tight">
+          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold">SI</span>
+          <span class="hidden sm:inline">SuperInsights</span>
+        </a>
+        <div class="flex items-center gap-3">
+          <a href="./index.html" class="text-xs text-white/50 hover:text-white/90 transition-colors duration-300">Home</a>
+          <a href="./changelog.html" class="text-xs text-white/50 hover:text-white/90 transition-colors duration-300">Changelog</a>
+          <a href="https://github.com/javimosch/superinsights" target="_blank" class="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/90 transition-colors duration-300">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            GitHub
+          </a>
         </div>
-      </aside>
+      </div>
+    </nav>
 
-      <section class="md:col-span-9">
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <div class="flex items-center justify-between gap-2">
-              <h1 id="docTitle" class="text-2xl font-bold">Documentation</h1>
-              <a id="viewSource" class="btn btn-ghost btn-sm" href="#" target="_blank" rel="noreferrer">View source</a>
+    <!-- Main layout -->
+    <main class="relative z-10 pt-24 pb-16 px-4 md:px-6">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+
+        <!-- Sidebar -->
+        <aside class="md:col-span-3 doc-sidebar">
+          <div class="double-bezel reveal visible">
+            <div class="double-bezel-inner">
+              <input id="search" class="search-input" placeholder="Search documentation..." />
+              <div class="mt-1 text-[11px] text-white/20 text-right">Search uses full-text index</div>
+              <nav>
+                <ul id="nav" class="mt-2 list-none p-0"></ul>
+              </nav>
             </div>
-            <div id="status" class="text-sm text-base-content/60"></div>
-            <div class="divider"></div>
-            <article id="content" class="max-w-none"></article>
           </div>
-        </div>
-      </section>
+        </aside>
+
+        <!-- Content -->
+        <section class="md:col-span-9 reveal visible">
+          <div class="double-bezel">
+            <div class="double-bezel-inner">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <h1 id="docTitle" class="text-xl font-bold text-white tracking-tight">Documentation</h1>
+                <a id="viewSource" class="view-source-btn" href="#" target="_blank" rel="noreferrer">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                  View source
+                </a>
+              </div>
+              <div id="status" class="text-xs text-white/30 mt-1"></div>
+              <div class="h-px bg-white/[0.06] my-4"></div>
+              <article id="content" class="max-w-none"></article>
+            </div>
+          </div>
+        </section>
+
+      </div>
     </main>
 
-    <script>
-      (function () {
-        marked.setOptions({
-          gfm: true,
-          breaks: false,
-          headerIds: true,
-          mangle: false,
+    <!-- Footer -->
+    <footer class="relative z-10 py-8 border-t border-white/[0.04]">
+      <div class="max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-white/20">
+        <p>SuperInsights — Self-hosted product analytics</p>
+        <div class="flex items-center gap-4">
+          <a href="./index.html" class="hover:text-white/50 transition-colors">Home</a>
+          <a href="./changelog.html" class="hover:text-white/50 transition-colors">Changelog</a>
+          <a href="https://github.com/javimosch/superinsights" class="hover:text-white/50 transition-colors">GitHub</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      // Scroll reveal
+      if (window.IntersectionObserver) {
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(e) { if (e.isIntersecting) e.target.classList.add('visible'); });
+        }, { threshold: 0.05, rootMargin: '0px 0px -60px 0px' });
+        document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
+      }
+
+      marked.setOptions({ gfm: true, breaks: false, headerIds: true, mangle: false });
+
+      const DOCS = [
+        { id: 'installation', title: 'Installation', path: './installation.md', section: 'Getting started' },
+        { id: 'getting-started', title: 'Getting started', path: './getting-started.md', section: 'Getting started' },
+        { id: 'configuration', title: 'Configuration', path: './configuration.md', section: 'Getting started' },
+        { id: 'deployment', title: 'Deployment', path: './deployment.md', section: 'Getting started' },
+        { id: 'analytics-dashboard', title: 'Analytics dashboard', path: './features/analytics-dashboard.md', section: 'Features' },
+        { id: 'analytics-pageviews', title: 'Page views analytics', path: './features/analytics-pageviews.md', section: 'Features' },
+        { id: 'analytics-events', title: 'Events analytics', path: './features/analytics-events.md', section: 'Features' },
+        { id: 'analytics-errors', title: 'Error tracking', path: './features/analytics-errors.md', section: 'Features' },
+        { id: 'analytics-performance', title: 'Performance metrics', path: './features/analytics-performance.md', section: 'Features' },
+        { id: 'public-links', title: 'Public project links', path: './features/public-links.md', section: 'Features' },
+        { id: 'ai-analysis', title: 'AI Analysis', path: './features/ai-analysis.md', section: 'Features' },
+        { id: 'sdk-tracking', title: 'SDK tracking (timing)', path: './features/sdk-tracking.md', section: 'Features' },
+        { id: 'external-app-integration', title: 'External app integration', path: './features/external-app-integration.md', section: 'Features' },
+        { id: 'saasbackend-cheatsheet', title: 'saasbackend cheatsheet', path: './saasbackend-cheatsheet.md', section: 'Reference' },
+      ];
+
+      const navEl = document.getElementById('nav');
+      const statusEl = document.getElementById('status');
+      const contentEl = document.getElementById('content');
+      const titleEl = document.getElementById('docTitle');
+      const viewSourceEl = document.getElementById('viewSource');
+      const searchEl = document.getElementById('search');
+
+      const docIndex = new Map();
+      let indexReady = false;
+      let indexPromise = null;
+
+      function getFeatureFromHash() {
+        var hash = String(window.location.hash || '').replace(/^#/, '');
+        if (!hash) return null;
+        var params = new URLSearchParams(hash);
+        return params.get('feature') || null;
+      }
+
+      function setHashFeature(id) {
+        var params = new URLSearchParams();
+        params.set('feature', id);
+        window.location.hash = params.toString();
+      }
+
+      function renderNav(items) {
+        navEl.innerHTML = '';
+
+        var active = getFeatureFromHash() || 'getting-started';
+        var grouped = new Map();
+        for (var i = 0; i < items.length; i++) {
+          var d = items[i];
+          var key = d.section || 'Docs';
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key).push(d);
+        }
+
+        var orderedSections = ['Getting started', 'Features', 'Reference'];
+        var sections = Array.from(grouped.keys()).sort(function(a, b) {
+          var ai = orderedSections.indexOf(a);
+          var bi = orderedSections.indexOf(b);
+          if (ai !== -1 && bi !== -1) return ai - bi;
+          if (ai !== -1) return -1;
+          if (bi !== -1) return 1;
+          return a.localeCompare(b);
         });
 
-        const DOCS = [
-          // Getting started
-          { id: 'installation', title: 'Installation', path: './installation.md', section: 'Getting started' },
-          { id: 'getting-started', title: 'Getting started', path: './getting-started.md', section: 'Getting started' },
-          { id: 'configuration', title: 'Configuration', path: './configuration.md', section: 'Getting started' },
-          { id: 'deployment', title: 'Deployment', path: './deployment.md', section: 'Getting started' },
+        for (var s = 0; s < sections.length; s++) {
+          var section = sections[s];
+          var headerLi = document.createElement('li');
+          headerLi.className = 'nav-section';
+          headerLi.textContent = section;
+          navEl.appendChild(headerLi);
 
-          // Features
-          { id: 'analytics-dashboard', title: 'Analytics dashboard', path: './features/analytics-dashboard.md', section: 'Features' },
-          { id: 'analytics-pageviews', title: 'Page views analytics', path: './features/analytics-pageviews.md', section: 'Features' },
-          { id: 'analytics-events', title: 'Events analytics', path: './features/analytics-events.md', section: 'Features' },
-          { id: 'analytics-errors', title: 'Error tracking', path: './features/analytics-errors.md', section: 'Features' },
-          { id: 'analytics-performance', title: 'Performance metrics', path: './features/analytics-performance.md', section: 'Features' },
-          { id: 'public-links', title: 'Public project links', path: './features/public-links.md', section: 'Features' },
-          { id: 'ai-analysis', title: 'AI Analysis', path: './features/ai-analysis.md', section: 'Features' },
-          { id: 'sdk-tracking', title: 'SDK tracking (timing)', path: './features/sdk-tracking.md', section: 'Features' },
-          { id: 'external-app-integration', title: 'External app integration', path: './features/external-app-integration.md', section: 'Features' },
+          var docs = grouped.get(section) || [];
+          docs.sort(function(a, b) { return a.title.localeCompare(b.title); });
 
-          // Reference
-          { id: 'saasbackend-cheatsheet', title: 'saasbackend cheatsheet', path: './saasbackend-cheatsheet.md', section: 'Reference' },
-        ];
-
-        const navEl = document.getElementById('nav');
-        const statusEl = document.getElementById('status');
-        const contentEl = document.getElementById('content');
-        const titleEl = document.getElementById('docTitle');
-        const viewSourceEl = document.getElementById('viewSource');
-        const searchEl = document.getElementById('search');
-
-        const docIndex = new Map();
-        let indexReady = false;
-        let indexPromise = null;
-
-        function getFeatureFromHash() {
-          const hash = String(window.location.hash || '').replace(/^#/, '');
-          if (!hash) return null;
-
-          const params = new URLSearchParams(hash);
-          const id = params.get('feature');
-          return id || null;
-        }
-
-        function setHashFeature(id) {
-          const params = new URLSearchParams();
-          params.set('feature', id);
-          window.location.hash = params.toString();
-        }
-
-        function renderNav(items) {
-          navEl.innerHTML = '';
-
-          const active = getFeatureFromHash() || 'getting-started';
-
-          const grouped = new Map();
-          for (const d of items) {
-            const key = d.section || 'Docs';
-            if (!grouped.has(key)) grouped.set(key, []);
-            grouped.get(key).push(d);
-          }
-
-          const orderedSections = ['Getting started', 'Features', 'Reference'];
-          const sections = Array.from(grouped.keys()).sort((a, b) => {
-            const ai = orderedSections.indexOf(a);
-            const bi = orderedSections.indexOf(b);
-            if (ai !== -1 && bi !== -1) return ai - bi;
-            if (ai !== -1) return -1;
-            if (bi !== -1) return 1;
-            return a.localeCompare(b);
-          });
-
-          for (const section of sections) {
-            const headerLi = document.createElement('li');
-            headerLi.className = 'menu-title';
-            const span = document.createElement('span');
-            span.textContent = section;
-            headerLi.appendChild(span);
-            navEl.appendChild(headerLi);
-
-            const docs = grouped.get(section) || [];
-            docs.sort((a, b) => a.title.localeCompare(b.title));
-
-            for (const d of docs) {
-              const li = document.createElement('li');
-              const a = document.createElement('a');
-              a.href = `#feature=${encodeURIComponent(d.id)}`;
-              a.textContent = d.title;
-              if (d.id === active) {
-                a.className = 'active';
-              }
-              a.addEventListener('click', (e) => {
+          for (var j = 0; j < docs.length; j++) {
+            var d = docs[j];
+            var li = document.createElement('li');
+            li.style.listStyle = 'none';
+            var a = document.createElement('a');
+            a.href = '#feature=' + encodeURIComponent(d.id);
+            a.className = 'nav-link' + (d.id === active ? ' active' : '');
+            a.textContent = d.title;
+            a.addEventListener('click', (function(feature) {
+              return function(e) {
                 e.preventDefault();
-                setHashFeature(d.id);
+                setHashFeature(feature.id);
                 loadFromHash();
-              });
-              li.appendChild(a);
-              navEl.appendChild(li);
-            }
+              };
+            })(d));
+            li.appendChild(a);
+            navEl.appendChild(li);
           }
         }
+      }
 
-        async function loadMarkdown(feature) {
-          statusEl.textContent = 'Loading...';
-          contentEl.innerHTML = '';
-          titleEl.textContent = feature.title;
-          viewSourceEl.href = feature.path;
+      async function loadMarkdown(feature) {
+        statusEl.textContent = 'Loading...';
+        contentEl.innerHTML = '';
+        titleEl.textContent = feature.title;
+        viewSourceEl.href = feature.path;
 
-          try {
-            const resp = await fetch(feature.path, { cache: 'no-store' });
-            if (!resp.ok) {
-              statusEl.textContent = `Failed to load ${feature.path}`;
-              return;
-            }
-            const md = await resp.text();
-            statusEl.textContent = '';
-            contentEl.innerHTML = marked.parse(md);
-            postProcessRenderedContent();
-          } catch (e) {
-            statusEl.textContent = 'Failed to load documentation (fetch error).';
+        try {
+          var resp = await fetch(feature.path, { cache: 'no-store' });
+          if (!resp.ok) {
+            statusEl.textContent = 'Failed to load ' + feature.path;
+            return;
           }
+          var md = await resp.text();
+          statusEl.textContent = '';
+          contentEl.innerHTML = marked.parse(md);
+          postProcessRenderedContent();
+        } catch (e) {
+          statusEl.textContent = 'Failed to load documentation (fetch error).';
         }
+      }
 
-        async function ensureIndexLoaded() {
-          if (indexReady) return;
-          if (indexPromise) return indexPromise;
+      async function ensureIndexLoaded() {
+        if (indexReady) return;
+        if (indexPromise) return indexPromise;
 
-          indexPromise = (async () => {
-            const tasks = DOCS.map(async (d) => {
+        indexPromise = (async function() {
+          var tasks = DOCS.map(function(d) {
+            return (async function() {
               try {
-                const resp = await fetch(d.path, { cache: 'no-store' });
+                var resp = await fetch(d.path, { cache: 'no-store' });
                 if (!resp.ok) {
                   docIndex.set(d.id, { title: d.title, section: d.section || 'Docs', path: d.path, body: '' });
                   return;
                 }
-                const body = await resp.text();
+                var body = await resp.text();
                 docIndex.set(d.id, { title: d.title, section: d.section || 'Docs', path: d.path, body: String(body || '') });
               } catch (e) {
                 docIndex.set(d.id, { title: d.title, section: d.section || 'Docs', path: d.path, body: '' });
               }
-            });
-
-            await Promise.all(tasks);
-            indexReady = true;
-          })();
-
-          return indexPromise;
-        }
-
-        function postProcessRenderedContent() {
-          // External links: open in new tab + safe rel.
-          const links = contentEl.querySelectorAll('a[href]');
-          for (const a of links) {
-            const href = a.getAttribute('href');
-            if (!href) continue;
-
-            // Keep same-page anchors and relative links as-is.
-            const isAnchor = href.startsWith('#');
-            const isRelative = href.startsWith('./') || href.startsWith('../') || href.startsWith('/');
-            if (isAnchor || isRelative) continue;
-
-            a.setAttribute('target', '_blank');
-            a.setAttribute('rel', 'noreferrer noopener');
-          }
-
-          // Add hoverable anchor links to headings that have ids.
-          const headings = contentEl.querySelectorAll('h1[id], h2[id], h3[id], h4[id]');
-          for (const h of headings) {
-            // Avoid duplicate anchors if re-rendered.
-            if (h.querySelector('.heading-anchor')) continue;
-
-            const id = h.getAttribute('id');
-            if (!id) continue;
-
-            const anchor = document.createElement('a');
-            anchor.className = 'heading-anchor';
-            anchor.href = `#${encodeURIComponent(id)}`;
-            anchor.textContent = '#';
-            h.appendChild(anchor);
-          }
-        }
-
-        function loadFromHash() {
-          const id = getFeatureFromHash() || 'getting-started';
-          const feature = DOCS.find((f) => f.id === id) || DOCS[0];
-
-          // keep nav active state updated
-          renderNav(filterFeatures(searchEl.value));
-          loadMarkdown(feature);
-        }
-
-        function filterFeatures(query) {
-          const q = (query || '').trim().toLowerCase();
-          if (!q) return DOCS;
-
-          const out = [];
-          for (const d of DOCS) {
-            const idx = docIndex.get(d.id);
-            const body = idx && idx.body ? idx.body : '';
-            const haystack = `${d.title}\n${d.id}\n${body}`.toLowerCase();
-            if (haystack.includes(q)) out.push(d);
-          }
-          return out;
-        }
-
-        searchEl.addEventListener('input', async () => {
-          await ensureIndexLoaded();
-          const items = filterFeatures(searchEl.value);
-          renderNav(items);
-          statusEl.textContent = searchEl.value.trim() ? `Matches: ${items.length}` : '';
-        });
-
-        window.addEventListener('hashchange', () => {
-          loadFromHash();
-        });
-
-        (async () => {
-          await ensureIndexLoaded();
-          renderNav(DOCS);
-          loadFromHash();
+            })();
+          });
+          await Promise.all(tasks);
+          indexReady = true;
         })();
+
+        return indexPromise;
+      }
+
+      function postProcessRenderedContent() {
+        var links = contentEl.querySelectorAll('a[href]');
+        for (var i = 0; i < links.length; i++) {
+          var a = links[i];
+          var href = a.getAttribute('href');
+          if (!href) continue;
+          var isAnchor = href.startsWith('#');
+          var isRelative = href.startsWith('./') || href.startsWith('../') || href.startsWith('/');
+          if (isAnchor || isRelative) continue;
+          a.setAttribute('target', '_blank');
+          a.setAttribute('rel', 'noreferrer noopener');
+        }
+
+        var headings = contentEl.querySelectorAll('h1[id], h2[id], h3[id], h4[id]');
+        for (var j = 0; j < headings.length; j++) {
+          var h = headings[j];
+          if (h.querySelector('.heading-anchor')) continue;
+          var id = h.getAttribute('id');
+          if (!id) continue;
+          var anchor = document.createElement('a');
+          anchor.className = 'heading-anchor';
+          anchor.href = '#' + encodeURIComponent(id);
+          anchor.textContent = '#';
+          h.appendChild(anchor);
+        }
+      }
+
+      function loadFromHash() {
+        var id = getFeatureFromHash() || 'getting-started';
+        var feature = DOCS.find(function(f) { return f.id === id; }) || DOCS[0];
+        renderNav(filterFeatures(searchEl.value));
+        loadMarkdown(feature);
+      }
+
+      function filterFeatures(query) {
+        var q = (query || '').trim().toLowerCase();
+        if (!q) return DOCS;
+
+        var out = [];
+        for (var i = 0; i < DOCS.length; i++) {
+          var d = DOCS[i];
+          var idx = docIndex.get(d.id);
+          var body = idx && idx.body ? idx.body : '';
+          var haystack = (d.title + '\n' + d.id + '\n' + body).toLowerCase();
+          if (haystack.includes(q)) out.push(d);
+        }
+        return out;
+      }
+
+      searchEl.addEventListener('input', async function() {
+        await ensureIndexLoaded();
+        var items = filterFeatures(searchEl.value);
+        renderNav(items);
+        statusEl.textContent = searchEl.value.trim() ? 'Matches: ' + items.length : '';
+      });
+
+      window.addEventListener('hashchange', function() { loadFromHash(); });
+
+      (async function() {
+        await ensureIndexLoaded();
+        renderNav(DOCS);
+        loadFromHash();
       })();
-    </script>
-  </body>
+    })();
+  </script>
+</body>
 </html>
