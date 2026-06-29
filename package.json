@@ -32,8 +32,5 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
-  },
-  "optionalDependencies": {
-    "geoip-lite": "^1.2.0"
   }
 }

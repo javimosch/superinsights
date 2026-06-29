@@ -1,23 +1,18 @@
 /**
  * IP Capture & Geolocation utility
  *
- * Captures the client IP from the HTTP request and optionally resolves
- * it to a country code using the bundled geoip-lite database.
+ * Captures the client IP from the HTTP request and resolves
+ * it to a country code using the free RIR delegated stats
+ * (no license key required, updated daily).
  *
  * Usage:
- *   const { captureIp, getCountry } = require('./utils/ipCapture');
+ *   const { captureIp } = require('./utils/ipCapture');
  *   const ipInfo = captureIp(req);
- *   // { ip: '1.2.3.4', country: 'US' }  — country is null if geoip disabled or not found
+ *   // { ip: '1.2.3.4', country: 'US' }
  */
 
-let geoip = null;
-try {
-  geoip = require('geoip-lite');
-} catch {
-  // geoip-lite not installed — country resolution will be unavailable
-}
-
-const GEOIP_ENABLED = !!(geoip && process.env.GEOIP_ENABLED !== 'false');
+const countryLookup = require('./countryLookup');
+const COUNTRY_LOOKUP_ENABLED = process.env.COUNTRY_LOOKUP_ENABLED !== 'false';
 
 /**
  * Extract the client IP from an Express request object.
@@ -47,30 +42,51 @@ function extractIp(req) {
 
 /**
  * Resolve an IP address to a 2-letter ISO country code.
+ * Uses the free RIR delegated stats — no license key required.
  *
  * @param {string} ip
  * @returns {string|null}
  */
 function ipToCountry(ip) {
-  if (!ip || !GEOIP_ENABLED) return null;
+  if (!ip || !COUNTRY_LOOKUP_ENABLED) return null;
   try {
-    const lookedUp = geoip.lookup(ip);
-    return (lookedUp && lookedUp.country) || null;
+    return countryLookup.lookup(ip);
   } catch {
     return null;
   }
 }
 
+let initPromise = null;
+
+/**
+ * Initialise the country lookup database.
+ * Idempotent — safe to call multiple times.
+ * The first call to captureIp() also triggers this automatically.
+ */
+function init() {
+  if (!initPromise) {
+    initPromise = countryLookup.init().catch(err => {
+      console.warn('[ipCapture] Country lookup init failed:', err.message);
+      initPromise = null; // allow retry
+    });
+  }
+  return initPromise;
+}
+
 /**
  * Capture IP information for an incoming request.
+ * Triggers lazy initialisation of country data on first call.
  *
  * @param {import('express').Request} req
  * @returns {{ ip: string|null, country: string|null }}
  */
 function captureIp(req) {
+  // Fire-and-forget init on first call (subsequent calls are no-ops)
+  if (!initPromise) init();
+
   const ip = extractIp(req);
   const country = ipToCountry(ip);
   return { ip, country };
 }
 
-module.exports = { captureIp, extractIp, ipToCountry };
+module.exports = { captureIp, extractIp, ipToCountry, init };
