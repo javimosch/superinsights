@@ -3,6 +3,7 @@ const PageView = require('../models/PageView');
 const Event = require('../models/Event');
 const ErrorModel = require('../models/Error');
 const PerformanceMetric = require('../models/PerformanceMetric');
+const { captureIp } = require('../utils/ipCapture');
 const {
   getDropEventsConfig,
   shouldDropEventItem,
@@ -97,6 +98,8 @@ async function postPageViews(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
+    const ipInfo = captureIp(req);
+
     docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
@@ -121,6 +124,8 @@ async function postPageViews(req, res, next) {
         deviceType: item.deviceType,
         browser: item.browser,
         os: item.os,
+        ip: ipInfo.ip,
+        country: ipInfo.country,
         timestamp: parseTimestamp(item.timestamp),
       };
     });
@@ -173,6 +178,8 @@ async function postEvents(req, res, next) {
       return res.status(201).json({ success: true, count: 0, dropped: droppedCount });
     }
 
+    const ipInfo = captureIp(req);
+
     docs = keptItems.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
@@ -196,6 +203,8 @@ async function postEvents(req, res, next) {
         durationMs: item.durationMs,
         sessionId: item.sessionId,
         clientId: item.clientId || (item.properties && (item.properties.client_id || item.properties.clientId)) || undefined,
+        ip: ipInfo.ip,
+        country: ipInfo.country,
         timestamp: parseTimestamp(item.timestamp),
       };
     });
@@ -227,6 +236,8 @@ async function postErrors(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
+    const ipInfo = captureIp(req);
+
     docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
@@ -250,6 +261,8 @@ async function postErrors(req, res, next) {
         osVersion: item.osVersion,
         deviceType: item.deviceType,
         context: item.context,
+        ip: ipInfo.ip,
+        country: ipInfo.country,
         timestamp: parseTimestamp(item.timestamp),
       });
 
@@ -285,6 +298,8 @@ async function postPerformanceMetrics(req, res, next) {
       return res.status(400).json({ error: 'Validation failed', details: validationError.error });
     }
 
+    const ipInfo = captureIp(req);
+
     docs = items.map((item) => {
       if (!item || typeof item !== 'object') {
         throw new Error('Each item must be an object');
@@ -313,6 +328,8 @@ async function postPerformanceMetrics(req, res, next) {
         browser: item.browser,
         connectionType: item.connectionType,
         properties: item.properties || {},
+        ip: ipInfo.ip,
+        country: ipInfo.country,
         timestamp: parseTimestamp(item.timestamp),
       };
     });

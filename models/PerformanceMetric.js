@@ -44,6 +44,12 @@ const PerformanceMetricSchema = new mongoose.Schema(
     properties: {
       type: mongoose.Schema.Types.Mixed,
     },
+    ip: {
+      type: String,
+    },
+    country: {
+      type: String,
+    },
     timestamp: {
       type: Date,
       required: true,

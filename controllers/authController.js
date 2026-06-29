@@ -10,6 +10,10 @@ function normalizeEmail(email) {
 }
 
 exports.getRegister = (req, res) => {
+  if (process.env.REGISTRATION_ENABLED === 'false') {
+    return res.redirect('/auth/login');
+  }
+
   if (req.session.user) {
     return res.redirect('/');
   }
@@ -23,6 +27,10 @@ exports.getRegister = (req, res) => {
 
 exports.postRegister = async (req, res, next) => {
   try {
+    if (process.env.REGISTRATION_ENABLED === 'false') {
+      return res.status(403).send('Registration is disabled');
+    }
+
     const email = normalizeEmail(req.body.email);
     const password = req.body.password || '';
 

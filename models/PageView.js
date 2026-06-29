@@ -51,6 +51,12 @@ const PageViewSchema = new mongoose.Schema(
     os: {
       type: String,
     },
+    ip: {
+      type: String,
+    },
+    country: {
+      type: String,
+    },
     timestamp: {
       type: Date,
       required: true,

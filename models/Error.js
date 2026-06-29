@@ -52,6 +52,12 @@ const ErrorSchema = new mongoose.Schema(
     context: {
       type: mongoose.Schema.Types.Mixed,
     },
+    ip: {
+      type: String,
+    },
+    country: {
+      type: String,
+    },
     timestamp: {
       type: Date,
       required: true,

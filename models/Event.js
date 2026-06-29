@@ -28,6 +28,12 @@ const EventSchema = new mongoose.Schema(
       type: String,
       index: true,
     },
+    ip: {
+      type: String,
+    },
+    country: {
+      type: String,
+    },
     timestamp: {
       type: Date,
       required: true,
