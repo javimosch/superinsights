@@ -12,7 +12,7 @@ Example:
 
 - `/v1/events` -> `/superinsights/v1/events`
 
-Note: this repo mounts `saasbackend` internally at `/saas` (see `app.js`). That is separate from any reverse-proxy base path.
+Note: this repo mounts `@intranefr/superbackend` internally at `/saas` (see `app.js`). That is separate from any reverse-proxy base path.
 
 ## Configuration
 

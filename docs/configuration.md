@@ -4,15 +4,15 @@
 
 This document lists the main runtime configuration for SuperInsights.
 
-## SuperInsights vs saasbackend
+## SuperInsights vs @intranefr/superbackend
 
 SuperInsights is a standalone Express app.
 
-It depends on `saasbackend` for org/users/invites/billing-style primitives, and mounts it internally at:
+It depends on `@intranefr/superbackend` for org/users/invites/billing-style primitives, and mounts it internally at:
 
 - `GET/POST ... /saas/*`
 
-Developers integrating SuperInsights typically do **not** call `saasbackend` directly and do **not** need to change this mount.
+Developers integrating SuperInsights typically do **not** call `@intranefr/superbackend` directly and do **not** need to change this mount.
 
 SuperInsights is **not** packaged as “middleware you mount into your own Express app”. You deploy the SuperInsights server.
 

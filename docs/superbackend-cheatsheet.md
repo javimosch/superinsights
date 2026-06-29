@@ -1,18 +1,18 @@
-## SaasBackend Cheatsheet (LLM-friendly)
+## superbackend Cheatsheet (LLM-friendly)
 
-This file is a compact, current snapshot of how to integrate and use `saasbackend`.
+This file is a compact, current snapshot of how to integrate and use `superbackend`.
 
 Only the sections above the "Legacy appendix" are intended to be used by LLMs.
 
 ## Install
 
 ```bash
-npm i saasbackend
+npm i @intranefr/superbackend
 ```
 
 ## Mounting / base URL
 
-If you mount SaasBackend under a prefix (recommended), every route is prefixed.
+If you mount superbackend under a prefix (recommended), every route is prefixed.
 
 Example: mount under `/saas` → `/saas/api/...`, `/saas/admin/...`, `/saas/public/...`.
 
@@ -21,7 +21,7 @@ Example: mount under `/saas` → `/saas/api/...`, `/saas/admin/...`, `/saas/publ
 ```js
 require('dotenv').config();
 const express = require('express');
-const { middleware } = require('saasbackend');
+const { middleware } = require('@intranefr/superbackend');
 
 const app = express();
 
@@ -48,7 +48,7 @@ curl http://localhost:3000/saas/health
 ## Required env (minimum)
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/saasbackend
+MONGODB_URI=mongodb://localhost:27017/superbackend
 JWT_ACCESS_SECRET=replace-me
 JWT_REFRESH_SECRET=replace-me
 ADMIN_USERNAME=admin
@@ -64,7 +64,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 PUBLIC_URL=http://localhost:3000
 BILLING_RETURN_URL_RELATIVE=/dashboard
 RESEND_API_KEY=...
-SAASBACKEND_ENCRYPTION_KEY=... # if you use encrypted global settings
+superbackend_ENCRYPTION_KEY=... # if you use encrypted global settings
 ```
 
 ## Auth headers
@@ -76,7 +76,7 @@ SAASBACKEND_ENCRYPTION_KEY=... # if you use encrypted global settings
 
 All routes below are shown **without** the mount prefix.
 
-If you mount SaasBackend under `/saas`, then `GET /admin/test` becomes `GET /saas/admin/test`, and `POST /api/auth/login` becomes `POST /saas/api/auth/login`.
+If you mount superbackend under `/saas`, then `GET /admin/test` becomes `GET /saas/admin/test`, and `POST /api/auth/login` becomes `POST /saas/api/auth/login`.
 
 Health:
 
@@ -164,7 +164,7 @@ Use exposed services and models for programmatic access in your app:
 
 ### Services
 
-Access via `saasbackend.services.<name>`:
+Access via `superbackend.services.<name>`:
 
 - **`assets`** – `getAssetById()`, `getAssetByKey()`, `listAssets()`, `getAssetBytesById()`, `getAssetBytesByKey()`
 - **`audit`** – Audit logging functions
@@ -177,18 +177,18 @@ Access via `saasbackend.services.<name>`:
 Example:
 
 ```javascript
-const saasbackend = require('saasbackend');
+const superbackend = require('@intranefr/superbackend');
 
-app.use(saasbackend.middleware({ mongodbUri: process.env.MONGODB_URI }));
+app.use(superbackend.middleware({ mongodbUri: process.env.MONGODB_URI }));
 
 // Later in your route or service:
-const asset = await saasbackend.services.assets.getAssetById(assetId);
-const setting = await saasbackend.services.globalSettings.getSettingValue('key');
+const asset = await superbackend.services.assets.getAssetById(assetId);
+const setting = await superbackend.services.globalSettings.getSettingValue('key');
 ```
 
 ### Models
 
-Access via `saasbackend.models.<name>`:
+Access via `superbackend.models.<name>`:
 
 All MongoDB models are exposed:
 
@@ -206,7 +206,7 @@ All MongoDB models are exposed:
 Example:
 
 ```javascript
-const { User, Asset, Organization } = saasbackend.models;
+const { User, Asset, Organization } = superbackend.models;
 
 // Query directly
 const users = await User.find({ email: 'test@example.com' });

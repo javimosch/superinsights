@@ -4,11 +4,11 @@
 
 This is the minimum setup to run the SuperInsights server (Express + MongoDB) and serve the browser SDK (`/sdk/superinsights.js`).
 
-## SuperInsights vs saasbackend
+## SuperInsights vs @intranefr/superbackend
 
 SuperInsights is a standalone Express app.
 
-This repo mounts `saasbackend` internally at `/saas` (see `app.js`). You normally do not need to change this.
+This repo mounts `@intranefr/superbackend` internally at `/saas` (see `app.js`). You normally do not need to change this.
 
 ## Deployment base path (reverse proxy)
 
