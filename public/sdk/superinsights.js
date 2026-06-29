@@ -1046,9 +1046,24 @@
         if (txt.length > maxTextLen) txt = txt.substring(0, maxTextLen) + '...';
         context.text = txt;
 
-        // href for anchors
-        if (context.tag === 'a' && el.href) {
-          context.href = el.href;
+        // href for anchors (always captured — generic text needs href to identify)
+        if (context.tag === 'a') {
+          context.href = el.href || el.getAttribute('href') || '';
+        }
+
+        // capture all data-* attributes as a flat object
+        if (el.dataset) {
+          var data = {};
+          var keys = Object.keys(el.dataset);
+          if (keys.length) {
+            for (var d = 0; d < keys.length; d++) {
+              var val = el.dataset[keys[d]];
+              if (val !== undefined && val !== null && val !== '') {
+                data[keys[d]] = val;
+              }
+            }
+            context.data = data;
+          }
         }
 
         // naive selector: tag#id.class or tag:nth-child
