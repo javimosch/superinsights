@@ -1,139 +1,460 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SuperInsights</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css"
-    />
-  </head>
-  <body class="min-h-screen bg-base-200">
-    <div class="navbar bg-base-100 shadow">
-      <div class="navbar-start">
-        <a class="btn btn-ghost text-xl" href="./index.html">SuperInsights</a>
-      </div>
-      <div class="navbar-end gap-2">
-        <a class="btn btn-ghost" href="./documentation.html">Docs</a>
-        <a class="btn btn-ghost" href="./changelog.html">Changelog</a>
-        <a class="btn btn-primary" href="./documentation.html#feature=getting-started">Get started</a>
-      </div>
-    </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperInsights — Self-hosted product analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['Clash Display', 'Geist', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+          },
+        },
+      },
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@200,300,400,500,600,700&display=swap" rel="stylesheet" />
+  <style>
+    ::selection { background: rgba(99,102,241,0.25); }
+    .reveal { opacity: 0; transform: translateY(32px) scale(0.98); transition: all 0.9s cubic-bezier(0.32,0.72,0,1); will-change: transform, opacity; }
+    .reveal.visible { opacity: 1; transform: translateY(0) scale(1); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+    .reveal-delay-5 { transition-delay: 0.5s; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.8; }
+    }
+    @keyframes grain {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5%, -5%); }
+      20% { transform: translate(-10%, 5%); }
+      30% { transform: translate(5%, -10%); }
+      40% { transform: translate(-5%, 15%); }
+      50% { transform: translate(-10%, 10%); }
+      60% { transform: translate(15%, 0); }
+      70% { transform: translate(0, 10%); }
+      80% { transform: translate(-15%, 0); }
+      90% { transform: translate(10%, 5%); }
+    }
+    .grain-overlay::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      animation: grain 0.5s steps(6) infinite;
+    }
+    .fluid-island {
+      position: fixed;
+      top: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      background: rgba(5,5,5,0.75);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 9999px;
+      padding: 0.5rem 1rem;
+      transition: all 0.6s cubic-bezier(0.32,0.72,0,1);
+    }
+    .fluid-island:hover {
+      border-color: rgba(255,255,255,0.15);
+      background: rgba(5,5,5,0.85);
+    }
+    .double-bezel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 2rem;
+      padding: 1.5px;
+      transition: all 0.6s cubic-bezier(0.32,0.72,0,1);
+    }
+    .double-bezel:hover {
+      border-color: rgba(255,255,255,0.12);
+      transform: translateY(-2px);
+    }
+    .double-bezel-inner {
+      background: rgba(10,10,12,0.9);
+      border-radius: calc(2rem - 1.5px);
+      padding: 1.75rem;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.06);
+      height: 100%;
+    }
+    .btn-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: all 0.4s cubic-bezier(0.32,0.72,0,1);
+      cursor: pointer;
+    }
+    .btn-premium:active {
+      transform: scale(0.97);
+    }
+    .btn-premium-primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.25);
+    }
+    .btn-premium-primary:hover {
+      box-shadow: 0 8px 30px rgba(99,102,241,0.4);
+      transform: translateY(-1px);
+    }
+    .btn-premium-ghost {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-premium-ghost:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    .icon-wrapper {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 9999px;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.4s cubic-bezier(0.32,0.72,0,1);
+    }
+    .group:hover .icon-wrapper {
+      transform: translateX(2px) translateY(-1px) scale(1.05);
+      background: rgba(255,255,255,0.12);
+    }
+    @media (max-width: 768px) {
+      .fluid-island { width: calc(100% - 2rem); border-radius: 9999px; }
+      .double-bezel { border-radius: 1.5rem; }
+      .double-bezel-inner { border-radius: calc(1.5rem - 1.5px); padding: 1.25rem; }
+    }
+  </style>
+</head>
+<body class="bg-[#050505] text-white font-sans grain-overlay">
+  <div class="relative overflow-hidden">
+    <!-- Background glow orbs -->
+    <div class="fixed inset-0 pointer-events-none z-0" style="background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.12), transparent), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(139,92,246,0.06), transparent), radial-gradient(ellipse 30% 30% at 20% 60%, rgba(99,102,241,0.04), transparent);"></div>
 
-    <main class="container mx-auto p-6 space-y-10">
-      <section class="grid gap-6 lg:grid-cols-12">
-        <div class="lg:col-span-7 space-y-4">
-          <div class="space-y-2">
-            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Product analytics you can host.</h1>
-            <p class="text-base-content/70 text-lg max-w-2xl">
-              SuperInsights is an open-source analytics server + browser SDK. Track pageviews, events, errors, and performance.
-              Add AI analysis on top of your own data.
+    <!-- Fluid Island Nav -->
+    <nav class="fluid-island" role="navigation">
+      <div class="flex items-center justify-between gap-6">
+        <a href="./index.html" class="flex items-center gap-2 font-semibold text-sm tracking-tight">
+          <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold">SI</span>
+          <span class="hidden sm:inline">SuperInsights</span>
+        </a>
+        <div class="flex items-center gap-3">
+          <a href="./documentation.html" class="text-xs text-white/50 hover:text-white/90 transition-colors duration-300">Docs</a>
+          <a href="./changelog.html" class="text-xs text-white/50 hover:text-white/90 transition-colors duration-300">Changelog</a>
+          <a href="https://github.com/javimosch/superinsights" target="_blank" class="flex items-center gap-1.5 text-xs text-white/50 hover:text-white/90 transition-colors duration-300">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="relative z-10 pt-28 pb-16 md:pb-24">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <div class="flex flex-col items-center text-center">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] mb-6 reveal visible">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">Self-hosted · Open source</span>
+          </div>
+          <h1 class="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[0.9] reveal visible">
+            <span class="text-white">Product analytics<br/></span>
+            <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-fuchsia-400 bg-clip-text text-transparent">you can host.</span>
+          </h1>
+          <p class="max-w-2xl mt-6 text-lg md:text-xl text-white/40 leading-relaxed reveal reveal-delay-1 visible">
+            Track pageviews, events, errors, and performance with a lightweight browser SDK.
+            Autocapture, IP geolocation (no license key needed), and AI analysis — all on your own MongoDB.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3 mt-8 reveal reveal-delay-2 visible">
+            <a href="./documentation.html#feature=getting-started" class="btn-premium btn-premium-primary group">
+              <span>Get started</span>
+              <span class="icon-wrapper"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg></span>
+            </a>
+            <a href="./changelog.html" class="btn-premium btn-premium-ghost group">
+              <span>What's new</span>
+              <span class="icon-wrapper"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-16 max-w-3xl mx-auto reveal reveal-delay-3 visible">
+          <div class="double-bezel">
+            <div class="double-bezel-inner flex flex-col items-center justify-center text-center py-4">
+              <div class="text-2xl md:text-3xl font-bold text-indigo-400">7</div>
+              <div class="text-[10px] uppercase tracking-[0.15em] text-white/30 mt-1">Data types</div>
+            </div>
+          </div>
+          <div class="double-bezel">
+            <div class="double-bezel-inner flex flex-col items-center justify-center text-center py-4">
+              <div class="text-2xl md:text-3xl font-bold text-purple-400">4</div>
+              <div class="text-[10px] uppercase tracking-[0.15em] text-white/30 mt-1">Ingestion paths</div>
+            </div>
+          </div>
+          <div class="double-bezel">
+            <div class="double-bezel-inner flex flex-col items-center justify-center text-center py-4">
+              <div class="text-2xl md:text-3xl font-bold text-emerald-400">0</div>
+              <div class="text-[10px] uppercase tracking-[0.15em] text-white/30 mt-1">License cost</div>
+            </div>
+          </div>
+          <div class="double-bezel">
+            <div class="double-bezel-inner flex flex-col items-center justify-center text-center py-4">
+              <div class="text-2xl md:text-3xl font-bold text-amber-400">1</div>
+              <div class="text-[10px] uppercase tracking-[0.15em] text-white/30 mt-1">Dependency</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features section -->
+    <section class="relative z-10 py-16 md:py-20">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <div class="text-center mb-12 reveal">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] mb-4">
+            <span class="text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">Everything you need</span>
+          </div>
+          <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight">Analytics that <span class="text-indigo-400">work</span> without a cloud bill.</h2>
+        </div>
+
+        <!-- Asymmetrical Bento Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
+          <!-- Card 1: Capture — spans 6 cols -->
+          <div class="md:col-span-6 reveal reveal-delay-1">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">Capture everything</h3>
+                <p class="text-sm text-white/40 leading-relaxed mb-4">
+                  Pageviews, custom events, JS errors, and Web Vitals — all through a <strong class="text-white/70">~6KB browser SDK</strong>.
+                </p>
+                <div class="flex flex-wrap gap-2 mt-auto">
+                  <span class="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] uppercase tracking-wider text-white/40">Autocapture</span>
+                  <span class="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] uppercase tracking-wider text-white/40">IP Geolocation</span>
+                  <span class="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] uppercase tracking-wider text-white/40">Web Vitals</span>
+                  <span class="px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[10px] uppercase tracking-wider text-white/40">$click events</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: How it works — spans 3 cols -->
+          <div class="md:col-span-3 reveal reveal-delay-2">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">No license key</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  Country resolution from free RIR delegated stats. Updated daily, zero cost, zero vendor lock-in.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: SDK — spans 3 cols -->
+          <div class="md:col-span-3 reveal reveal-delay-3">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">Browser SDK</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  Drop a <code class="text-purple-300/80 bg-purple-500/10 px-1 rounded">&lt;script&gt;</code> tag. <code>init()</code>. Zero config autocapture.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Transport — spans 4 cols -->
+          <div class="md:col-span-4 reveal reveal-delay-4">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">Flexible transport</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  HTTP batch, Beacon API, or WebSocket. Queue on failure, retry with backoff — your data arrives.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5: Reports — spans 4 cols -->
+          <div class="md:col-span-4 reveal reveal-delay-5">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">Reports & AI analysis</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  Generate reports, filter by event type, query with AI presets over your aggregated data.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6: Operate — spans 4 cols -->
+          <div class="md:col-span-4 reveal reveal-delay-1">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner flex flex-col">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4">
+                  <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+                </div>
+                <h3 class="text-xl font-semibold mb-3">Operate</h3>
+                <p class="text-sm text-white/40 leading-relaxed">
+                  Docker Compose, MongoDB, built-in UI. Projects, API keys, public links — managed via dashboard.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Technical highlights section -->
+    <section class="relative z-10 py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <div class="text-center mb-12 reveal">
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] mb-4">
+            <span class="text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">Under the hood</span>
+          </div>
+          <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight">Built for <span class="text-indigo-400">production</span>.</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="reveal reveal-delay-1">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner">
+                <div class="text-3xl mb-2">⚡</div>
+                <h3 class="text-base font-semibold mb-2">Resilient ingestion</h3>
+                <ul class="text-xs text-white/40 space-y-1.5 leading-relaxed">
+                  <li>• Spools to disk on DB outage</li>
+                  <li>• Retry with exponential backoff</li>
+                  <li>• CORS whitelist + rate limits</li>
+                  <li>• Graceful shutdown</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="reveal reveal-delay-2">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner">
+                <div class="text-3xl mb-2">🔒</div>
+                <h3 class="text-base font-semibold mb-2">Security built-in</h3>
+                <ul class="text-xs text-white/40 space-y-1.5 leading-relaxed">
+                  <li>• .dockerignore — secrets out of build</li>
+                  <li>• Register-disabled mode</li>
+                  <li>• API key authentication</li>
+                  <li>• Fingerprinted error dedup</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="reveal reveal-delay-3">
+            <div class="double-bezel h-full">
+              <div class="double-bezel-inner">
+                <div class="text-3xl mb-2">📡</div>
+                <h3 class="text-base font-semibold mb-2">Zero-cost IP geolocation</h3>
+                <ul class="text-xs text-white/40 space-y-1.5 leading-relaxed">
+                  <li>• DIY lookup from 5 RIR registries</li>
+                  <li>• 260k+ IP ranges, full IPv4 coverage</li>
+                  <li>• Auto-updates daily via RIR data</li>
+                  <li>• No MaxMind license ($374/yr saved)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="relative z-10 py-20">
+      <div class="max-w-3xl mx-auto px-4 md:px-6 text-center reveal">
+        <div class="double-bezel" style="background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.04)); border-color: rgba(99,102,241,0.15);">
+          <div class="double-bezel-inner py-10 md:py-14" style="background: rgba(5,5,5,0.95);">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] mb-5">
+              <span class="text-[10px] uppercase tracking-[0.2em] font-medium text-white/40">Ready to go</span>
+            </div>
+            <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-4">Start capturing in <span class="text-indigo-400">5 minutes</span>.</h2>
+            <p class="text-white/40 text-base max-w-lg mx-auto mb-8 leading-relaxed">
+              Docker Compose up, create a project, drop the SDK script tag. Your data, your MongoDB, your infrastructure.
             </p>
-          </div>
-
-          <div class="flex flex-wrap gap-2">
-            <div class="badge badge-outline">Self-hosted</div>
-            <div class="badge badge-outline">Browser SDK</div>
-            <div class="badge badge-outline">MongoDB</div>
-            <div class="badge badge-outline">AI analysis</div>
-          </div>
-
-          <div class="flex flex-wrap gap-3 pt-2">
-            <a class="btn btn-primary" href="./documentation.html#feature=getting-started">Get started</a>
-            <a class="btn btn-outline" href="./documentation.html">Browse documentation</a>
-            <a class="btn btn-ghost" href="./documentation.html#feature=external-app-integration">SDK integration</a>
-          </div>
-
-          <div class="alert bg-base-100 border border-base-300">
-            <div class="text-sm text-base-content/80">
-              Want a hosted version? The documentation is written to work for self-hosting now, with a clear path to a future
-              cloud offering.
+            <div class="flex flex-wrap items-center justify-center gap-3">
+              <a href="./documentation.html#feature=installation" class="btn-premium btn-premium-primary group">
+                <span>Deploy now</span>
+                <span class="icon-wrapper"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></span>
+              </a>
+              <a href="./documentation.html" class="btn-premium btn-premium-ghost group">
+                <span>Browse docs</span>
+                <span class="icon-wrapper"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></span>
+              </a>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <div class="lg:col-span-5">
-          <div class="card bg-base-100 shadow">
-            <div class="card-body">
-              <h2 class="card-title">Quick links</h2>
-              <div class="grid gap-2">
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=installation">Installation</a>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=getting-started">Getting started</a>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=configuration">Configuration</a>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=deployment">Deployment</a>
-                <div class="divider my-2"></div>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=ai-analysis">AI Analysis</a>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=sdk-tracking">SDK tracking (timing)</a>
-                <a class="btn btn-sm btn-outline justify-start" href="./documentation.html#feature=public-links">Public project links</a>
-              </div>
-            </div>
+    <!-- Footer -->
+    <footer class="relative z-10 py-12 border-t border-white/[0.04]">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/20">
+          <p>SuperInsights — Self-hosted product analytics. MIT license.</p>
+          <div class="flex items-center gap-4">
+            <a href="https://github.com/javimosch/superinsights" class="hover:text-white/50 transition-colors">GitHub</a>
+            <a href="./documentation.html" class="hover:text-white/50 transition-colors">Docs</a>
+            <a href="./changelog.html" class="hover:text-white/50 transition-colors">Changelog</a>
+            <span>Built by <a href="https://github.com/javimosch" class="hover:text-white/50 transition-colors">@javimosch</a></span>
           </div>
         </div>
-      </section>
+      </div>
+    </footer>
+  </div>
 
-      <section class="grid gap-4 md:grid-cols-3">
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h3 class="card-title">Capture</h3>
-            <div class="text-sm text-base-content/75">
-              Pageviews, events, JS errors, and performance metrics via a lightweight browser SDK.
-              <strong>Autocapture</strong> — opt-in DOM click tracking with configurable selectors.
-              <strong>IP + geolocation</strong> — country resolution from free RIR data, no license key needed.
-            </div>
-            <div class="card-actions justify-end">
-              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=analytics-dashboard">View analytics</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h3 class="card-title">Analyze</h3>
-            <div class="text-sm text-base-content/75">
-              AI analysis runs over aggregated project data. Presets help focus the analysis and improve repeatability.
-            </div>
-            <div class="card-actions justify-end">
-              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=ai-analysis">AI Analysis docs</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h3 class="card-title">Operate</h3>
-            <div class="text-sm text-base-content/75">
-              Deploy with Docker. Projects and public links are managed in the built-in UI.
-            </div>
-            <div class="card-actions justify-end">
-              <a class="btn btn-sm btn-ghost" href="./documentation.html#feature=deployment">Deployment docs</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card bg-base-100 shadow">
-        <div class="card-body">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 class="text-2xl font-bold">Cloud (future)</h2>
-              <div class="text-sm text-base-content/75 max-w-2xl">
-                A hosted version could provide managed storage, org billing, and shared dashboards.
-                The self-hosted docs remain the source of truth.
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <a class="btn btn-outline" href="./documentation.html#feature=configuration">Config reference</a>
-              <a class="btn btn-primary" href="./documentation.html">Explore docs</a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer class="text-xs text-base-content/60">
-        Built for GitHub Pages. Docs are rendered from Markdown.
-      </footer>
-    </main>
-  </body>
+  <!-- Scroll reveal -->
+  <script>
+    (function() {
+      if (!window.IntersectionObserver) return;
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('visible');
+          }
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -60px 0px' });
+      document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
+    })();
+  </script>
+</body>
 </html>
