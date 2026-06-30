@@ -1,0 +1,5 @@
+/si
+si-linux-amd64
+si-darwin-amd64
+si-darwin-arm64
+*.exe
