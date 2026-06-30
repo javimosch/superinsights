@@ -182,6 +182,17 @@ exports.getErrorsAnalytics = async (req, res, next) => {
 
     const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
+    // Return JSON for API clients (e.g., si CLI)
+    if (req.accepts && !req.accepts('html') && req.accepts('json')) {
+      return res.json({
+        timeframe,
+        totalErrors: totalErrors || 0,
+        groupedErrors: groupedErrors || [],
+        uniqueFingerprints: uniqueFingerprints || 0,
+        errorsByDay: errorsByDay || [],
+      });
+    }
+
     return res.render('analytics/errors', {
       title: 'Errors',
       project: req.project,

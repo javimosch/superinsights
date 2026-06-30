@@ -27,7 +27,7 @@ func NewAPIClient(baseURL, projectID, token string) *APIClient {
 }
 
 func (c *APIClient) get(path string, v interface{}) error {
-	url := fmt.Sprintf("%s/api/public/%s/%s%s", c.BaseURL, c.ProjectID, c.Token, path)
+	url := fmt.Sprintf("%s/p/%s/%s%s", c.BaseURL, c.ProjectID, c.Token, path)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -38,6 +38,9 @@ func (c *APIClient) get(path string, v interface{}) error {
 			Recoverable: false,
 		}
 	}
+
+	// Tell the server we want JSON
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -99,38 +102,19 @@ func (c *APIClient) get(path string, v interface{}) error {
 		}
 	}
 
+	// The /dashboard/data endpoint wraps in {success, data}
+	// while events/pageviews/errors return direct JSON
+	// Try wrapped format first, fall back to direct
 	var wrapper struct {
 		Success bool            `json:"success"`
 		Data    json.RawMessage `json:"data"`
 		Error   string          `json:"error,omitempty"`
 	}
 
-	if err := json.Unmarshal(body, &wrapper); err != nil {
-		return &SIError{
-			Code:        110,
-			Type:        "internal_error",
-			Message:     fmt.Sprintf("failed to parse response: %s", err),
-			Recoverable: false,
-		}
+	if err := json.Unmarshal(body, &wrapper); err == nil && wrapper.Success && wrapper.Data != nil {
+		return json.Unmarshal(wrapper.Data, v)
 	}
 
-	if !wrapper.Success {
-		return &SIError{
-			Code:        100,
-			Type:        "api_error",
-			Message:     fmt.Sprintf("API error: %s", wrapper.Error),
-			Recoverable: true,
-		}
-	}
-
-	if err := json.Unmarshal(wrapper.Data, v); err != nil {
-		return &SIError{
-			Code:        110,
-			Type:        "internal_error",
-			Message:     fmt.Sprintf("failed to parse data: %s", err),
-			Recoverable: false,
-		}
-	}
-
-	return nil
+	// Direct JSON (events, pageviews, errors endpoints)
+	return json.Unmarshal(body, v)
 }

@@ -355,6 +355,21 @@ exports.getEventsAnalytics = async (req, res, next) => {
 
     const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
+    // Return JSON for API clients (e.g., si CLI)
+    if (req.accepts && !req.accepts('html') && req.accepts('json')) {
+      return res.json({
+        timeframe,
+        eventName: eventName || '',
+        totalEvents: totalEvents || 0,
+        uniqueEventNames: uniqueEventNames || [],
+        topEvents: topEvents || [],
+        recentOccurrences: recentOccurrences.rows || [],
+        recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
+        eventsByDay: eventsByDay || [],
+        timedEvents: timedEvents || [],
+      });
+    }
+
     return res.render('analytics/events', {
       title: 'Events',
       project: req.project,
@@ -448,6 +463,19 @@ exports.getEventDetail = async (req, res, next) => {
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    // Return JSON for API clients (e.g., si CLI)
+    if (req.accepts && !req.accepts('html') && req.accepts('json')) {
+      return res.json({
+        eventName,
+        timeframe,
+        segment,
+        occurrences: occurrences || [],
+        propertySchema: propertySchema || [],
+        eventsByDay: eventsByDay || [],
+        durationSummary: durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null },
+      });
+    }
 
     return res.render('analytics/event-detail', {
       title: `Event: ${eventName}`,

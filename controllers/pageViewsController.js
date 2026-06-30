@@ -160,6 +160,17 @@ exports.getPageViewsAnalytics = async (req, res, next) => {
 
     const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
+    // Return JSON for API clients (e.g., si CLI)
+    if (req.accepts && !req.accepts('html') && req.accepts('json')) {
+      return res.json({
+        timeframe,
+        totalViews: totalViews || 0,
+        uniqueVisitors: uniqueVisitors || 0,
+        topPages: topPages || [],
+        viewsByDay: viewsByDay || [],
+      });
+    }
+
     return res.render('analytics/pageviews', {
       title: 'Page views',
       project: req.project,
