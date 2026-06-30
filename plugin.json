@@ -6,9 +6,9 @@
   "bin": "si",
   "version": "0.1.0",
   "platforms": {
-    "linux/amd64": "https://github.com/javimosch/superinsights/releases/download/cmd-si/v{version}/si-linux-amd64",
-    "darwin/amd64": "https://github.com/javimosch/superinsights/releases/download/cmd-si/v{version}/si-darwin-amd64",
-    "darwin/arm64": "https://github.com/javimosch/superinsights/releases/download/cmd-si/v{version}/si-darwin-arm64"
+    "linux/amd64": "https://github.com/javimosch/superinsights/releases/download/si-v{version}/si-linux-amd64",
+    "darwin/amd64": "https://github.com/javimosch/superinsights/releases/download/si-v{version}/si-darwin-amd64",
+    "darwin/arm64": "https://github.com/javimosch/superinsights/releases/download/si-v{version}/si-darwin-arm64"
   },
   "homepage": "https://github.com/javimosch/superinsights",
   "tags": ["analytics", "superinsights", "observability"]
