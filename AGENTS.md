@@ -10,3 +10,13 @@
 - MongoDB
 - EJS + Tailwind + DaisyUI (dashboard UI)
 - Go (`cmd/si/`) — CLI for agent-first analytics queries
+
+## Notes
+
+- **`javimosch/si-cli` is ARCHIVED (read-only) — do not use it, do not link to it.** It was a
+  standalone repo for the `si` CLI, later folded into this repo as `cmd/si/` (the canonical
+  source going forward). The archived repo's last release (`v0.1.0`) predates a server-side
+  JSON fix and silently fails against the current API (wrong base path, missing `Accept`
+  header, wrong response-wrapper assumption) — `si stats` there reports fake all-null success
+  instead of erroring. Always build/release from `cmd/si/` here; the working release is
+  `si-v0.1.1` (`gh release view si-v0.1.1 --repo javimosch/superinsights`).
