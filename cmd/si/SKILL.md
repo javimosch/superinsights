@@ -45,7 +45,7 @@ si autocapture --top              # Top clicked elements
 # Via supercli
 sc plugins install si
 
-# Or direct download
-curl -L https://github.com/javimosch/si-cli/releases/download/v0.1.0/si-linux-amd64 -o /usr/local/bin/si
+# Or direct download (javimosch/si-cli is archived/read-only -- this repo is canonical)
+curl -L https://github.com/javimosch/superinsights/releases/download/si-v0.1.1/si-linux-amd64 -o /usr/local/bin/si
 chmod +x /usr/local/bin/si
 ```

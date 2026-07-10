@@ -4,7 +4,7 @@
   "repository": "https://github.com/javimosch/superinsights",
   "source": "cmd/si",
   "bin": "si",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "platforms": {
     "linux/amd64": "https://github.com/javimosch/superinsights/releases/download/si-v{version}/si-linux-amd64",
     "darwin/amd64": "https://github.com/javimosch/superinsights/releases/download/si-v{version}/si-darwin-amd64",
