@@ -517,6 +517,7 @@
               topEvents.value = Array.isArray(data.topEvents) ? data.topEvents : [];
               recentOccurrences.value = Array.isArray(data.recentOccurrences) ? data.recentOccurrences : [];
               recentPagination.value = data.recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
+              topClickedElements.value = Array.isArray(data.topClickedElements) ? data.topClickedElements : [];
               liveLastUpdated.value = new Date().toISOString();
             } catch (e) {
               liveError.value = e && e.message ? e.message : 'Failed to refresh';

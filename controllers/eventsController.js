@@ -239,7 +239,7 @@ async function getTopEvents({ projectId, start, end, metadataMatch, eventName })
   return rows || [];
 }
 
-async function getTopClickedElements({ projectId, start, end, metadataMatch, limit = 10 }) {
+async function getTopClickedElements({ projectId, start, end, metadataMatch, limit = 5 }) {
   const match = buildMatch({ projectId, start, end, eventName: '$click', metadataMatch });
 
   const rows = await Event.aggregate([
@@ -446,9 +446,12 @@ exports.getEventsLiveJson = async (req, res, next) => {
     const recentPage = req.query.recentPage;
     const recentLimit = req.query.recentLimit;
 
-    const [topEvents, recentOccurrences] = await Promise.all([
+    const [topEvents, recentOccurrences, topClickedElements] = await Promise.all([
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, page: recentPage, limit: recentLimit }),
+      (!rawEventName || rawEventName === '$click')
+        ? getTopClickedElements({ projectId, start, end, metadataMatch })
+        : [],
     ]);
 
     return res.json({
@@ -456,6 +459,7 @@ exports.getEventsLiveJson = async (req, res, next) => {
       topEvents: topEvents || [],
       recentOccurrences: recentOccurrences.rows || [],
       recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
+      topClickedElements: topClickedElements || [],
     });
   } catch (err) {
     return next(err);
