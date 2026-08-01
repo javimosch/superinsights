@@ -275,7 +275,29 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <div
+                      v-if="row.eventName === '$click' && row.properties && typeof row.properties === 'object'"
+                      class="card bg-base-200 border border-base-300 p-3 text-xs shadow-sm space-y-2 max-w-full"
+                    >
+                      <div v-if="row.properties.tag" class="flex items-center gap-2">
+                        <span class="badge badge-sm badge-primary font-mono">{{ row.properties.tag }}</span>
+                        <span v-if="row.properties.className" class="text-base-content/60 font-mono">.{{ row.properties.className }}</span>
+                      </div>
+                      <div v-if="row.properties.text" class="text-base-content/90 break-words" :title="row.properties.text">
+                        <span class="text-base-content/50">text:</span> {{ row.properties.text }}
+                      </div>
+                      <div v-if="row.properties.href" class="truncate">
+                        <span class="text-base-content/50">href:</span>
+                        <a :href="row.properties.href" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
+                      </div>
+                      <div v-if="row.properties.data && row.properties.data.id" class="font-mono text-base-content/70">
+                        <span class="text-base-content/50">data-id:</span> {{ row.properties.data.id }}
+                      </div>
+                      <div v-if="row.properties.selector" class="font-mono text-base-content/70 truncate" :title="row.properties.selector">
+                        <span class="text-base-content/50">selector:</span> {{ row.properties.selector }}
+                      </div>
+                    </div>
+                    <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
                 </tr>
               </tbody>
