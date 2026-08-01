@@ -119,6 +119,29 @@
         </div>
       </section>
 
+      <section v-if="topClickedElements.length" class="card bg-base-100 shadow">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Most clicked elements this period</h2>
+
+          <div class="overflow-x-auto">
+            <table class="table table-zebra w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Selector</th>
+                  <th class="text-right">Clicks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in topClickedElements" :key="row.selector">
+                  <td class="font-mono truncate max-w-[520px]" :title="row.selector">{{ row.selector }}</td>
+                  <td class="text-right">{{ row.count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="grid gap-4 md:grid-cols-3">
         <div class="stats shadow bg-base-100">
           <div class="stat">
@@ -260,15 +283,15 @@
                       v-if="row.eventName === '$click' && row.properties && typeof row.properties === 'object'"
                       class="card bg-base-200 border border-base-300 p-3 text-xs shadow-sm space-y-2 max-w-full"
                     >
-                      <div v-if="row.properties.tag" class="flex items-center gap-2">
-                        <span class="badge badge-sm badge-primary font-mono">{{ row.properties.tag }}</span>
-                        <span v-if="row.properties.className" class="text-base-content/60 font-mono">.{{ row.properties.className }}</span>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span v-if="row.properties.tag" class="badge badge-sm badge-primary font-mono">&lt;{{ row.properties.tag }}&gt;</span>
+                        <span v-if="row.properties.id" class="badge badge-sm badge-ghost font-mono">#{{ row.properties.id }}</span>
+                        <span v-if="row.properties.className" class="badge badge-sm badge-ghost font-mono">.{{ row.properties.className }}</span>
                       </div>
                       <div v-if="row.properties.text" class="text-base-content/90 break-words" :title="row.properties.text">
-                        <span class="text-base-content/50">text:</span> {{ row.properties.text }}
+                        "{{ row.properties.text }}"
                       </div>
                       <div v-if="row.properties.href" class="truncate">
-                        <span class="text-base-content/50">href:</span>
                         <a :href="row.properties.href" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
                       </div>
                       <div v-if="row.properties.data && typeof row.properties.data === 'object'" class="flex flex-wrap gap-1">
@@ -282,7 +305,10 @@
                         </span>
                       </div>
                       <div v-if="row.properties.selector" class="font-mono text-base-content/70 truncate" :title="row.properties.selector">
-                        <span class="text-base-content/50">selector:</span> {{ row.properties.selector }}
+                        {{ row.properties.selector }}
+                      </div>
+                      <div v-if="row.properties.rect && typeof row.properties.rect === 'object'" class="text-base-content/60">
+                        📍 {{ row.properties.rect.x }}×{{ row.properties.rect.y }} · {{ row.properties.rect.w }}×{{ row.properties.rect.h }}
                       </div>
                     </div>
                     <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
@@ -392,6 +418,7 @@
           const recentPagination = eventsRef(<%- JSON.stringify(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
           const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
           const timedEvents = eventsRef(<%- JSON.stringify(timedEvents || []) %>);
+          const topClickedElements = eventsRef(<%- JSON.stringify(topClickedElements || []) %>);
 
           const liveLoading = eventsRef(false);
           const liveError = eventsRef('');
@@ -636,6 +663,7 @@
             recentPagination,
             timedEvents,
             uniqueEventNames,
+            topClickedElements,
             timeframeLabel,
             avgEventsPerDay,
             applyFilters,
