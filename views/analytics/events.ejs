@@ -271,8 +271,15 @@
                         <span class="text-base-content/50">href:</span>
                         <a :href="row.properties.href" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
                       </div>
-                      <div v-if="row.properties.data && row.properties.data.id" class="font-mono text-base-content/70">
-                        <span class="text-base-content/50">data-id:</span> {{ row.properties.data.id }}
+                      <div v-if="row.properties.data && typeof row.properties.data === 'object'" class="flex flex-wrap gap-1">
+                        <span
+                          v-for="(val, key) in row.properties.data"
+                          :key="key"
+                          class="badge badge-ghost badge-sm font-mono"
+                          :title="'data-' + key + ': ' + val"
+                        >
+                          data-{{ key }}: {{ val }}
+                        </span>
                       </div>
                       <div v-if="row.properties.selector" class="font-mono text-base-content/70 truncate" :title="row.properties.selector">
                         <span class="text-base-content/50">selector:</span> {{ row.properties.selector }}
