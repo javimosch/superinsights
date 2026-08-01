@@ -245,13 +245,36 @@ async function getTopClickedElements({ projectId, start, end, metadataMatch, lim
   const rows = await Event.aggregate([
     { $match: match },
     {
+      $set: {
+        selectorKey: {
+          $cond: [
+            { $gt: [{ $strLenCP: { $ifNull: ['$properties.selector', ''] } }, 0] },
+            '$properties.selector',
+            {
+              $cond: [
+                { $gt: [{ $strLenCP: { $ifNull: ['$properties.id', ''] } }, 0] },
+                { $concat: [{ $ifNull: ['$properties.tag', ''] }, '#', '$properties.id'] },
+                {
+                  $cond: [
+                    { $gt: [{ $strLenCP: { $ifNull: ['$properties.className', ''] } }, 0] },
+                    { $concat: [{ $ifNull: ['$properties.tag', ''] }, '.', '$properties.className'] },
+                    { $ifNull: ['$properties.tag', 'unknown'] },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    },
+    { $match: { selectorKey: { $ne: 'unknown' } } },
+    {
       $group: {
-        _id: '$properties.selector',
+        _id: '$selectorKey',
         count: { $sum: 1 },
         mostRecentTimestamp: { $max: '$timestamp' },
       },
     },
-    { $match: { _id: { $ne: null } } },
     { $sort: { count: -1, mostRecentTimestamp: -1 } },
     { $limit: limit },
     { $project: { _id: 0, selector: '$_id', count: 1 } },
