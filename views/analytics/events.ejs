@@ -17,6 +17,7 @@
     <%- include('../partials/breadcrumbs') %>
 
     <% const base = projectBasePath || `/projects/${project._id}`; %>
+    <% function safeJson(obj) { return JSON.stringify(obj).replace(/</g, '\\u003c'); } %>
 
     <div id="app">
     <main class="container mx-auto p-4 space-y-6">
@@ -256,7 +257,42 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <div
+                      v-if="row.eventName === '$click' && row.properties && typeof row.properties === 'object'"
+                      class="card bg-base-200 border border-base-300 p-3 text-xs shadow-sm space-y-2 max-w-full"
+                    >
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span v-if="row.properties.tag" class="badge badge-sm badge-primary font-mono">&lt;{{ row.properties.tag }}&gt;</span>
+                        <span v-if="row.properties.id" class="badge badge-sm badge-ghost font-mono">#{{ row.properties.id }}</span>
+                        <span v-if="row.properties.className" class="badge badge-sm badge-ghost font-mono">.{{ row.properties.className }}</span>
+                      </div>
+                      <div v-if="row.properties.text" class="text-base-content/90 break-words" :title="row.properties.text">
+                        "{{ row.properties.text }}"
+                      </div>
+                      <div v-if="safeClickHref(row.properties.href)" class="truncate">
+                        <a :href="safeClickHref(row.properties.href)" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
+                      </div>
+                      <div v-else-if="row.properties.href" class="text-base-content/70 truncate" :title="row.properties.href">
+                        href: {{ row.properties.href }}
+                      </div>
+                      <div v-if="row.properties.data && typeof row.properties.data === 'object'" class="flex flex-wrap gap-1">
+                        <span
+                          v-for="(val, key) in row.properties.data"
+                          :key="key"
+                          class="badge badge-ghost badge-sm font-mono"
+                          :title="'data-' + key + ': ' + val"
+                        >
+                          data-{{ key }}: {{ val }}
+                        </span>
+                      </div>
+                      <div v-if="row.properties.selector" class="font-mono text-base-content/70 truncate" :title="row.properties.selector">
+                        {{ row.properties.selector }}
+                      </div>
+                      <div v-if="row.properties.rect && typeof row.properties.rect === 'object'" class="text-base-content/60">
+                        {{ row.properties.rect.x }}x{{ row.properties.rect.y }} &middot; {{ row.properties.rect.w }}x{{ row.properties.rect.h }}
+                      </div>
+                    </div>
+                    <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
                 </tr>
               </tbody>
@@ -341,28 +377,28 @@
 
       createEventsApp({
         setup() {
-          const project = eventsRef(<%- JSON.stringify(project) %>);
+          const project = eventsRef(<%- safeJson(project) %>);
           const currentProjectRole = '<%= currentProjectRole %>';
 
-          const basePath = <%- JSON.stringify(projectBasePath || `/projects/${project._id}`) %>;
+          const basePath = <%- safeJson(projectBasePath || `/projects/${project._id}`) %>;
           const base = basePath;
 
           const timeframe = eventsRef('<%= timeframe %>');
           const eventName = eventsRef('<%= eventName ? eventName : "" %>');
 
-          const segment = eventsRef(<%- JSON.stringify(segment || {}) %>);
+          const segment = eventsRef(<%- safeJson(segment || {}) %>);
           const metaPairs = eventsRef(
             segment.value && segment.value.meta && typeof segment.value.meta === 'object'
               ? Object.entries(segment.value.meta).map(([k, v]) => ({ key: String(k), value: String(v) }))
               : []
           );
 
-          const eventsByDay = eventsRef(<%- JSON.stringify(eventsByDay || []) %>);
-          const topEvents = eventsRef(<%- JSON.stringify(topEvents || []) %>);
-          const recentOccurrences = eventsRef(<%- JSON.stringify(recentOccurrences || []) %>);
-          const recentPagination = eventsRef(<%- JSON.stringify(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
-          const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
-          const timedEvents = eventsRef(<%- JSON.stringify(timedEvents || []) %>);
+          const eventsByDay = eventsRef(<%- safeJson(eventsByDay || []) %>);
+          const topEvents = eventsRef(<%- safeJson(topEvents || []) %>);
+          const recentOccurrences = eventsRef(<%- safeJson(recentOccurrences || []) %>);
+          const recentPagination = eventsRef(<%- safeJson(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
+          const uniqueEventNames = eventsRef(<%- safeJson(uniqueEventNames || []) %>);
+          const timedEvents = eventsRef(<%- safeJson(timedEvents || []) %>);
 
           const liveLoading = eventsRef(false);
           const liveError = eventsRef('');
@@ -594,6 +630,19 @@
             return `${diffDay}d ago`;
           }
 
+          function safeClickHref(href) {
+            if (!href) return null;
+            const str = String(href).trim();
+            if (!str) return null;
+            try {
+              const url = new URL(str, window.location.href);
+              if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+              return url.href;
+            } catch (e) {
+              return null;
+            }
+          }
+
           return {
             project,
             currentProjectRole,
@@ -620,6 +669,7 @@
             formatTimestamp,
             formatRelativeTime,
             formatMs,
+            safeClickHref,
           };
         },
       }).mount('#app');
