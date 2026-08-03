@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
+const safeClickHref = require('../utils/safeClickHref');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -254,6 +255,12 @@ async function getRecentOccurrences({ projectId, start, end, metadataMatch, even
       .lean(),
     Event.countDocuments(match),
   ]);
+
+  for (const row of rows || []) {
+    if (row && row.eventName === '$click' && row.properties && row.properties.href) {
+      row.safeHref = safeClickHref(row.properties.href);
+    }
+  }
 
   return {
     rows: rows || [],

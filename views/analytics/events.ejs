@@ -269,8 +269,8 @@
                       <div v-if="row.properties.text" class="text-base-content/90 break-words" :title="row.properties.text">
                         "{{ row.properties.text }}"
                       </div>
-                      <div v-if="safeClickHref(row.properties.href)" class="truncate">
-                        <a :href="safeClickHref(row.properties.href)" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
+                      <div v-if="row.safeHref" class="truncate">
+                        <a :href="row.safeHref" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
                       </div>
                       <div v-else-if="row.properties.href" class="text-base-content/70 truncate" :title="row.properties.href">
                         href: {{ row.properties.href }}
@@ -630,19 +630,6 @@
             return `${diffDay}d ago`;
           }
 
-          function safeClickHref(href) {
-            if (!href) return null;
-            const str = String(href).trim();
-            if (!str) return null;
-            try {
-              const url = new URL(str, window.location.href);
-              if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-              return url.href;
-            } catch (e) {
-              return null;
-            }
-          }
-
           return {
             project,
             currentProjectRole,
@@ -669,7 +656,6 @@
             formatTimestamp,
             formatRelativeTime,
             formatMs,
-            safeClickHref,
           };
         },
       }).mount('#app');
