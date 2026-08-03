@@ -258,7 +258,7 @@
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
                     <div
-                      v-if="row.eventName === '$click' && row.properties && typeof row.properties === 'object'"
+                      v-if="isClickEvent(row)"
                       class="card bg-base-200 border border-base-300 p-3 text-xs shadow-sm space-y-2 max-w-full"
                     >
                       <div class="flex items-center gap-2 flex-wrap">
@@ -267,22 +267,22 @@
                         <span v-if="row.properties.className" class="badge badge-sm badge-ghost font-mono">.{{ row.properties.className }}</span>
                       </div>
                       <div v-if="row.properties.text" class="text-base-content/90 break-words" :title="row.properties.text">
-                        "{{ row.properties.text }}"
+                        "{{ truncateText(row.properties.text, 120) }}"
                       </div>
                       <div v-if="row.safeHref" class="truncate">
-                        <a :href="row.safeHref" target="_blank" rel="noopener" class="link link-primary">{{ row.properties.href }}</a>
+                        <a :href="row.safeHref" target="_blank" rel="noopener" class="link link-primary">{{ truncateText(row.properties.href, 80) }}</a>
                       </div>
                       <div v-else-if="row.properties.href" class="text-base-content/70 truncate" :title="row.properties.href">
-                        href: {{ row.properties.href }}
+                        href: {{ truncateText(row.properties.href, 80) }}
                       </div>
                       <div v-if="row.properties.data && typeof row.properties.data === 'object'" class="flex flex-wrap gap-1">
                         <span
-                          v-for="(val, key) in row.properties.data"
-                          :key="key"
+                          v-for="item in flattenData(row.properties.data)"
+                          :key="item.key"
                           class="badge badge-ghost badge-sm font-mono"
-                          :title="'data-' + key + ': ' + val"
+                          :title="'data-' + item.key + ': ' + item.value"
                         >
-                          data-{{ key }}: {{ val }}
+                          data-{{ item.key }}: {{ truncateText(item.value, 40) }}
                         </span>
                       </div>
                       <div v-if="row.properties.selector" class="font-mono text-base-content/70 truncate" :title="row.properties.selector">
@@ -630,6 +630,25 @@
             return `${diffDay}d ago`;
           }
 
+          function isClickEvent(row) {
+            return row && row.eventName === '$click' && row.properties && typeof row.properties === 'object';
+          }
+
+          function flattenData(data) {
+            if (!data || typeof data !== 'object') return [];
+            return Object.entries(data).map(([key, value]) => ({
+              key: String(key),
+              value: value == null ? '' : String(value),
+            }));
+          }
+
+          function truncateText(text, limit = 120) {
+            if (text == null) return '';
+            const s = String(text);
+            if (s.length <= limit) return s;
+            return s.slice(0, limit) + '...';
+          }
+
           return {
             project,
             currentProjectRole,
@@ -656,6 +675,9 @@
             formatTimestamp,
             formatRelativeTime,
             formatMs,
+            isClickEvent,
+            flattenData,
+            truncateText,
           };
         },
       }).mount('#app');
