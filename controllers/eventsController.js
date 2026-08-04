@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
+const { attachClickCard } = require('../utils/clickCard');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -245,7 +246,7 @@ async function getRecentOccurrences({ projectId, start, end, metadataMatch, even
   const safePage = Math.max(Number(page) || 1, 1);
   const skip = (safePage - 1) * safeLimit;
 
-  const [rows, total] = await Promise.all([
+  const [rawRows, total] = await Promise.all([
     Event.find(match)
       .sort({ timestamp: -1 })
       .skip(skip)
@@ -255,8 +256,10 @@ async function getRecentOccurrences({ projectId, start, end, metadataMatch, even
     Event.countDocuments(match),
   ]);
 
+  const rows = (rawRows || []).map(attachClickCard);
+
   return {
-    rows: rows || [],
+    rows,
     pagination: {
       page: safePage,
       limit: safeLimit,
@@ -305,6 +308,75 @@ async function getEventPropertySchema({ projectId, eventName, start, end, metada
   return rows || [];
 }
 
+async function getTopClickedElements({ projectId, start, end, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName: '$click', metadataMatch });
+
+  try {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $project: {
+          tag: { $ifNull: ['$properties.tag', ''] },
+          id: { $ifNull: ['$properties.id', ''] },
+          className: { $ifNull: ['$properties.className', ''] },
+          selector: { $ifNull: ['$properties.selector', ''] },
+          text: { $ifNull: ['$properties.text', ''] },
+        },
+      },
+      {
+        $project: {
+          key: {
+            $cond: {
+              if: { $and: [{ $ne: ['$selector', ''] }, { $ne: ['$selector', null] }] },
+              then: '$selector',
+              else: {
+                $cond: {
+                  if: { $and: [{ $ne: ['$id', ''] }, { $ne: ['$id', null] }] },
+                  then: { $concat: ['$tag', '#', '$id'] },
+                  else: {
+                    $cond: {
+                      if: { $and: [{ $ne: ['$className', ''] }, { $ne: ['$className', null] }] },
+                      then: { $concat: ['$tag', '.', '$className'] },
+                      else: '$tag',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          text: 1,
+          tag: 1,
+        },
+      },
+      {
+        $group: {
+          _id: '$key',
+          count: { $sum: 1 },
+          mostRecent: { $max: '$timestamp' },
+          tag: { $first: '$tag' },
+          text: { $first: '$text' },
+        },
+      },
+      { $sort: { count: -1, mostRecent: -1 } },
+      { $limit: 5 },
+      {
+        $project: {
+          _id: 0,
+          key: '$_id',
+          count: 1,
+          mostRecent: 1,
+          tag: 1,
+          text: 1,
+        },
+      },
+    ]);
+
+    return rows || [];
+  } catch (err) {
+    return [];
+  }
+}
+
 exports.getEventsAnalytics = async (req, res, next) => {
   try {
     if (!req.project || !req.project._id) {
@@ -333,12 +405,13 @@ exports.getEventsAnalytics = async (req, res, next) => {
       metadataMatch,
     };
 
-    const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents] = await Promise.all([
+    const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents, topClicked] = await Promise.all([
       getEventsByDay(params),
       getTotalEvents(params),
       getUniqueEventNames({ projectId, start, end, metadataMatch }),
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getTimedEventSummary({ projectId, start, end, metadataMatch }),
+      getTopClickedElements({ projectId, start, end, metadataMatch }),
     ]);
 
     const recentPage = req.query.recentPage;
@@ -363,6 +436,7 @@ exports.getEventsAnalytics = async (req, res, next) => {
         totalEvents: totalEvents || 0,
         uniqueEventNames: uniqueEventNames || [],
         topEvents: topEvents || [],
+        topClicked: topClicked || [],
         recentOccurrences: recentOccurrences.rows || [],
         recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
         eventsByDay: eventsByDay || [],
@@ -381,6 +455,7 @@ exports.getEventsAnalytics = async (req, res, next) => {
       totalEvents: totalEvents || 0,
       uniqueEventNames: uniqueEventNames || [],
       topEvents: topEvents || [],
+      topClicked: topClicked || [],
       recentOccurrences: recentOccurrences.rows || [],
       recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
       timedEvents: timedEvents || [],
@@ -420,14 +495,16 @@ exports.getEventsLiveJson = async (req, res, next) => {
     const recentPage = req.query.recentPage;
     const recentLimit = req.query.recentLimit;
 
-    const [topEvents, recentOccurrences] = await Promise.all([
+    const [topEvents, recentOccurrences, topClicked] = await Promise.all([
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, page: recentPage, limit: recentLimit }),
+      getTopClickedElements({ projectId, start, end, metadataMatch }),
     ]);
 
     return res.json({
       timeframe,
       topEvents: topEvents || [],
+      topClicked: topClicked || [],
       recentOccurrences: recentOccurrences.rows || [],
       recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
     });
@@ -457,12 +534,14 @@ exports.getEventDetail = async (req, res, next) => {
 
     const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
-    const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
-      Event.find(match).sort({ timestamp: -1 }).limit(100),
+    const [rawOccurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
+      Event.find(match).sort({ timestamp: -1 }).limit(100).lean(),
       getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    const occurrences = (rawOccurrences || []).map(attachClickCard);
 
     // Return JSON for API clients (e.g., si CLI)
     if (req.accepts && !req.accepts('html') && req.accepts('json')) {

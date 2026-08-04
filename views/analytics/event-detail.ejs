@@ -275,7 +275,33 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <div
+                      v-if="eventName === '$click' && row.clickCard"
+                      class="card card-compact bg-base-200 border border-base-300 p-2 text-xs space-y-1"
+                    >
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span v-if="row.clickCard.tag" class="badge badge-primary">&lt;{{ row.clickCard.tag }}&gt;</span>
+                        <span v-if="row.clickCard.text" class="font-semibold">"{{ row.clickCard.text }}"</span>
+                      </div>
+                      <div v-if="row.clickCard.id || row.clickCard.className" class="text-base-content/70">
+                        <span v-if="row.clickCard.id">#{{ row.clickCard.id }}</span>
+                        <span v-if="row.clickCard.id && row.clickCard.className" class="mx-1">·</span>
+                        <span v-if="row.clickCard.className">{{ row.clickCard.tag }}.{{ row.clickCard.className }}</span>
+                      </div>
+                      <div v-if="row.clickCard.selector" class="text-base-content/70">{{ row.clickCard.selector }}</div>
+                      <a
+                        v-if="row.clickCard.href"
+                        :href="row.clickCard.href"
+                        target="_blank"
+                        rel="noopener"
+                        class="link link-hover link-primary break-all"
+                      >{{ row.clickCard.href }}</a>
+                      <div v-if="row.clickCard.data.length" class="flex flex-wrap gap-1">
+                        <span v-for="item in row.clickCard.data" :key="item.key" class="badge badge-ghost">{{ item.key }}: {{ item.value }}</span>
+                      </div>
+                      <div v-if="row.clickCard.rect" class="text-base-content/50">📍 {{ row.clickCard.rect }}</div>
+                    </div>
+                    <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
                 </tr>
               </tbody>

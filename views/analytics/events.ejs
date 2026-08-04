@@ -256,7 +256,33 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <div
+                      v-if="row.eventName === '$click' && row.clickCard"
+                      class="card card-compact bg-base-200 border border-base-300 p-2 text-xs space-y-1"
+                    >
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span v-if="row.clickCard.tag" class="badge badge-primary">&lt;{{ row.clickCard.tag }}&gt;</span>
+                        <span v-if="row.clickCard.text" class="font-semibold">"{{ row.clickCard.text }}"</span>
+                      </div>
+                      <div v-if="row.clickCard.id || row.clickCard.className" class="text-base-content/70">
+                        <span v-if="row.clickCard.id">#{{ row.clickCard.id }}</span>
+                        <span v-if="row.clickCard.id && row.clickCard.className" class="mx-1">·</span>
+                        <span v-if="row.clickCard.className">{{ row.clickCard.tag }}.{{ row.clickCard.className }}</span>
+                      </div>
+                      <div v-if="row.clickCard.selector" class="text-base-content/70">{{ row.clickCard.selector }}</div>
+                      <a
+                        v-if="row.clickCard.href"
+                        :href="row.clickCard.href"
+                        target="_blank"
+                        rel="noopener"
+                        class="link link-hover link-primary break-all"
+                      >{{ row.clickCard.href }}</a>
+                      <div v-if="row.clickCard.data.length" class="flex flex-wrap gap-1">
+                        <span v-for="item in row.clickCard.data" :key="item.key" class="badge badge-ghost">{{ item.key }}: {{ item.value }}</span>
+                      </div>
+                      <div v-if="row.clickCard.rect" class="text-base-content/50">📍 {{ row.clickCard.rect }}</div>
+                    </div>
+                    <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
                 </tr>
               </tbody>
@@ -286,6 +312,22 @@
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-100 shadow" v-if="topClicked.length">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-xl">Most clicked elements</h2>
+
+          <ul class="space-y-2">
+            <li v-for="item in topClicked" :key="item.key" class="flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <div class="font-mono text-sm truncate" :title="item.key">{{ item.key }}</div>
+                <div v-if="item.text" class="text-xs text-base-content/60 truncate" :title="item.text">{{ item.text }}</div>
+              </div>
+              <span class="badge badge-primary whitespace-nowrap">{{ item.count }} clicks</span>
+            </li>
+          </ul>
         </div>
       </section>
 
@@ -359,6 +401,7 @@
 
           const eventsByDay = eventsRef(<%- JSON.stringify(eventsByDay || []) %>);
           const topEvents = eventsRef(<%- JSON.stringify(topEvents || []) %>);
+          const topClicked = eventsRef(<%- JSON.stringify(topClicked || []) %>);
           const recentOccurrences = eventsRef(<%- JSON.stringify(recentOccurrences || []) %>);
           const recentPagination = eventsRef(<%- JSON.stringify(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
           const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
@@ -459,6 +502,7 @@
               if (!resp.ok) throw new Error(`Request failed: ${resp.status}`);
               const data = await resp.json();
               topEvents.value = Array.isArray(data.topEvents) ? data.topEvents : [];
+              topClicked.value = Array.isArray(data.topClicked) ? data.topClicked : [];
               recentOccurrences.value = Array.isArray(data.recentOccurrences) ? data.recentOccurrences : [];
               recentPagination.value = data.recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 };
               liveLastUpdated.value = new Date().toISOString();
@@ -603,6 +647,7 @@
             metaPairs,
             eventsByDay,
             topEvents,
+            topClicked,
             recentOccurrences,
             recentPagination,
             timedEvents,
