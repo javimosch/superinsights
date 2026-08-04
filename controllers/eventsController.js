@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
+const { isClickEvent, formatClickProps } = require('../utils/clickProps');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -30,6 +31,16 @@ function getDateRange(timeframe) {
   }
 
   return { timeframe: tf, start, end: now };
+}
+
+function attachClickProps(rows) {
+  if (!Array.isArray(rows)) return rows;
+  for (const row of rows) {
+    if (row && isClickEvent(row.eventName)) {
+      row.clickProps = formatClickProps(row.properties) || null;
+    }
+  }
+  return rows;
 }
 
 function buildMatch({ projectId, start, end, eventName, metadataMatch }) {
@@ -458,11 +469,13 @@ exports.getEventDetail = async (req, res, next) => {
     const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
     const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
-      Event.find(match).sort({ timestamp: -1 }).limit(100),
+      Event.find(match).sort({ timestamp: -1 }).limit(100).lean(),
       getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    attachClickProps(occurrences);
 
     // Return JSON for API clients (e.g., si CLI)
     if (req.accepts && !req.accepts('html') && req.accepts('json')) {
