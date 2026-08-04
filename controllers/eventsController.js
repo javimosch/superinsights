@@ -1,5 +1,15 @@
 const Event = require('../models/Event');
 const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
+const { formatClickCard } = require('../utils/clickFormatter');
+
+function attachClickCard(rows) {
+  return (rows || []).map((row) => {
+    if (row && row.eventName === '$click' && row.properties) {
+      return { ...row, clickCard: formatClickCard(row.properties) };
+    }
+    return row;
+  });
+}
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -256,7 +266,7 @@ async function getRecentOccurrences({ projectId, start, end, metadataMatch, even
   ]);
 
   return {
-    rows: rows || [],
+    rows: attachClickCard(rows),
     pagination: {
       page: safePage,
       limit: safeLimit,
@@ -305,6 +315,63 @@ async function getEventPropertySchema({ projectId, eventName, start, end, metada
   return rows || [];
 }
 
+async function getTopClickedElements({ projectId, start, end, metadataMatch }) {
+  const match = buildMatch({ projectId, start, end, eventName: '$click', metadataMatch });
+
+  try {
+    const rows = await Event.aggregate([
+      { $match: match },
+      {
+        $addFields: {
+          clickKey: {
+            $cond: {
+              if: { $ne: [{ $ifNull: ['$properties.selector', ''] }, ''] },
+              then: '$properties.selector',
+              else: {
+                $cond: {
+                  if: { $ne: [{ $ifNull: ['$properties.tag', ''] }, ''] },
+                  then: '$properties.tag',
+                  else: 'unknown',
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$clickKey',
+          count: { $sum: 1 },
+          tag: { $first: { $ifNull: ['$properties.tag', ''] } },
+          text: { $first: { $ifNull: ['$properties.text', ''] } },
+          href: { $first: { $ifNull: ['$properties.href', ''] } },
+          data: { $first: '$properties.data' },
+          selector: { $first: { $ifNull: ['$properties.selector', ''] } },
+        },
+      },
+      { $match: { _id: { $ne: '' } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      {
+        $project: {
+          _id: 0,
+          clickKey: '$_id',
+          count: 1,
+          tag: 1,
+          text: 1,
+          href: 1,
+          data: 1,
+          selector: 1,
+        },
+      },
+    ]);
+
+    return rows || [];
+  } catch (err) {
+    return [];
+  }
+}
+
 exports.getEventsAnalytics = async (req, res, next) => {
   try {
     if (!req.project || !req.project._id) {
@@ -333,12 +400,13 @@ exports.getEventsAnalytics = async (req, res, next) => {
       metadataMatch,
     };
 
-    const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents] = await Promise.all([
+    const [eventsByDay, totalEvents, uniqueEventNames, topEvents, timedEvents, topClicked] = await Promise.all([
       getEventsByDay(params),
       getTotalEvents(params),
       getUniqueEventNames({ projectId, start, end, metadataMatch }),
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getTimedEventSummary({ projectId, start, end, metadataMatch }),
+      getTopClickedElements({ projectId, start, end, metadataMatch }),
     ]);
 
     const recentPage = req.query.recentPage;
@@ -363,6 +431,7 @@ exports.getEventsAnalytics = async (req, res, next) => {
         totalEvents: totalEvents || 0,
         uniqueEventNames: uniqueEventNames || [],
         topEvents: topEvents || [],
+        topClicked: topClicked || [],
         recentOccurrences: recentOccurrences.rows || [],
         recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
         eventsByDay: eventsByDay || [],
@@ -381,6 +450,7 @@ exports.getEventsAnalytics = async (req, res, next) => {
       totalEvents: totalEvents || 0,
       uniqueEventNames: uniqueEventNames || [],
       topEvents: topEvents || [],
+      topClicked: topClicked || [],
       recentOccurrences: recentOccurrences.rows || [],
       recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
       timedEvents: timedEvents || [],
@@ -420,14 +490,16 @@ exports.getEventsLiveJson = async (req, res, next) => {
     const recentPage = req.query.recentPage;
     const recentLimit = req.query.recentLimit;
 
-    const [topEvents, recentOccurrences] = await Promise.all([
+    const [topEvents, recentOccurrences, topClicked] = await Promise.all([
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, page: recentPage, limit: recentLimit }),
+      getTopClickedElements({ projectId, start, end, metadataMatch }),
     ]);
 
     return res.json({
       timeframe,
       topEvents: topEvents || [],
+      topClicked: topClicked || [],
       recentOccurrences: recentOccurrences.rows || [],
       recentPagination: recentOccurrences.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 },
     });
@@ -458,11 +530,13 @@ exports.getEventDetail = async (req, res, next) => {
     const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
     const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
-      Event.find(match).sort({ timestamp: -1 }).limit(100),
+      Event.find(match).sort({ timestamp: -1 }).limit(100).lean(),
       getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    const formattedOccurrences = eventName === '$click' ? attachClickCard(occurrences) : occurrences;
 
     // Return JSON for API clients (e.g., si CLI)
     if (req.accepts && !req.accepts('html') && req.accepts('json')) {
@@ -470,7 +544,7 @@ exports.getEventDetail = async (req, res, next) => {
         eventName,
         timeframe,
         segment,
-        occurrences: occurrences || [],
+        occurrences: formattedOccurrences || [],
         propertySchema: propertySchema || [],
         eventsByDay: eventsByDay || [],
         durationSummary: durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null },
@@ -484,7 +558,7 @@ exports.getEventDetail = async (req, res, next) => {
       eventName,
       timeframe,
       segment,
-      occurrences: occurrences || [],
+      occurrences: formattedOccurrences || [],
       propertySchema: propertySchema || [],
       eventsByDay: eventsByDay || [],
       durationSummary: durationSummary || { count: 0, avgMs: null, p50Ms: null, p95Ms: null, maxMs: null },
