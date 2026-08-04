@@ -364,6 +364,8 @@ exports.getEventsAnalytics = async (req, res, next) => {
       limit: recentLimit,
     });
 
+    attachClickProps(recentOccurrences.rows);
+
     const orgName = req.currentOrg ? req.currentOrg.name : 'Organization';
 
     // Return JSON for API clients (e.g., si CLI)
@@ -435,6 +437,8 @@ exports.getEventsLiveJson = async (req, res, next) => {
       getTopEvents({ projectId, start, end, metadataMatch, eventName }),
       getRecentOccurrences({ projectId, start, end, metadataMatch, eventName, page: recentPage, limit: recentLimit }),
     ]);
+
+    attachClickProps(recentOccurrences.rows);
 
     return res.json({
       timeframe,

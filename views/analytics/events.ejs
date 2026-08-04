@@ -256,7 +256,22 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <div v-if="row.clickProps && row.clickProps.length" class="card card-compact bg-base-200 border border-base-300 shadow-sm">
+                      <div class="card-body p-2">
+                        <table class="table table-zebra table-xs w-full">
+                          <tbody>
+                            <tr v-for="field in row.clickProps" :key="field.label">
+                              <td class="text-base-content/70 text-right whitespace-nowrap w-0">{{ field.label }}</td>
+                              <td class="break-all">
+                                <a v-if="field.href" :href="field.href" class="link link-primary break-all">{{ field.value }}</a>
+                                <span v-else class="break-all">{{ field.value }}</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <pre v-else class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
                   </td>
                 </tr>
               </tbody>
