@@ -58,6 +58,19 @@ function formatClickProps(properties) {
   if (properties.className !== undefined) add('Class', properties.className);
   if (properties.selector !== undefined) add('Selector', properties.selector);
 
+  if (properties.rect && typeof properties.rect === 'object' && !Array.isArray(properties.rect)) {
+    const { x, y, w, h } = properties.rect;
+    const pos = [x, y].every((n) => Number.isFinite(Number(n)))
+      ? `${Number(x)}×${Number(y)}`
+      : '';
+    const size = [w, h].every((n) => Number.isFinite(Number(n)))
+      ? `${Number(w)}×${Number(h)}`
+      : '';
+    if (pos && size) add('Position', `${pos} · ${size}`);
+    else if (pos) add('Position', pos);
+    else if (size) add('Position', size);
+  }
+
   if (properties.data && typeof properties.data === 'object' && !Array.isArray(properties.data)) {
     for (const [key, value] of Object.entries(properties.data)) {
       if (value === undefined || value === null) continue;

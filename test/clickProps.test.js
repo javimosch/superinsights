@@ -22,11 +22,12 @@ test('formatClickProps extracts click context fields in order', () => {
     id: 'save-btn',
     className: 'btn primary',
     selector: 'button#save-btn',
+    rect: { x: 840, y: 600, w: 200, h: 48 },
     data: { id: '42' },
   });
 
   assert.ok(fields);
-  assert.strictEqual(fields.length, 7);
+  assert.strictEqual(fields.length, 8);
   assert.deepStrictEqual(fields[0], { label: 'Tag', value: 'button' });
   assert.deepStrictEqual(fields[1], { label: 'Text', value: 'Save' });
   assert.deepStrictEqual(fields[2], { label: 'Href', value: '/save', href: '/save' });
@@ -36,8 +37,10 @@ test('formatClickProps extracts click context fields in order', () => {
   assert.strictEqual(fields[4].value, 'btn primary');
   assert.strictEqual(fields[5].label, 'Selector');
   assert.strictEqual(fields[5].value, 'button#save-btn');
-  assert.strictEqual(fields[6].label, 'Data id');
-  assert.strictEqual(fields[6].value, '42');
+  assert.strictEqual(fields[6].label, 'Position');
+  assert.strictEqual(fields[6].value, '840×600 · 200×48');
+  assert.strictEqual(fields[7].label, 'Data id');
+  assert.strictEqual(fields[7].value, '42');
 });
 
 test('safeClickHref blocks unsafe or unknown protocols', () => {

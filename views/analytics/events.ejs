@@ -119,6 +119,31 @@
         </div>
       </section>
 
+      <section class="card bg-base-100 shadow" v-if="topClickedElements.length">
+        <div class="card-body space-y-2">
+          <h2 class="card-title text-lg">Top clicked elements this period</h2>
+
+          <div class="overflow-x-auto">
+            <table class="table table-zebra table-xs w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Element</th>
+                  <th class="text-right">Clicks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in topClickedElements" :key="row.selector">
+                  <td class="font-mono max-w-[520px]">
+                    <div class="truncate" :title="row.selector">{{ row.selector }}</div>
+                  </td>
+                  <td class="text-right">{{ row.count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="grid gap-4 md:grid-cols-3">
         <div class="stats shadow bg-base-100">
           <div class="stat">
@@ -378,6 +403,7 @@
           const recentPagination = eventsRef(<%- JSON.stringify(recentPagination || { page: 1, limit: 10, total: 0, totalPages: 0 }) %>);
           const uniqueEventNames = eventsRef(<%- JSON.stringify(uniqueEventNames || []) %>);
           const timedEvents = eventsRef(<%- JSON.stringify(timedEvents || []) %>);
+          const topClickedElements = eventsRef(<%- JSON.stringify(topClickedElements || []) %>);
 
           const liveLoading = eventsRef(false);
           const liveError = eventsRef('');
@@ -621,6 +647,7 @@
             recentOccurrences,
             recentPagination,
             timedEvents,
+            topClickedElements,
             uniqueEventNames,
             timeframeLabel,
             avgEventsPerDay,
