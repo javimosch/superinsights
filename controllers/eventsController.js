@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const { parseSegmentFilters, buildEventMetadataMatch } = require('../utils/segmentFilters');
+const { isClickEvent, formatClickCard } = require('../utils/clickCard');
 
 function getDateRange(timeframe) {
   const now = new Date();
@@ -457,12 +458,19 @@ exports.getEventDetail = async (req, res, next) => {
 
     const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
-    const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
-      Event.find(match).sort({ timestamp: -1 }).limit(100),
+    const [rawOccurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
+      Event.find(match).sort({ timestamp: -1 }).limit(100).lean(),
       getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    const occurrences = (rawOccurrences || []).map((row) => {
+      if (isClickEvent(row.eventName)) {
+        row.clickCard = formatClickCard(row.properties);
+      }
+      return row;
+    });
 
     // Return JSON for API clients (e.g., si CLI)
     if (req.accepts && !req.accepts('html') && req.accepts('json')) {
