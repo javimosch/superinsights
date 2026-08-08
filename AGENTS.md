@@ -20,3 +20,10 @@
   header, wrong response-wrapper assumption) — `si stats` there reports fake all-null success
   instead of erroring. Always build/release from `cmd/si/` here; the working release is
   `si-v0.1.1` (`gh release view si-v0.1.1 --repo javimosch/superinsights`).
+
+- Autocaptured `$click` events store `properties` from the browser SDK
+  (`public/sdk/superinsights.js`) with this shape:
+  `tag`, `id`, `className`, `text`, `href` (for `<a>` elements), `data` (object of all
+  `data-*` attributes), `selector`, and `rect` (`{x, y, w, h}`). When rendering in the
+  dashboard, surface `tag` as a badge, `text` and `href` as the human-readable payload,
+  and `data` attributes such as `data.id` alongside `selector`.
