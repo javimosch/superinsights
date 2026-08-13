@@ -465,11 +465,17 @@ exports.getEventDetail = async (req, res, next) => {
     const match = buildMatch({ projectId, start, end, eventName, metadataMatch });
 
     const [occurrences, propertySchema, eventsByDay, durationSummary] = await Promise.all([
-      Event.find(match).sort({ timestamp: -1 }).limit(100),
+      Event.find(match).sort({ timestamp: -1 }).limit(100).lean(),
       getEventPropertySchema({ projectId, eventName, start, end, metadataMatch }),
       getEventsByDay({ projectId, start, end, eventName, metadataMatch }),
       getSingleEventDurationSummary({ projectId, start, end, eventName, metadataMatch }),
     ]);
+
+    for (const row of occurrences || []) {
+      if (row && row.eventName === '$click' && row.properties && row.properties.href) {
+        row.safeHref = safeClickHref(row.properties.href);
+      }
+    }
 
     // Return JSON for API clients (e.g., si CLI)
     if (req.accepts && !req.accepts('html') && req.accepts('json')) {
