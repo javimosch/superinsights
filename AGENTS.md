@@ -27,3 +27,8 @@
   `data-*` attributes), `selector`, and `rect` (`{x, y, w, h}`). When rendering in the
   dashboard, surface `tag` as a badge, `text` and `href` as the human-readable payload,
   and `data` attributes such as `data.id` alongside `selector`.
+
+- The events view implementation lives in `views/analytics/events.ejs` (Vue card in the
+  Recent activity table), `controllers/eventsController.js` assigns `safeHref` to `$click`
+  occurrences, `utils/safeClickHref.js` validates captured hrefs, and `test/safeClickHref.test.js`
+  covers the URL allowlist. Run `npm test` to verify.
