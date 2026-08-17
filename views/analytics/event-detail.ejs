@@ -275,7 +275,7 @@
                   </td>
                   <td class="text-right">{{ formatMs(row.durationMs) }}</td>
                   <td class="max-w-[620px]">
-                    <pre class="p-2 bg-base-200 rounded border border-base-300 text-xs overflow-x-auto"><code>{{ JSON.stringify(row.properties || {}, null, 2) }}</code></pre>
+                    <%- include('../partials/click-card') %>
                   </td>
                 </tr>
               </tbody>
@@ -452,6 +452,25 @@
             return String(Math.round(n));
           }
 
+          function isClickEvent(row) {
+            return row && row.eventName === '$click' && row.properties && typeof row.properties === 'object';
+          }
+
+          function flattenData(data) {
+            if (!data || typeof data !== 'object') return [];
+            return Object.entries(data).map(([key, value]) => ({
+              key: String(key),
+              value: value == null ? '' : String(value),
+            }));
+          }
+
+          function truncateText(text, limit = 120) {
+            if (text == null) return '';
+            const s = String(text);
+            if (s.length <= limit) return s;
+            return s.slice(0, limit) + '...';
+          }
+
           onMounted(() => {
             renderChart();
           });
@@ -484,6 +503,9 @@
             inferType,
             sampleValuesLabel,
             formatMs,
+            isClickEvent,
+            flattenData,
+            truncateText,
           };
         },
       }).mount('#app');
